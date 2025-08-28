@@ -244,7 +244,7 @@ def process_excel_sheets():
     # sello de compilación para evitar caché en GitHub Pages
     from datetime import datetime
     build_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    html = html.replace("</head>", f"\n<!-- build:{build_ts} -->\n</head>")
+    html = html.replace("</head>", cache_inject + "\n</head>")
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -257,3 +257,4 @@ if __name__ == "__main__":
         print('❌ Error:', e)
         import traceback; traceback.print_exc()
         sys.exit(1)
+
