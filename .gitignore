@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Office temporales
+~$*.xlsx
+*.tmp
+
+# SO
+Thumbs.db
+.DS_Store
+
+# Exportaciones y datos locales
+*.ics
+*.xlsx
