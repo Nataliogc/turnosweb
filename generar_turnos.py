@@ -178,6 +178,12 @@ def process_excel_sheets():
     with open(template_path,"r",encoding="utf-8") as f: html=f.read()
     if "__DATA_PLACEHOLDER__" not in html: raise RuntimeError("La plantilla HTML no contiene __DATA_PLACEHOLDER__")
     html=html.replace("__DATA_PLACEHOLDER__", json.dumps({"rows": final_data}, ensure_ascii=False))
+# ... después de: html = html.replace("__DATA_PLACEHOLDER__", json.dumps({"rows": final_data}, ensure_ascii=False))
+
+from datetime import datetime
+build_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+html = html.replace("</head>", f"\n<!-- build:{build_ts} -->\n</head>")
+
     with open(output_path,"w",encoding="utf-8") as f: f.write(html)
     print(f"✅ Generado {output_html} ({len(final_data)} registros)")
 
