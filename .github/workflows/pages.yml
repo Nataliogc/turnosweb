@@ -1,7 +1,7 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [ main ]
+    branches: [ main, principal ]
 permissions:
   contents: read
   pages: write
@@ -17,7 +17,6 @@ jobs:
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          # Publica todo el repo; asegúrate de haber generado cuadrante.html
           path: .
   deploy:
     needs: build
