@@ -4,7 +4,7 @@ import json, os, re, unicodedata, sys
 # ==== CONFIGURACIÓN ====
 excel_file = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
 template_html = "turnos_final.html"
-output_html = "cuadrante.html"   # si prefieres que la URL sea directa, cambia a "index.html"
+output_html = "index.html"
 ignore_sheets = ["Sustituciones", "Hoja1", "Datos de Validación"]
 
 ABSENCE_COLOR = {
