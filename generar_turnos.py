@@ -1,11 +1,15 @@
-﻿import pandas as pd
+import pandas as pd
 import json, os, re, unicodedata, sys
+from datetime import datetime, date
 
 # ==== CONFIGURACIÓN ====
+# Ajusta esta ruta si mueves el Excel
 excel_file = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
 template_html = "turnos_final.html"
-output_html = "index.html"   # publicamos como index.html para GitHub Pages
+output_html   = "index.html"   # publicamos como index.html para GitHub Pages
 ignore_sheets = ["Sustituciones", "Hoja1", "Datos de Validación"]
+
+DEBUG_LOG = True  # logs de CAMBIO/SUSTITUTO/AUSENCIA en consola
 
 ABSENCE_COLOR = {
     "vacaciones": "#FF4C4C",
@@ -16,11 +20,48 @@ ABSENCE_COLOR = {
     "libranza": "#B59F3B",
 }
 
+# ---------- utilidades ----------
 def _strip(s): return "" if s is None else str(s).strip()
+
 def _canon(s: str) -> str:
+    """Normaliza para comparar nombres: sin acentos, minúsculas y espacios comprimidos."""
     s = _strip(s)
     s2 = ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').lower()
-    return re.sub(r'\s+', ' ', s2)
+    s2 = re.sub(r'[^a-z0-9\s]', ' ', s2)  # fuera signos (& , .)
+    return re.sub(r'\s+', ' ', s2).strip()
+
+def _log(msg):
+    if DEBUG_LOG: print(msg)
+
+# fecha “vi 29/ago 25”, “29-ago-2025”, Excel-date, etc. -> "YYYY-MM-DD"
+MESES = {"ene":"01","feb":"02","mar":"03","abr":"04","may":"05","jun":"06","jul":"07",
+         "ago":"08","set":"09","sep":"09","sept":"09","oct":"10","nov":"11","dic":"12"}
+WD = r'(lu|ma|mi|ju|vi|sa|do)\.?'
+
+def norm_fecha(v) -> str:
+    # vacío / NaT
+    if v is None or v == "" or (hasattr(pd, "isna") and pd.isna(v)):
+        return ""
+    # datetime real (no NaT)
+    if isinstance(v, (datetime, date, pd.Timestamp)) and not pd.isna(v):
+        dt = pd.to_datetime(v, dayfirst=True, errors="coerce")
+        return "" if pd.isna(dt) else dt.strftime("%Y-%m-%d")
+
+    # texto tipo "vi 29/ago 25"
+    s = str(v).strip().lower()
+    s = re.sub(rf'^\s*{WD}\s*', '', s)            # quita "vi ", "lu. ", etc.
+    s = s.replace(' de ', ' ').replace(' del ', ' ')
+    s = s.replace('-', '/')
+
+    m = re.search(r'(\d{1,2})[\/\s\-\.]([a-zñ]{3,5})[\/\s\-\.](\d{2,4})', s)
+    if m:
+        dd = int(m.group(1))
+        mon = MESES.get(m.group(2)[:4], MESES.get(m.group(2)[:3]))
+        yy = int(m.group(3));  yy = (yy+2000) if yy < 100 else yy
+        if mon: return f"{yy:04d}-{mon}-{dd:02d}"
+
+    dt = pd.to_datetime(s, dayfirst=True, errors="coerce")
+    return "" if pd.isna(dt) else dt.strftime("%Y-%m-%d")
 
 def is_absence_text(tcanon: str) -> str:
     if "vaca" in tcanon: return "vacaciones"
@@ -37,19 +78,20 @@ def classify_cell(val: str):
     if not s: return {"code":"","long":"","is_abs":False,"abs_key":""}
     c = _canon(s)
     ak = is_absence_text(c)
-    if ak and ak != "descanso": return {"code":s,"long":s,"is_abs":True,"abs_key":ak}   # texto EXACTO
+    if ak and ak != "descanso": return {"code":s,"long":s,"is_abs":True,"abs_key":ak}
     if ak == "descanso": return {"code":"D","long":"Descanso","is_abs":False,"abs_key":""}
     if c.startswith("man") or "mañana" in s.lower(): return {"code":"M","long":"Mañana","is_abs":False,"abs_key":""}
-    if "tard" in c:   return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
-    if "noch" in c:   return {"code":"N","long":"Noches","is_abs":False,"abs_key":""}
+    if "tard" in c: return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
+    if "noch" in c: return {"code":"N","long":"Noches","is_abs":False,"abs_key":""}
     m = re.search(r'(\d{1,2})\s*[:.]?\s*(\d{0,2})?\s*-\s*(\d{1,2})', c)
     if m:
         h1 = int(m.group(1))
-        if 5 <= h1 <= 12:   return {"code":"M","long":"Mañana","is_abs":False,"abs_key":""}
-        if 12 < h1 <= 20:   return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
+        if 5 <= h1 <= 12: return {"code":"M","long":"Mañana","is_abs":False,"abs_key":""}
+        if 12 < h1 <= 20: return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
         return {"code":"N","long":"Noches","is_abs":False,"abs_key":""}
     return {"code":"","long":s,"is_abs":False,"abs_key":""}
 
+# ---------- generador principal ----------
 def process_excel_sheets():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     excel_path = excel_file if os.path.isabs(excel_file) else os.path.join(script_dir, excel_file)
@@ -106,8 +148,7 @@ def process_excel_sheets():
 
     days = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
     for d in days:
-        if d not in df.columns:
-            df[d] = ""
+        if d not in df.columns: df[d] = ""
 
     melted = df.melt(
         id_vars=["Semana","Empleado","Hotel","OrderBaseHotel"],
@@ -117,12 +158,14 @@ def process_excel_sheets():
     ).dropna(subset=["Empleado"]).copy()
 
     melted["Empleado"] = melted["Empleado"].astype(str).str.strip()
+    melted["EmpleadoCanon"] = melted["Empleado"].map(_canon)
+    melted["HotelCanon"] = melted["Hotel"].map(_canon)
     melted["TurnoRaw"] = melted["TurnoRaw"].fillna("").astype(str)
     melted["Fecha"] = melted.apply(
         lambda r: (pd.to_datetime(r["Semana"]) + pd.Timedelta(days=days.index(r["Dia"]))).strftime("%Y-%m-%d"), axis=1
     )
 
-    # Clasificar celdas y fijar TextoDia (lo que se muestra/exporta)
+    # Clasificar celdas (día a día)
     clist = melted["TurnoRaw"].map(classify_cell).tolist()
     melted["Turno"]      = [c["code"] for c in clist]
     melted["TurnoLargo"] = [c["long"] for c in clist]
@@ -140,10 +183,9 @@ def process_excel_sheets():
     melted["EmpleadoOrdenSemanaBase"] = melted.apply(_ord_semana, axis=1)
     melted["OrderDia"] = melted["EmpleadoOrdenSemanaBase"].copy()
 
-    # Copia para recuperar turno original del titular
     melted_orig = melted.copy()
 
-    # Marcar ausencias de celdas (texto tal cual)
+    # Marcar ausencias según texto en las celdas del cuadrante
     for i, c in enumerate(clist):
         if c["is_abs"] and c["abs_key"]:
             melted.loc[i, "TipoEmpleado"] = "Ausente"
@@ -152,58 +194,93 @@ def process_excel_sheets():
             melted.loc[i, "SustitucionPor"] = melted.loc[i,"TurnoLargo"]
             melted.loc[i, "TextoDia"] = melted.loc[i,"TurnoLargo"]
 
-    # Sustituciones / Cambios
+    # ===== SUSTITUCIONES / CAMBIOS =====
     sust = pd.DataFrame(columns=["Hotel","Empleado","Fecha","Sustituto","TipoAusencia","CambioDeTurno"])
     if "Sustituciones" in xls.sheet_names:
         s0 = pd.read_excel(xls, sheet_name="Sustituciones")
         if not s0.empty:
             s0.columns = s0.columns.str.strip()
-            s0 = s0.rename(columns={
-                "Hotel":"Hotel","Empleado":"Empleado","Fecha":"Fecha",
-                "Sustituto":"Sustituto","Tipo Ausencia":"TipoAusencia","Cambio de Turno":"CambioDeTurno"
-            })
-            s0["Fecha"] = pd.to_datetime(s0["Fecha"]).dt.strftime("%Y-%m-%d")
+            # aceptar ambos encabezados: "TipoAusencia"/"Tipo Ausencia", "CambioDeTurno"/"Cambio de Turno"
+            rename_map = {c:c for c in s0.columns}
+            for a,b in [("Tipo Ausencia","TipoAusencia"), ("Cambio de Turno","CambioDeTurno")]:
+                if a in s0.columns: rename_map[a] = b
+            s0 = s0.rename(columns=rename_map)
+
+            s0["Fecha"] = s0["Fecha"].apply(norm_fecha)
+            s0 = s0[s0["Fecha"] != ""]   # descarta filas sin fecha
+
             for ccol in ["Hotel","Empleado","Sustituto","TipoAusencia","CambioDeTurno"]:
                 if ccol in s0.columns: s0[ccol] = s0[ccol].fillna("").astype(str).str.strip()
+
+            s0["HotelCanon"]    = s0["Hotel"].map(_canon)
+            s0["EmpleadoCanon"] = s0["Empleado"].map(_canon)
+            s0["SustitutoCanon"]= s0["Sustituto"].map(_canon)
+            s0["CambioCanon"]   = s0["CambioDeTurno"].map(_canon)
             sust = s0
 
-    for _, r in sust.iterrows():
-        hotel, emp, fecha = r.get("Hotel",""), r.get("Empleado",""), r.get("Fecha","")
-        sustituto, tipo_raw, cambio = r.get("Sustituto",""), r.get("TipoAusencia",""), r.get("CambioDeTurno","")
-        idx_emp = melted[(melted["Hotel"]==hotel)&(melted["Empleado"]==emp)&(melted["Fecha"]==fecha)].index
+    def _find_idx(hotel_can, name_can, fecha):
+        m = melted
+        return m.index[(m["HotelCanon"]==hotel_can)&(m["EmpleadoCanon"]==name_can)&(m["Fecha"]==fecha)].tolist()
 
-        # Cambio de turno → intercambiar y marcar 🔄 (sin nuevas filas)
-        if cambio:
-            idx2 = melted[(melted["Hotel"]==hotel)&(melted["Empleado"]==cambio)&(melted["Fecha"]==fecha)].index
-            if not idx_emp.empty and not idx2.empty:
-                (t1, l1, x1) = (melted.loc[idx_emp, "Turno"].iloc[0], melted.loc[idx_emp, "TurnoLargo"].iloc[0], melted.loc[idx_emp,"TextoDia"].iloc[0])
-                (t2, l2, x2) = (melted.loc[idx2,  "Turno"].iloc[0], melted.loc[idx2,  "TurnoLargo"].iloc[0], melted.loc[idx2, "TextoDia"].iloc[0])
-                melted.loc[idx_emp, ["Turno","TurnoLargo","TextoDia","Icono"]] = [t2, l2, x2, "🔄"]
-                melted.loc[idx2,  ["Turno","TurnoLargo","TextoDia","Icono"]] = [t1, l1, x1, "🔄"]
+    for _, r in sust.iterrows():
+        hotel, emp, fecha = _strip(r.get("Hotel","")), _strip(r.get("Empleado","")), _strip(r.get("Fecha",""))
+        hotel_can, emp_can = _canon(hotel), _canon(emp)
+        sustituto, tipo_raw = _strip(r.get("Sustituto","")), _strip(r.get("TipoAusencia",""))
+        sust_can = _canon(sustituto)
+        cambio_raw = _strip(r.get("CambioDeTurno",""))
+        cambio_can = _canon(cambio_raw)
+
+        if not fecha or not emp: 
             continue
 
-        # Ausencia desde hoja Sustituciones → texto EXACTO
+        idx_emp = _find_idx(hotel_can, emp_can, fecha)
+
+        # --- CAMBIO DE TURNO ---
+        # a) "Cambio de Turno" = nombre del otro
+        # b) "Cambio de Turno" = si/sí/x y el nombre del otro en "Sustituto"
+        cambio_name_can = ""
+        if cambio_can and cambio_can not in ("si","sí","si.","sí.","x","✓","ok"):
+            cambio_name_can = cambio_can
+        elif sust_can:
+            cambio_name_can = sust_can
+
+        if cambio_name_can:
+            idx_other = _find_idx(hotel_can, cambio_name_can, fecha)
+            if idx_emp and idx_other:
+                i1, i2 = idx_emp[0], idx_other[0]
+                t1, l1, x1 = melted.loc[i1, ["Turno","TurnoLargo","TextoDia"]]
+                t2, l2, x2 = melted.loc[i2, ["Turno","TurnoLargo","TextoDia"]]
+                melted.loc[i1, ["Turno","TurnoLargo","TextoDia","Icono"]] = [t2, l2, x2, "🔄"]
+                melted.loc[i2, ["Turno","TurnoLargo","TextoDia","Icono"]] = [t1, l1, x1, "🔄"]
+                _log(f"🔄 CAMBIO {fecha} {hotel}: {emp} ⇄ {cambio_raw or sustituto}")
+            else:
+                _log(f"⚠️ No localizo CAMBIO {fecha} {hotel}: '{emp}' / '{cambio_raw or sustituto}'")
+            continue
+
+        # --- AUSENCIA desde Sustituciones ---
         tipo_exact = _strip(tipo_raw)
-        if tipo_exact and not idx_emp.empty:
+        if tipo_exact and idx_emp:
             ak = is_absence_text(_canon(tipo_exact))
             if ak:
                 melted.loc[idx_emp, ["Turno","TurnoLargo","NameColorC","Icono","TipoEmpleado","SustitucionPor","TextoDia"]] = \
                     [tipo_exact, tipo_exact, ABSENCE_COLOR.get(ak, "#FF4C4C"), "", "Ausente", tipo_exact, tipo_exact]
+                _log(f"🅰️ AUSENCIA {fecha} {hotel}: {emp} -> '{tipo_exact}'")
 
-        # Sustituto hereda turno y posición del titular ese día
-        if sustituto and not idx_emp.empty:
-            orig = melted_orig[(melted_orig["Hotel"]==hotel)&(melted_orig["Empleado"]==emp)&(melted_orig["Fecha"]==fecha)]
-            turno_original = orig["Turno"].iloc[0] if not orig.empty else melted.loc[idx_emp,"Turno"].iloc[0]
-            turno_largo_original = orig["TurnoLargo"].iloc[0] if not orig.empty else melted.loc[idx_emp,"TurnoLargo"].iloc[0]
-            texto_original = orig["TurnoLargo"].iloc[0] if not orig.empty else melted.loc[idx_emp,"TextoDia"].iloc[0]
-            ord_tit = orig["EmpleadoOrdenSemanaBase"].iloc[0] if not orig.empty else melted.loc[idx_emp,"EmpleadoOrdenSemanaBase"].iloc[0]
+        # --- SUSTITUTO hereda turno y posición del titular ---
+        if sust_can and idx_emp:
+            orig = melted_orig[(melted_orig["HotelCanon"]==hotel_can)&(melted_orig["EmpleadoCanon"]==emp_can)&(melted_orig["Fecha"]==fecha)]
+            turno_original = orig["Turno"].iloc[0] if not orig.empty else melted.loc[idx_emp[0],"Turno"]
+            turno_largo_original = orig["TurnoLargo"].iloc[0] if not orig.empty else melted.loc[idx_emp[0],"TurnoLargo"]
+            texto_original = orig["TurnoLargo"].iloc[0] if not orig.empty else melted.loc[idx_emp[0],"TextoDia"]
+            ord_tit = orig["EmpleadoOrdenSemanaBase"].iloc[0] if not orig.empty else melted.loc[idx_emp[0],"EmpleadoOrdenSemanaBase"]
 
-            idx_sub = melted[(melted["Hotel"]==hotel)&(melted["Empleado"]==sustituto)&(melted["Fecha"]==fecha)].index
-            if not idx_sub.empty:
+            idx_sub = _find_idx(hotel_can, sust_can, fecha)
+            if idx_sub:
                 melted.loc[idx_sub, ["Turno","TurnoLargo","TextoDia","Icono","OrderDia"]] = [turno_original, turno_largo_original, texto_original, "", ord_tit]
             else:
-                new_r = melted.loc[idx_emp].iloc[0].copy()
+                new_r = melted.loc[idx_emp[0]].copy()
                 new_r["Empleado"] = sustituto
+                new_r["EmpleadoCanon"] = sust_can
                 new_r["Turno"] = turno_original
                 new_r["TurnoLargo"] = turno_largo_original
                 new_r["TextoDia"] = texto_original
@@ -213,11 +290,8 @@ def process_excel_sheets():
                 new_r["TipoEmpleado"] = "Normal"
                 new_r["SustitucionPor"] = "Sustitución"
                 new_r["OrderDia"] = ord_tit
-                base = order_base_hotel.get(hotel, {})
-                new_r["OrderBaseHotel"] = base.get(sustituto, 9999)
-                wk = order_week_map.get((hotel, new_r["Semana"]), {})
-                new_r["EmpleadoOrdenSemanaBase"] = wk.get(sustituto, new_r["OrderBaseHotel"])
                 melted = pd.concat([melted, pd.DataFrame([new_r])], ignore_index=True)
+            _log(f"👤 SUSTITUTO {fecha} {hotel}: {sustituto} ocupa turno de {emp}")
 
     # Orden final por semana + vacaciones al final
     melted["VacFlag"] = (melted["TipoEmpleado"].eq("Ausente") & melted["TextoDia"].str.lower().str.contains("vaca")).astype(int)
@@ -241,10 +315,9 @@ def process_excel_sheets():
         raise RuntimeError("La plantilla HTML no contiene __DATA_PLACEHOLDER__")
     html = html.replace("__DATA_PLACEHOLDER__", json.dumps({"rows": final_data}, ensure_ascii=False))
 
-    # sello de compilación para evitar caché en GitHub Pages
-    from datetime import datetime
+    # sello anti-caché
     build_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    html = html.replace("</head>", cache_inject + "\n</head>")
+    html = html.replace("</head>", f"\n<!-- build:{build_ts} -->\n</head>")
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -257,4 +330,3 @@ if __name__ == "__main__":
         print('❌ Error:', e)
         import traceback; traceback.print_exc()
         sys.exit(1)
-
