@@ -6,7 +6,8 @@ Incluye:
 - Diagnóstico CSV (sustituciones_diagnostico.csv)
 - Copia temporal si OneDrive/Excel bloquea el archivo (PermissionError)
 - Regla: SUSTITUTO > CAMBIO salvo afirmativo (sí/x/ok/✓)
-- Renderiza VACACIONES de forma explícita (icono 🏖️, texto y color)
+- Renderiza VACACIONES de forma explícita (icono 🏖️, texto y color),
+  tanto si vienen desde la celda del calendario como desde la hoja Sustituciones.
 """
 
 import pandas as pd
@@ -14,18 +15,13 @@ import json, os, re, unicodedata, sys, shutil, time
 from datetime import datetime, date
 
 # ============ CONFIGURACIÓN ============
-# Ajusta si cambias de ubicación el Excel (ruta ABSOLUTA recomendada):
 excel_file = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
-# Plantilla HTML con el marcador __DATA_PLACEHOLDER__ (debe estar en la misma carpeta del script)
 template_html = "turnos_final.html"
-# Salida para GitHub Pages (publica como index.html)
 output_html   = "index.html"
-# Hojas a ignorar del Excel
 ignore_sheets = ["Sustituciones", "Hoja1", "Datos de Validación"]
 
 DEBUG_LOG = True
 
-# Colores para tipos de ausencia
 ABSENCE_COLOR = {
     "vacaciones": "#FF4C4C",
     "baja": "#A64CA6",
@@ -35,14 +31,12 @@ ABSENCE_COLOR = {
     "libranza": "#B59F3B",
 }
 
-# Valores que cuentan como "sí" para CAMBIO de turno
 YES_CAMBIO = {"si","sí","si.","sí.","x","✓","ok","cambio","swap"}
 
 def _strip(s): 
     return "" if s is None else str(s).strip()
 
 def _canon(s: str) -> str:
-    """Normaliza texto: sin acentos, minúsculas, sin signos, espacios compactados."""
     s = _strip(s)
     s2 = ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').lower()
     s2 = re.sub(r'[^a-z0-9\s]', ' ', s2)
@@ -52,24 +46,20 @@ def _log(msg):
     if DEBUG_LOG:
         print(msg)
 
-# Meses en abreviatura española admitidos
 MESES = {"ene":"01","feb":"02","mar":"03","abr":"04","may":"05","jun":"06","jul":"07",
          "ago":"08","set":"09","sep":"09","sept":"09","oct":"10","nov":"11","dic":"12"}
-WD = r'(lu|ma|mi|ju|vi|sa|do)\.?'  # elimina prefijo de día "lu/ma/..." si viene
+WD = r'(lu|ma|mi|ju|vi|sa|do)\.?'
 
 def norm_fecha(v) -> str:
-    """Convierte múltiples formatos a YYYY-MM-DD. Devuelve '' si no interpretable."""
     if v is None or v == "" or (hasattr(pd, "isna") and pd.isna(v)):
         return ""
     if isinstance(v, (datetime, date, pd.Timestamp)) and not pd.isna(v):
         dt = pd.to_datetime(v, dayfirst=True, errors="coerce")
         return "" if pd.isna(dt) else dt.strftime("%Y-%m-%d")
     s = str(v).strip().lower()
-    # Quitar prefijo de día (lu, ma, ...)
     s = re.sub(rf'^\s*{WD}\s*', '', s)
     s = s.replace(' de ', ' ').replace(' del ', ' ')
     s = s.replace('-', '/')
-    # Ej: 28/ago/2025, 28 ago 2025, 28.ago.25, etc.
     m = re.search(r'(\d{1,2})[\/\s\-\.]([a-zñ]{3,5})[\/\s\-\.](\d{2,4})', s)
     if m:
         dd  = int(m.group(1))
@@ -81,7 +71,6 @@ def norm_fecha(v) -> str:
     return "" if pd.isna(dt) else dt.strftime("%Y-%m-%d")
 
 def is_absence_text(tcanon: str) -> str:
-    """Detecta tipos de ausencia a partir de texto normalizado."""
     if "vaca" in tcanon: return "vacaciones"
     if "baja" in tcanon or "incapac" in tcanon or " it" in tcanon or tcanon=="it": return "baja"
     if "permiso" in tcanon or "retribu" in tcanon: return "permiso"
@@ -92,47 +81,37 @@ def is_absence_text(tcanon: str) -> str:
     return ""
 
 def classify_cell(val: str):
-    """Clasifica el contenido de la celda (turno/ausencia)."""
     s = _strip(val)
     if not s: 
         return {"code":"","long":"","is_abs":False,"abs_key":""}
     c = _canon(s)
     ak = is_absence_text(c)
     if ak and ak != "descanso": 
-        # Ausencias (no descanso)
         return {"code":s, "long":s, "is_abs":True, "abs_key":ak}
     if ak == "descanso":
         return {"code":"D", "long":"Descanso", "is_abs":False, "abs_key":""}
-    # Turnos por palabras clave
     if c.startswith("man") or "mañana" in s.lower(): 
         return {"code":"M","long":"Mañana","is_abs":False,"abs_key":""}
     if "tard" in c:   
         return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
     if "noch" in c:   
         return {"code":"N","long":"Noches","is_abs":False,"abs_key":""}
-    # Rangos horarios -> heurística
     m = re.search(r'(\d{1,2})\s*[:.]?\s*(\d{0,2})?\s*-\s*(\d{1,2})', c)
     if m:
         h1 = int(m.group(1))
         if 5 <= h1 <= 12:   return {"code":"M","long":"Mañana","is_abs":False,"abs_key":""}
         if 12 < h1 <= 20:   return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
         return {"code":"N","long":"Noches","is_abs":False,"abs_key":""}
-    # Valor libre
     return {"code":"","long":s,"is_abs":False,"abs_key":""}
 
 def decide_action(cambio_can: str, sust_can: str, tipo_aus: str):
-    """Devuelve (tipo, otro_can, otro_txt). tipo ∈ {'CAMBIO','SUSTITUTO','AUSENCIA','SIN_ACCION'}"""
     aus = _strip(tipo_aus)
-    # Prioridad SUSTITUTO cuando hay nombre y 'Cambio' no es afirmativo
     if sust_can and cambio_can not in YES_CAMBIO:
         return "SUSTITUTO", sust_can, _strip(sust_can)
-    # CAMBIO con afirmación + nombre en Sustituto
     if cambio_can in YES_CAMBIO and sust_can:
         return "CAMBIO", sust_can, _strip(sust_can)
-    # CAMBIO con nombre en 'Cambio de Turno' y Sustituto vacío
     if cambio_can and not sust_can:
         return "CAMBIO", cambio_can, _strip(cambio_can)
-    # AUSENCIA explícita
     if aus:
         return "AUSENCIA", "", ""
     return "SIN_ACCION", "", ""
@@ -152,11 +131,9 @@ def process_excel_sheets():
     xls = None
     tmp_copy = None
     try:
-        # Intento directo
         try:
             xls = pd.ExcelFile(excel_path)
         except PermissionError:
-            # Copia temporal si el archivo está bloqueado por Excel/OneDrive
             ts = datetime.now().strftime("%Y%m%d%H%M%S")
             tmp_copy = os.path.join(script_dir, f"_excel_tmp_{ts}.xlsx")
             err = None
@@ -171,7 +148,6 @@ def process_excel_sheets():
                 raise err or PermissionError("No pude copiar el Excel bloqueado")
             xls = pd.ExcelFile(tmp_copy)
 
-        # ===== Cargar hojas de hoteles =====
         hoteles = []
         order_base_hotel = {}
         order_week_map   = {}
@@ -182,7 +158,6 @@ def process_excel_sheets():
             df = pd.read_excel(xls, sheet_name=sh)
             df["Hotel"] = sh
 
-            # Orden base por hotel (primera aparición)
             order_map = {}
             order = 0
             for e in df.get("Empleado", pd.Series(dtype=str)).astype(str).fillna(""):
@@ -192,7 +167,6 @@ def process_excel_sheets():
             order_base_hotel[sh] = order_map
             df["OrderBaseHotel"] = df["Empleado"].astype(str).map(lambda x: order_map.get(x.strip(), 9999))
 
-            # Orden por semana (fila B) para cada hotel
             if "Semana" in df.columns and "Empleado" in df.columns:
                 for sem, dfx in df.groupby("Semana", dropna=False):
                     try:
@@ -216,13 +190,11 @@ def process_excel_sheets():
             print("❌ Falta columna 'Semana' en el Excel"); return
         df["Semana"] = pd.to_datetime(df["Semana"]).dt.date.astype(str)
 
-        # Asegurar columnas de días
         days = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
         for d in days:
             if d not in df.columns:
                 df[d] = ""
 
-        # "Derretir" para tener una fila por (hotel, empleado, día)
         melted = df.melt(
             id_vars=["Semana","Empleado","Hotel","OrderBaseHotel"],
             value_vars=days,
@@ -234,26 +206,21 @@ def process_excel_sheets():
         melted["EmpleadoCanon"] = melted["Empleado"].map(_canon)
         melted["HotelCanon"]    = melted["Hotel"].map(_canon)
         melted["TurnoRaw"]      = melted["TurnoRaw"].fillna("").astype(str)
-
-        # Fecha exacta = Semana + offset del día
-        melted["Fecha"] = melted.apply(
+        melted["Fecha"]         = melted.apply(
             lambda r: (pd.to_datetime(r["Semana"]) + pd.Timedelta(days=days.index(r["Dia"]))).strftime("%Y-%m-%d"), axis=1
         )
 
-        # Clasificar turnos/ausencias de las celdas
         clist = melted["TurnoRaw"].map(classify_cell).tolist()
         melted["Turno"]      = [c["code"] for c in clist]
         melted["TurnoLargo"] = [c["long"] for c in clist]
         melted["TextoDia"]   = melted["TurnoLargo"].fillna("").astype(str)
 
-        # Campos adicionales
-        melted["TipoEmpleado"]   = "Normal"
-        melted["NameColorC"]     = ""
-        melted["Icono"]          = ""   # 🔄 para cambios
-        melted["Sustituto"]      = ""
+        melted["TipoEmpleado"] = "Normal"
+        melted["NameColorC"]   = ""
+        melted["Icono"]        = ""   # 🔄 para cambios
+        melted["Sustituto"]    = ""
         melted["SustitucionPor"] = ""
 
-        # Orden base por semana (pestaña fila B)
         def _ord_semana(row):
             return order_week_map.get((row["Hotel"], row["Semana"]), {}).get(row["Empleado"], row["OrderBaseHotel"])
         melted["EmpleadoOrdenSemanaBase"] = melted.apply(_ord_semana, axis=1)
@@ -261,7 +228,7 @@ def process_excel_sheets():
 
         melted_orig = melted.copy()
 
-        # ===== DIAGNÓSTICO SOBRE SUSTITUCIONES =====
+        # --- DIAGNÓSTICO SOBRE SUSTITUCIONES ---
         diag_rows = []
         if "Sustituciones" in xls.sheet_names:
             s0 = pd.read_excel(xls, sheet_name="Sustituciones")
@@ -296,7 +263,6 @@ def process_excel_sheets():
                     sust  = _strip(rr["Sustituto"]); scan = rr["SustitutoCanon"]
                     camb  = _strip(rr["CambioDeTurno"]); ccan = rr["CambioCanon"]
 
-                    # decidir tipo real segun reglas
                     tipo, otro_can, otro_txt = decide_action(ccan, scan, _strip(rr.get("TipoAusencia","")))
 
                     existe_fecha = has_hotel_date(hcan, fecha)
@@ -331,7 +297,7 @@ def process_excel_sheets():
             pd.DataFrame(diag_rows).to_csv(diag_path, index=False, encoding="utf-8-sig")
             print(f"🧪 Diagnóstico guardado en: {diag_path} ({len(diag_rows)} filas)")
 
-        # ===== APLICAR SUSTITUCIONES / CAMBIOS / AUSENCIAS =====
+        # === APLICAR ===
         sust = pd.DataFrame()
         if "Sustituciones" in xls.sheet_names:
             sust = pd.read_excel(xls, sheet_name="Sustituciones")
@@ -350,14 +316,21 @@ def process_excel_sheets():
                 sust["SustitutoCanon"]= sust["Sustituto"].map(_canon)
                 sust["CambioCanon"]   = sust["CambioDeTurno"].map(_canon)
 
-        # Ausencias ya puestas en celdas (no descanso)
+        # ausencias en celdas directas (incluye vacaciones)
         for i, c in enumerate(clist):
             if c["is_abs"] and c["abs_key"]:
                 melted.loc[i, "TipoEmpleado"]   = "Ausente"
                 melted.loc[i, "NameColorC"]     = ABSENCE_COLOR.get(c["abs_key"], "#FF4C4C")
-                melted.loc[i, "Icono"]          = ""
-                melted.loc[i, "SustitucionPor"] = melted.loc[i,"TurnoLargo"]
-                melted.loc[i, "TextoDia"]       = melted.loc[i,"TurnoLargo"]
+                # Si son VACACIONES, mostrar claramente en el index
+                if c["abs_key"] == "vacaciones":
+                    melted.loc[i, "Turno"]      = "VAC"
+                    melted.loc[i, "TurnoLargo"] = "Vacaciones"
+                    melted.loc[i, "TextoDia"]   = "Vacaciones"
+                    melted.loc[i, "Icono"]      = "🏖️"
+                else:
+                    melted.loc[i, "Icono"]      = ""
+                    melted.loc[i, "SustitucionPor"] = melted.loc[i,"TurnoLargo"]
+                    melted.loc[i, "TextoDia"]       = melted.loc[i,"TurnoLargo"]
 
         def _find_idx(hotel_can, name_can, fecha):
             m = melted
@@ -372,7 +345,7 @@ def process_excel_sheets():
                 tipo_raw   = _strip(r.get("TipoAusencia",""))
                 cambio_raw = _strip(r.get("CambioDeTurno","")); cambio_can = _canon(cambio_raw)
 
-                if not fecha or not emp: 
+                if not fecha or not emp:
                     continue
 
                 idx_emp = _find_idx(hotel_can, emp_can, fecha)
@@ -395,8 +368,13 @@ def process_excel_sheets():
                 if tipo == "AUSENCIA" and idx_emp:
                     ak = is_absence_text(_canon(tipo_raw))
                     if ak:
-                        melted.loc[idx_emp, ["Turno","TurnoLargo","NameColorC","Icono","TipoEmpleado","SustitucionPor","TextoDia"]] = \
-                            [tipo_raw, tipo_raw, ABSENCE_COLOR.get(ak, "#FF4C4C"), "", "Ausente", tipo_raw, tipo_raw]
+                        # Si la ausencia es VACACIONES, estandariza a 'Vacaciones' con icono y color
+                        if ak == "vacaciones":
+                            melted.loc[idx_emp, ["Turno","TurnoLargo","TextoDia","NameColorC","Icono","TipoEmpleado","SustitucionPor"]] = \
+                                ["VAC","Vacaciones","Vacaciones",ABSENCE_COLOR.get("vacaciones","#FF4C4C"),"🏖️","Ausente",tipo_raw]
+                        else:
+                            melted.loc[idx_emp, ["Turno","TurnoLargo","TextoDia","NameColorC","Icono","TipoEmpleado","SustitucionPor"]] = \
+                                [tipo_raw, tipo_raw, tipo_raw, ABSENCE_COLOR.get(ak, "#FF4C4C"), "", "Ausente", tipo_raw]
                         _log(f"🅰️ AUSENCIA {fecha} {hotel}: {emp} -> '{tipo_raw}'")
 
                 if tipo == "SUSTITUTO" and idx_emp:
@@ -408,11 +386,9 @@ def process_excel_sheets():
 
                     idx_sub = _find_idx(hotel_can, otro_can, fecha)
                     if idx_sub:
-                        # Sustituto ya existe: colócale el turno y orden del titular
                         melted.loc[idx_sub, ["Turno","TurnoLargo","TextoDia","Icono","OrderDia"]] = \
                             [turno_original, turno_largo_original, texto_original, "", ord_tit]
                     else:
-                        # Sustituto no existe ese día: crea fila (misma posición del titular)
                         new_r = melted.loc[idx_emp[0]].copy()
                         new_r["Empleado"]      = _strip(r.get("Sustituto",""))
                         new_r["EmpleadoCanon"] = otro_can
@@ -428,15 +404,16 @@ def process_excel_sheets():
                         melted = pd.concat([melted, pd.DataFrame([new_r])], ignore_index=True)
                     _log(f"👤 SUSTITUTO {fecha} {hotel}: {sustituto} ocupa turno de {emp}")
 
-        # ===== Normalización clara de VACACIONES =====
-        vacmask = melted["TextoDia"].str.lower().str.contains("vaca", na=False)
-        melted.loc[vacmask, "Turno"]       = melted.loc[vacmask, "Turno"].mask(melted.loc[vacmask, "Turno"].eq(""), "VAC")
+        # ===== Normalización adicional de VACACIONES por si quedan abreviaturas =====
+        vacmask = melted["TextoDia"].str.lower().str.contains("vaca", na=False) | melted["Turno"].str.upper().eq("VAC")
+        melted.loc[vacmask, "Turno"]       = "VAC"
         melted.loc[vacmask, "TurnoLargo"]  = "Vacaciones"
+        melted.loc[vacmask, "TextoDia"]    = "Vacaciones"
         melted.loc[vacmask, "Icono"]       = melted.loc[vacmask, "Icono"].mask(melted.loc[vacmask, "Icono"].eq(""), "🏖️")
         melted.loc[vacmask, "NameColorC"]  = ABSENCE_COLOR.get("vacaciones", "#FF4C4C")
         melted.loc[vacmask, "TipoEmpleado"]= "Ausente"
 
-        # ===== Orden (vacaciones al final, orden Excel por semana) =====
+        # Orden y render
         melted["VacFlag"] = vacmask.astype(int)
         agg = melted.groupby(["Hotel","Semana","Empleado"], as_index=False).agg(
             BaseSemana=("EmpleadoOrdenSemanaBase","min"),
@@ -447,8 +424,6 @@ def process_excel_sheets():
         melted = melted.merge(agg[["Hotel","Semana","Empleado","OrderSemana","VacSemana"]], on=["Hotel","Semana","Empleado"], how="left")
 
         final_df = melted.sort_values(by=["Hotel","Semana","VacSemana","OrderSemana","Empleado","Fecha"])
-
-        # ===== Preparar datos y renderizar =====
         final_data = final_df[[
             "Hotel","Empleado","Dia","Fecha","Turno","TurnoLargo","TextoDia","NameColorC","Icono",
             "Sustituto","TipoEmpleado","SustitucionPor","OrderBaseHotel","EmpleadoOrdenSemanaBase","OrderDia","OrderSemana","VacSemana","Semana"
@@ -468,7 +443,6 @@ def process_excel_sheets():
         print(f"✅ Generado {output_html} ({len(final_data)} registros)")
 
     finally:
-        # Cerrar ExcelFile y limpiar temporal
         try:
             if xls is not None:
                 xls.close()
