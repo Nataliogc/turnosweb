@@ -66,28 +66,26 @@
 </div>
 
 <script>
+// DATA será reemplazado por el generador
 const DATA = __DATA_PLACEHOLDER__;
 
-// Helpers
+// -------- Helpers
 const fmt = (d)=> new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'});
 const startOfWeekMon = (d)=>{ const x=new Date(d); const day=(x.getDay()+6)%7; x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x;}
 const weekStartISO = (isoDate)=>{ const d=new Date(isoDate); d.setHours(0,0,0,0); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return d.toISOString().slice(0,10); };
-
-// Header actions
-document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
-document.getElementById('btnRefresh').onclick = ()=>location.reload();
 
 const today = new Date();
 const week0 = startOfWeekMon(today);
 const weekISO = week0.toISOString().slice(0,10);
 
-// Filtra filas de esa semana calculada desde "Fecha"
-const rowsWeek = DATA.rows.filter(r => weekStartISO(r.Fecha) === weekISO);
+document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+document.getElementById('btnRefresh').onclick = ()=>location.reload();
 
-// Si no hay filas (por rango), cae a la primera semana disponible
+// Filtrar por semana desde Fecha (no por texto “Semana”)
+const rowsWeek = DATA.rows.filter(r => weekStartISO(r.Fecha) === weekISO);
 const fallbackRows = rowsWeek.length ? rowsWeek : DATA.rows;
 
-// Hotel con más filas en esa semana (o primero si empate)
+// Hotel con más filas en esa semana
 const counts = {};
 for(const r of fallbackRows){ counts[r.Hotel] = (counts[r.Hotel]||0)+1; }
 const hotel = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0] || (DATA.rows[0] && DATA.rows[0].Hotel) || 'Hotel';
@@ -95,54 +93,66 @@ const hotel = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0] || (DATA.r
 document.getElementById('hotelTitle').textContent = hotel;
 document.getElementById('meta').textContent = `Semana ${fmt(week0)} a ${fmt(new Date(+week0+6*86400000))}`;
 
+// Cabecera fechas
 for(let i=0;i<7;i++){
   const d = new Date(+week0+i*86400000);
   document.getElementById('d'+i).textContent = fmt(d);
 }
 
-// Selección final de filas: misma semana por Fecha y ese hotel
+// Filas definitivas de esa semana + hotel
 const rows = DATA.rows.filter(r => weekStartISO(r.Fecha) === weekISO && r.Hotel === hotel);
 
-// Agrupa por empleado
+// -------- Agrupar por empleado
 const empMap = {};
 for(const r of rows){
-  if(!empMap[r.Empleado]) empMap[r.Empleado] = Array(7).fill(null);
+  if(!empMap[r.Empleado]) empMap[r.Empleado] = { cells:Array(7).fill(null), vac:false, order: (r.OrderSemana ?? 9999) };
   const idx = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"].indexOf(r.Dia);
-  if(idx>=0) {
-    const cur = empMap[r.Empleado][idx];
-    if(!cur || (cur.VacSemana||0) < (r.VacSemana||0) || (cur.OrderDia||9999) > (r.OrderDia||9999)){
-      empMap[r.Empleado][idx] = r;
-    }
+  if(idx<0) continue;
+
+  // ¿Es ausencia? -> por VacSemana, por Turno="VAC", por Tipo=Ausente, por patrón de texto o por NameColorC
+  const lower = ((r.TextoDia||"") + " " + (r.TurnoLargo||"")).toLowerCase();
+  const isAbs = Number(r.VacSemana||0) > 0 ||
+                (r.Turno && r.Turno.toUpperCase()==='VAC') ||
+                (r.TipoEmpleado && r.TipoEmpleado.toLowerCase()==='ausente') ||
+                /(vaca|baja|permiso|formaci|libr|ausen|it)/.test(lower) ||
+                !!(r.NameColorC && r.NameColorC.length>0);
+
+  if(isAbs) empMap[r.Empleado].vac = true;
+
+  // Resolver duplicados: preferimos la ausencia; si no, el de menor OrderDia
+  const cur = empMap[r.Empleado].cells[idx];
+  const score = (x)=> x ? ((Number(x.VacSemana||0)>0 || (x.Turno||'').toUpperCase()==='VAC')? 1000 : 0) - (x.OrderDia ?? 0) : -9999;
+  if(!cur || score(r) > score(cur)) {
+    empMap[r.Empleado].cells[idx] = Object.assign({}, r, { isAbs });
   }
 }
-const empleados = Object.keys(empMap).sort((a,b)=>{
-  const oA = rows.find(x=>x.Empleado===a)?.OrderSemana ?? 9999;
-  const oB = rows.find(x=>x.Empleado===b)?.OrderSemana ?? 9999;
-  if(oA!==oB) return oA-oB;
-  return a.localeCompare(b,'es');
-});
 
+// Orden final: por OrderSemana y vacaciones al final
+const empleados = Object.entries(empMap)
+  .sort((A,B)=>{
+    const a=A[1], b=B[1];
+    if(a.vac!==b.vac) return a.vac ? 1 : -1;
+    if(a.order!==b.order) return (a.order??9999) - (b.order??9999);
+    return A[0].localeCompare(B[0],'es');
+  });
+
+// -------- Pintar
 const pill = (r)=>{
   if(!r) return '';
-  // Ausencias
-  const txtCandidate = (r.TextoDia||'').toLowerCase() || (r.TurnoLargo||'').toLowerCase();
-  const isAbs = (r.NameColorC && r.NameColorC.length>0) || (r.Turno && r.Turno.toUpperCase()==='VAC') ||
-                /(vaca|baja|permiso|formaci|libr|ausen|it)/.test(txtCandidate);
-  if(isAbs){
+  if(r.isAbs){
     const bg = r.NameColorC || '#FF4C4C';
-    const txt = (r.TextoDia && r.TextoDia.trim()) || r.TurnoLargo || 'Ausencia';
+    const txt = r.TextoDia?.trim() || r.TurnoLargo || 'Ausencia';
     return `<span class="pill abs" style="background:${bg}">${r.Icono||'🏖️'} ${txt}</span>`;
   }
-  // Turnos estándar
   const map = {M:'m',T:'t',N:'n',D:'d'};
   const k = r.Turno ? r.Turno.toUpperCase() : '';
   const cls = map[k] || '';
-  const label = r.TurnoLargo || r.TextoDia || '';
+  const label = r.TurnoLargo || r.TextoDia || r.Turno || '';
   return label ? `<span class="pill ${cls}">${label}</span>` : '';
 };
 
 const tb = document.getElementById('tbody');
-for(const emp of empleados){
+for(const [emp,info] of empleados){
   const tr = document.createElement('tr');
   const tdName = document.createElement('td');
   tdName.textContent = emp;
@@ -150,7 +160,7 @@ for(const emp of empleados){
   for(let i=0;i<7;i++){
     const td = document.createElement('td');
     td.className = 'center';
-    td.innerHTML = pill(empMap[emp][i]);
+    td.innerHTML = pill(info.cells[i]);
     tr.appendChild(td);
   }
   tb.appendChild(tr);
