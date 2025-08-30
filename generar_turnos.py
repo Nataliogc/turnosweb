@@ -1,14 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-Genera/reescribe 'sustituciones_diagnostico.csv' leyendo la hoja 'Sustituciones'
-**forzando la lectura completa** con openpyxl (por si Pandas recorta el rango usado).
-
-- No crea carpetas nuevas ni HTML.
-- Maneja bloqueo OneDrive (copia temporal si está en uso).
-- Parseo robusto de fechas en español.
-- Autodetecta la fila de cabecera (si no es la 1) y las columnas con tolerancia.
-"""
-
+# Genera "sustituciones_diagnostico.csv" **solo** en la carpeta del proyecto.
+# Lee la hoja "Sustituciones" del Excel maestro (solo lectura).
 import os, re, unicodedata, tempfile, time, shutil
 from datetime import datetime
 import pandas as pd
@@ -16,18 +8,16 @@ import numpy as np
 from openpyxl import load_workbook
 
 # =====================
-# CONFIGURACIÓN
+# RUTAS
 # =====================
-EXCEL_PATH = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
-SHEET_NAME = "Sustituciones"
-OUT_CSV    = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\sustituciones_diagnostico.csv"
+EXCEL_PATH = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"  # origen (solo lectura)
+PROJ_DIR   = os.path.dirname(os.path.abspath(__file__))  # carpeta del proyecto
+OUT_CSV    = os.path.join(PROJ_DIR, "sustituciones_diagnostico.csv")  # único destino
 PAUSE_ON_EXIT = False
 
-TOL_HEADER_ROWS = 10   # Buscamos la cabecera en las 10 primeras filas
+SHEET_NAME = "Sustituciones"
+TOL_HEADER_ROWS = 10
 
-# =====================
-# UTILIDADES
-# =====================
 def _canon(s):
     if s is None:
         return ""
@@ -45,7 +35,6 @@ def _parse_fecha(v):
     if v is None or (isinstance(v, float) and np.isnan(v)):
         return "", ""
     orig = str(v)
-    # datetime real de Excel
     if hasattr(v, 'year'):
         try:
             dt = pd.to_datetime(v, dayfirst=True, errors="coerce")
@@ -78,7 +67,6 @@ def _open_copy_if_locked(path, max_tries=5, wait=0.6):
             return path, None
         except Exception as e:
             last_err = e; time.sleep(wait)
-    # copia temporal si sigue bloqueado
     tmp_path = os.path.join(tempfile.gettempdir(), f"_tmp_excel_{int(time.time()*1000)}.xlsx")
     for _ in range(max_tries):
         try:
@@ -95,7 +83,6 @@ def _normalize(s):
     return s
 
 def _match_colnames(header_cells):
-    # Tolerancia de nombres de columnas
     targets = {
         "hotel": ["hotel"],
         "fecha": ["fecha"],
@@ -114,22 +101,17 @@ def _match_colnames(header_cells):
     return ok, idx
 
 def _find_header(ws):
-    # Busca la fila de cabecera en las primeras TOL_HEADER_ROWS filas
     for i in range(1, TOL_HEADER_ROWS+1):
         cells = list(ws[i])
         ok, idx = _match_colnames(cells)
         if ok:
             return i, idx
-    # fallback: asumir primera fila
     cells = list(ws[1])
     ok, idx = _match_colnames(cells)
     if ok:
         return 1, idx
     raise RuntimeError("No se localizaron las columnas base en las primeras filas.")
 
-# =====================
-# PROCESO PRINCIPAL
-# =====================
 def main():
     if not os.path.exists(EXCEL_PATH):
         print("❌ No se encuentra el Excel:", EXCEL_PATH); return
@@ -148,8 +130,10 @@ def main():
         rows_out = []
         vacios_fecha = 0
 
+        header_len = len(ws[header_row])
+
         for i in range(first_data, last_row+1):
-            row = [ws.cell(row=i, column=j+1).value for j in range(len(ws[header_row]))]
+            row = [ws.cell(row=i, column=j+1).value for j in range(header_len)]
             get = lambda key: row[col_idx[key]] if col_idx[key] < len(row) else None
             hotel     = _canon(get("hotel"))
             fecha_txt = get("fecha")
@@ -158,16 +142,14 @@ def main():
             sustituto = _canon(get("sustituto"))
             tipo      = _canon(get("tipo"))
 
-            # si toda la fila está vacía, saltar
             if not any([hotel, fecha_txt, empleado, cambio, sustituto, tipo]):
                 continue
 
             f_orig, f_norm = _parse_fecha(fecha_txt)
             if not f_norm: vacios_fecha += 1
 
-            # tipo interpretado (simple)
             t = tipo.lower()
-            if "vaca" in t: tipo_i = "Vacaciones"
+            if "vaca" in t: tipo_i = "Vacaciones 🏖️"
             elif "baja" in t or " it" in t or t == "it": tipo_i = "Baja"
             elif "perm" in t: tipo_i = "Permiso"
             elif "form" in t or "curso" in t: tipo_i = "Formación"
@@ -211,22 +193,13 @@ def main():
 
 if __name__ == "__main__":
     start_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    LOG_PATH = os.path.join(os.path.dirname(OUT_CSV), "sustituciones_diagnostico_log.txt")
     try:
         print("⏱ Inicio:", start_ts)
         main()
         print("✔️ Fin correcto")
-        with open(LOG_PATH, "a", encoding="utf-8") as lf:
-            lf.write("[{}] OK - Ejecutado sin errores.\n".format(start_ts))
-    except Exception as e:
+    except Exception:
         import traceback
-        tb = traceback.format_exc()
-        print("❌ Error durante la ejecución:\n" + tb)
-        try:
-            with open(LOG_PATH, "a", encoding="utf-8") as lf:
-                lf.write("[{}] ERROR - {}\n".format(start_ts, tb))
-        except Exception:
-            pass
+        print("❌ Error durante la ejecución:\n" + traceback.format_exc())
     finally:
         if PAUSE_ON_EXIT:
             try: input("\nPulsa ENTER para cerrar…")

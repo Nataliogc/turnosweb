@@ -1,26 +1,18 @@
-# actualizar.ps1 (versión segura)
+# actualizar.ps1 — genera el CSV **solo** en la carpeta del proyecto y publica a GitHub
 $ErrorActionPreference = 'Stop'
 Set-Location 'C:\Users\comun\Documents\Turnos web'
 
-# 1) Generar CSV (solo reescribe el diagnóstico; no toca la visual)
+# 1) Generar CSV en la carpeta del proyecto
 py -u .\generar_turnos.py
 
-# 2) Publicar a GitHub: añadir SOLO si hay cambios
-git pull --rebase
-
-# Añadimos cambios tracked y nuevos (p.ej. sustituciones_diagnostico.csv)
-git add -A
-
-# Si no hay nada staged, no commit
-git diff --cached --quiet; $hasStaged=$LASTEXITCODE
-if ($hasStaged -ne 0) {
+# 2) Commit si hay cambios y publicar
+$pending = git status --porcelain
+if ($pending) {
+  git add -A
   $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-  $msg = 'chore: actualizacion automatica ' + $stamp
-  git commit -m $msg
-  git push
-  Write-Host 'Cambios publicados en GitHub ' $stamp
-} else {
-  Write-Host 'No hay cambios. Nada que publicar.'
+  git commit -m ('chore: actualizacion automatica ' + $stamp)
 }
+git pull --rebase
+git push
 
 Read-Host 'Fin. Pulsa ENTER para cerrar'
