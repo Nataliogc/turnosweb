@@ -1,11 +1,6 @@
 @echo off
-setlocal
-py "%~dp0generar_index.py" || goto :err
-pushd "%~dp0"
-start "" "http://localhost:8800/index.html"
-py -m http.server 8800
-exit /b 0
-:err
-echo Hubo un error. Revisa el mensaje de arriba.
-pause
-exit /b 1
+set "PROJ=C:\Users\comun\Documents\Turnos web"
+set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+pushd "%PROJ%"
+start "" /min "%PS%" -ExecutionPolicy Bypass -NoLogo -NoProfile -File ".\watch_excel.ps1"
+popd
