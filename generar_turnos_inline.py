@@ -1,199 +1,162 @@
 # -*- coding: utf-8 -*-
 """
-Genera 'index.html' a partir del Excel (hoja 'Sustituciones').
-- Si existe 'index_template.html' en la misma carpeta, la usa.
-- Si NO existe, usa una plantilla embebida de emergencia.
-- Siempre sobreescribe 'index.html' (escritura atómica) y muestra rutas/logs.
+Genera live.html leyendo SIEMPRE las sustituciones desde 'sustituciones_diagnostico.csv'
+(si existe) y, si no, cae al Excel/CSV genéricos.
 """
-
-import os, json, sys, tempfile, shutil
+import json, re, sys, time as _time, tempfile, shutil
 from pathlib import Path
 from datetime import datetime
+from dateutil import tz
 import pandas as pd
-import numpy as np
 
-EXCEL_PATH = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
-SHEET_NAME = "Sustituciones"
+LOCAL_TZ = tz.tzlocal()
 
-HERE = Path(__file__).resolve().parent
-TPL_PATH = HERE / "index_template.html"
-OUT_HTML = HERE / "index.html"
+EXCEL_PATHS = [
+    Path(r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"),
+    Path("Plantilla Cuadrante con Sustituciones v.6.0.xlsx"),
+    Path("Plantilla Cuadrante.xlsx"),
+]
 
-EMBED_TEMPLATE = """<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Cuadrantes de turnos</title>
-<style>
-  :root{ --bg:#f6fafb; --ink:#1c2834; --muted:#3c556e; --card:#fff; --br:#e7edf3; --sh:0 4px 16px rgba(0,0,0,.05); --brand:#0a6aa1; }
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-  .wrap{max-width:1180px;margin:20px auto 90px;padding:0 14px}
-  .card, .bar, .panel, header.app{background:var(--card);border:1px solid var(--br);border-radius:14px;box-shadow:var(--sh)}
-  header.app{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;margin-bottom:12px;background:var(--brand);color:#fff}
-  header.app h1{margin:0;font-size:1.35rem}
-  .bar{padding:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
-  .btn{border:1px solid #cfe0ec;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
-  .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-  input[type="text"],select,input[type="date"]{padding:10px 12px;border:1px solid #d6e3ef;border-radius:10px;min-width:180px}
-  table{width:100%;border-collapse:separate;border-spacing:0}
-  th,td{border-bottom:1px solid #eef3f8;padding:8px 8px;text-align:center;vertical-align:middle}
-  th{text-align:left;background:#f3f7fb;color:var(--muted);position:sticky;top:0;z-index:1}
-  .card{border-radius:14px;overflow:hidden;margin-bottom:16px}
-  .card header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9fbff;border-bottom:1px solid var(--br)}
-  .namecol{width:260px;text-align:left}
-  .name-with-dot{display:flex;flex-direction:column;gap:2px}
-  .name-with-dot .row{display:flex;align-items:center;gap:6px}
-  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle;background:#cad6e4}
-  .pill-shift{min-width:90px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e6eef6;border-radius:999px;font-weight:600;font-size:.9rem;padding:0 10px;white-space:nowrap;gap:6px}
-  .ps-m{background:#e9f7ef;border-color:#cbe8d1}.ps-t{background:#fff8df;border-color:#efe6b2}.ps-n{background:#eef2ff;border-color:#cbd7ff}.ps-d{background:#ffeaea;border-color:#ffd0d0}.ps-empty{background:#fff}
-  .is-abs{font-weight:700}.abs{background:rgba(128,128,128,0.12);border-color:#aaa;color:#444}
-  .legend{font-size:.85rem;color:#5b6a7c;padding:8px 12px}
-  .th-day{display:flex;flex-direction:column;align-items:center}.th-day small{color:#7b8da3;font-weight:500;margin-top:2px}
-  .error{background:#ffecec;color:#a40000;border:1px solid #f5b5b5;padding:10px 12px;border-radius:10px;margin:12px 0}
-  .noprint{@media print {display:none}}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header class="app">
-    <div style="display:flex;align-items:center;gap:12px;"><h1 style="margin:0;">Cuadrantes de turnos</h1></div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span>Actualizado: <b id="lastUpdate">—</b></span><button class="btn primary noprint" id="btnRefresh">Refrescar</button></div>
-  </header>
-  <div id="errors" class="error" style="display:none"></div>
-  <div class="bar noprint">
-    <div class="row">
-      <div><label>Buscar</label><br/><input id="q" type="text" placeholder="Empleado u hotel" /></div>
-      <div><label>Hotel</label><br/><select id="hotel"><option value="__ALL__">— Todos —</option></select></div>
-      <div><label>Desde</label><br/><input id="desde" type="date" /></div>
-      <div><label>Hasta</label><br/><input id="hasta" type="date" /></div>
-      <div><label>Empleado</label><br/><select id="empleado"><option value="">— Selecciona —</option></select></div>
-      <div><label>&nbsp;</label><br/><button id="btnIcs" class="btn">Descargar .ics</button></div>
-      <div><label>&nbsp;</label><br/><button id="btnClear" class="btn">Limpiar</button></div>
-    </div>
-  </div>
-  <div id="root"></div>
-  <div class="legend">Leyenda: <span class="pill-shift ps-m">Mañana</span> · <span class="pill-shift ps-t">Tarde</span> · <span class="pill-shift ps-n">Noches</span> · <span class="pill-shift ps-d">Descanso</span> · <span class="pill-shift abs">Ausencias (Vacaciones/Baja/…)</span></div>
-</div>
-<script>
-const DATA = __DATA_JSON__;
-const $ = s => document.querySelector(s);
-const fmt = d => new Date(d).toLocaleDateString('es-ES');
-function render(){
-  const root = $('#root');
-  if(!DATA || !Array.isArray(DATA.rows)){ root.innerHTML = '<div class="error">No hay datos para mostrar.</div>'; return; }
-  const byHotel = {};
-  for(const r of DATA.rows){ if(!byHotel[r.Hotel]) byHotel[r.Hotel]=[]; byHotel[r.Hotel].push(r); }
-  const blocks=[];
-  for(const [hotel, rows] of Object.entries(byHotel)){
-    const empleados = [...new Set(rows.map(r=>r.Empleado))];
-    const dias = [...new Set(rows.map(r=>r.Fecha))].sort();
-    let html = `<div class="card"><header><div><b>${hotel}</b></div></header><div class="table-wrap"><table><thead><tr>`;
-    html += `<th class="namecol">Empleado</th>`;
-    for(const d of dias){
-      const dn = new Date(d).toLocaleDateString('es-ES',{weekday:'long'});
-      html += `<th><div class=th-day><span>${fmt(d)}</span><small>${dn[0].toUpperCase()+dn.slice(1)}</small></div></th>`;
-    }
-    html += `</tr></thead><tbody>`;
-    for(const emp of empleados){
-      html += `<tr><td class=namecol><div class=name-with-dot><div class=row><span class=dot></span><b>${emp}</b></div></div></td>`;
-      for(const d of dias){
-        const r = rows.find(x=>x.Empleado===emp && x.Fecha===d) || {};
-        const TL = r.TurnoLargo or r.get("TurnoLargo","") if isinstance(r,dict) else "";
-        const tll = r.get("TurnoLargo","") if isinstance(r,dict) else ""
-        const tl = tll if tll else (r.get("Turno","") if isinstance(r,dict) else "")
-        const label = r.get("TextoDia","") if isinstance(r,dict) else ""
-        const value = label or tl or ""
-        const cls = "ps-m" if value=="Mañana" else "ps-t" if value=="Tarde" else "ps-n" if value=="Noches" else "ps-d" if value=="Descanso" else ("abs" if value else "ps-empty")
-        html += `<td><span class="pill-shift ${cls}">${value or '&nbsp;'}</span></td>`;
-      }
-      html += `</tr>`;
-    }
-    html += `</tbody></table></div></div>`;
-    blocks.push(html);
-  }
-  root.innerHTML = blocks.join('');
-}
-render();
-document.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('lastUpdate'); if (el) el.textContent = new Date().toLocaleString('es-ES');
-  const r = document.getElementById('btnRefresh'); if (r) r.addEventListener('click',()=>location.href='index.html?ts='+Date.now());
-});
-</script>
-</body>
-</html>
-"""
+LIVE_HTML = Path("live.html")
+CSV_DIAG = Path("sustituciones_diagnostico.csv")
 
-def _canon(s):
-    if s is None or (isinstance(s, float) and pd.isna(s)):
-        return ""
-    return str(s).strip()
+EMP_KEYS = {"empleado","empleada","nombre"}
+DAY_NAMES = {"lunes","martes","miércoles","miercoles","jueves","viernes","sábado","sabado","domingo"}
 
-def _parse_fecha(v):
-    if v is None: return ""
+def _open_excel_with_fallback(path: Path) -> dict:
+    last_exc = None
+    for _ in range(3):
+        try:
+            return pd.read_excel(path, sheet_name=None, engine="openpyxl")
+        except Exception as e:
+            last_exc = e; _time.sleep(0.4)
     try:
-        dt = pd.to_datetime(v, dayfirst=True, errors="coerce")
-    except Exception:
-        dt = pd.NaT
-    return "" if pd.isna(dt) else dt.strftime("%Y-%m-%d")
+        with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        shutil.copy2(path, tmp_path)
+        dfs = pd.read_excel(tmp_path, sheet_name=None, engine="openpyxl")
+        try: tmp_path.unlink(missing_ok=True)
+        except Exception: pass
+        return dfs
+    except Exception as e2:
+        print(f"[AVISO] Excel inaccesible: {last_exc}; fallback: {e2}")
+        return {}
 
-def write_atomic(target_path: Path, data: str, encoding: str = "utf-8"):
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    import tempfile, shutil
-    with tempfile.NamedTemporaryFile("w", delete=False, encoding=encoding, newline="\n") as tmp:
-        tmp.write(data)
-        tmp_path = Path(tmp.name)
-    shutil.move(str(tmp_path), str(target_path))
+def norm(s): return ("" if s is None else str(s)).strip()
+
+def is_week_sheet(df: pd.DataFrame):
+    cols = [str(c).strip().lower() for c in df.columns]
+    has_semana = "semana" in cols
+    has_emp = any(c in EMP_KEYS for c in cols)
+    has_day = any(c in DAY_NAMES for c in cols)
+    return has_semana and has_emp and has_day
+
+def extract_order_from_week_sheet(sheet_name: str, df: pd.DataFrame):
+    col_emp = next((c for c in df.columns if str(c).strip().lower() in EMP_KEYS), None)
+    seen, orden = set(), []
+    if col_emp:
+        for v in df[col_emp]:
+            name = norm(v)
+            if not name: continue
+            if name.lower() in {"empleado","empleada","total","totales"}: continue
+            if name not in seen:
+                seen.add(name); orden.append(name)
+    return {"nombre": sheet_name, "orden": orden}
+
+def build_hoteles(dfs: dict, sustituciones: list):
+    hoteles = []
+    for name, df in dfs.items():
+        if is_week_sheet(df):
+            hoteles.append(extract_order_from_week_sheet(name, df))
+    if hoteles: return hoteles
+    # derivar desde CSV de sustituciones si no hay hojas semanales
+    by_hotel = {}
+    for s in sustituciones:
+        h = s.get("hotel",""); e = s.get("empleado","")
+        if not h or not e: continue
+        by_hotel.setdefault(h, [])
+        if e not in by_hotel[h]: by_hotel[h].append(e)
+    return [{"nombre": h, "orden": o} for h,o in by_hotel.items()]
+
+def load_sustituciones_from_diag_csv():
+    if not CSV_DIAG.exists():
+        return []
+    df = pd.read_csv(CSV_DIAG, dtype=str, encoding="utf-8-sig")
+    cols = {c.lower(): c for c in df.columns}
+    def pick(*names):
+        for n in names:
+            if n in cols: return cols[n]
+        return None
+    c_fecha = pick("fechanorm","fecha","fecha norm","fecha_norm")
+    c_hot = pick("hotel")
+    c_emp = pick("empleado")
+    c_sus = pick("sustituto")
+    c_tipo= pick("tipointerpretado","tipoausencia","tipo")
+    c_cmb = pick("cambiode_turno","cambio de turno","cambioturno","cambio")
+    out = []
+    for _, row in df.iterrows():
+        out.append({
+            "fecha": norm(row.get(c_fecha)),
+            "hotel": norm(row.get(c_hot)),
+            "empleado": norm(row.get(c_emp)),
+            "sustituto": norm(row.get(c_sus)),
+            "tipo": norm(row.get(c_tipo)),
+            "cambio": norm(row.get(c_cmb)),
+        })
+    return out
+
+def replace_const_data(html_text: str, data_obj: dict) -> str:
+    import json as _json, re
+    json_blob = _json.dumps(data_obj, ensure_ascii=False)
+    m = re.search(r"(const\s+DATA\s*=\s*)(.*?)(;)", html_text, flags=re.DOTALL)
+    if not m: return None
+    return html_text[:m.start(1)] + m.group(1) + json_blob + m.group(3) + html_text[m.end(3):]
+
+def minimal_html(data_obj: dict, now_str: str) -> str:
+    import json as _json
+    json_text = _json.dumps(data_obj, ensure_ascii=False)
+    return ("<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"utf-8\"><title>Live</title>"
+            "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            "<style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px}"
+            "h2{margin-top:24px}.card{border:1px solid #ddd;border-radius:10px;padding:12px;margin:8px 0}"
+            "small{color:#666}</style></head><body>"
+            "<h1>Live</h1>"
+            "<script>const DATA = " + json_text + ";</script><div id=\"app\"></div>"
+            "<script>const app=document.getElementById('app');"
+            "(DATA.hoteles||[]).forEach(h=>{const d=document.createElement('div');d.className='card';"
+            "d.innerHTML = `<h2>${h.nombre}</h2><ol>` + (h.orden||[]).map(x=>`<li>${x}</li>`).join('') + `</ol>`; app.appendChild(d);});"
+            "if ((DATA.sustituciones||[]).length){const s=document.createElement('div');s.className='card';"
+            "s.innerHTML = '<h2>Sustituciones</h2>' + (DATA.sustituciones||[]).map(x=>`${x.fecha||''} – ${x.hotel||''} – ${x.empleado||''} → ${x.sustituto||''} (${x.tipo||''} ${x.cambio||''})`).join('<br>');"
+            "app.appendChild(s);}"
+            "</script></body></html>")
 
 def main():
-    print("📂 Script dir:", HERE)
-    print("📄 Excel:", EXCEL_PATH)
-    print("🧩 Template:", TPL_PATH, "(existe:" , TPL_PATH.exists(), ")")
-    print("🎯 Salida:", OUT_HTML)
-    if not os.path.exists(EXCEL_PATH):
-        print("❌ No se encuentra el Excel:", EXCEL_PATH)
-        return
-    try:
-        df = pd.read_excel(EXCEL_PATH, sheet_name=SHEET_NAME)
-    except Exception as e:
-        print("❌ No se pudo abrir el Excel:", e)
-        return
+    # Sustituciones: primero el CSV de generar_turnos.py
+    sustituciones = load_sustituciones_from_diag_csv()
 
-    # Columnas posibles: Hotel, Fecha, Empleado, Turno, TurnoLargo, Cambio de Turno
-    rows = []
-    for _, r in df.iterrows():
-        hotel = _canon(r.get("Hotel"))
-        fecha = _parse_fecha(r.get("Fecha"))
-        emp   = _canon(r.get("Empleado"))
-        turno = _canon(r.get("Turno"))
-        turnoL= _canon(r.get("TurnoLargo")) or turno
-        texto = _canon(r.get("Cambio de Turno")) or turnoL
-        if not (hotel and fecha and emp):
-            continue
-        rows.append({
-            "Hotel": hotel,
-            "Empleado": emp,
-            "Fecha": fecha,
-            "Turno": turno,
-            "TurnoLargo": turnoL,
-            "TextoDia": texto,
-        })
+    # Excel opcional (para orden desde hojas semanales)
+    excel_path = None
+    for p in EXCEL_PATHS:
+        if p.exists(): excel_path = p; break
+    dfs = _open_excel_with_fallback(excel_path) if excel_path else {}
 
-    print("🧮 Filas para pintar:", len(rows))
-    payload = json.dumps({"rows": rows}, ensure_ascii=False)
+    hoteles = build_hoteles(dfs, sustituciones)
 
-    if TPL_PATH.exists():
-        tpl = TPL_PATH.read_text(encoding="utf-8")
-        html = tpl.replace("__DATA_JSON__", payload)
-    else:
-        html = EMBED_TEMPLATE.replace("__DATA_JSON__", payload)
+    payload = {"hoteles": hoteles, "sustituciones": sustituciones}
+    now_str = datetime.now(LOCAL_TZ).strftime("%d/%m/%Y, %H:%M:%S")
 
-    stamp = f"<!-- build: {datetime.now().isoformat(timespec='seconds')} -->\n"
-    write_atomic(OUT_HTML, stamp + html)
-    stat = OUT_HTML.stat()
-    print("✅ HTML escrito:", OUT_HTML)
-    print("   Tamaño:", stat.st_size, "bytes | Modificado:", datetime.fromtimestamp(stat.st_mtime))
+    # Carga HTML actual y sustituye DATA
+    if LIVE_HTML.exists():
+        html = LIVE_HTML.read_text(encoding="utf-8", errors="ignore")
+        replaced = replace_const_data(html, payload)
+        if replaced is not None:
+            LIVE_HTML.write_text(replaced, encoding="utf-8")
+            print(f"OK -> live.html actualizado (hoteles={len(hoteles)}, sustituciones={len(sustituciones)})")
+            return
+
+    # Si no hay plantilla, genera mínimo
+    LIVE_HTML.write_text(minimal_html(payload, now_str), encoding="utf-8")
+    print(f"OK -> live.html creado (hoteles={len(hoteles)}, sustituciones={len(sustituciones)})")
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
