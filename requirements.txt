@@ -1,3 +1,2 @@
-pandas
+﻿pandas
 openpyxl
-numpy

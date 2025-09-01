@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 r"""
-Genera index.html (UI moderna tipo tarjetas) desde el Excel de OneDrive.
+Genera index.html (UI de tarjetas) desde el Excel de OneDrive.
 - Respeta orden de hojas (hoteles) y orden de empleados tal cual en el Excel.
-- Aplica Ausencias y Sustituciones (incl. Cambio de turno 🔄) desde "Sustituciones".
+- Aplica Sustituciones con prioridad:
+    1) Si hay TipoAusencia -> titular Ausente; IGNORAR cambios; clonar turno a Sustitutos.
+    2) Si NO hay ausencia -> aplicar Cambios 🔄 y clonar a Sustitutos.
 - Copia el Excel a %TEMP% para evitar bloqueos de OneDrive/Excel.
+- Añade resumen de NOCHES por mes (tras aplicar sustituciones).
 Salida: C:\Users\comun\Documents\Turnos web\index.html
 
 Uso:
@@ -21,6 +24,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl.workshe
 EXCEL_SRC = Path(r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx")
 OUT_PATH  = Path(r"C:\Users\comun\Documents\Turnos web\index.html")
 
+# No considerar estas hojas (configuración, etc.)
 IGNORE_SHEETS = ["Sustituciones", "Hoja1", "Datos de Validación", "Datos de validación"]
 
 # ------------------ utilidades ------------------
@@ -43,6 +47,7 @@ def classify_cell(val):
     if "man" in c or "mañana" in s.lower():  return {"code":"M","long":"Mañana","is_abs":False,"abs_key":""}
     if "tard" in c:                          return {"code":"T","long":"Tarde","is_abs":False,"abs_key":""}
     if "noch" in c:                          return {"code":"N","long":"Noches","is_abs":False,"abs_key":""}
+    # Horarios 08-16 / 16-23...
     m=re.search(r'(\d{1,2})\s*[:.]?\s*(\d{0,2})?\s*-\s*(\d{1,2})', c)
     if m:
         h1=int(m.group(1))
@@ -60,7 +65,7 @@ def safe_copy_to_temp(src: Path) -> Path:
         with open(src, "rb") as fsrc, open(dst, "wb") as fdst: fdst.write(fsrc.read())
     return dst
 
-# Parseo robusto de fecha para hoja Sustituciones (admite "mi 19/nov 25", "19/11/2025", etc.)
+# Parseo robusto de fecha para hoja Sustituciones
 MONTHS = {"ene":"01","feb":"02","mar":"03","abr":"04","may":"05","jun":"06","jul":"07","ago":"08","sep":"09","oct":"10","nov":"11","dic":"12"}
 def parse_fecha_sus(s):
     t=_strip(s).lower().replace(".", "/")
@@ -122,7 +127,7 @@ def read_substitutions(xls):
     s0 = s0[s0["Fecha"]!=""]
     return s0[["Hotel","Empleado","Fecha","Sustituto","TipoAusencia","CambioDeTurno"]]
 
-# ------------------ HTML (tarjetas/tabla por semana) ------------------
+# ------------------ HTML (tarjetas/tabla por semana + resumen noches) ------------------
 def build_html(data_rows):
     TEMPLATE = r"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -192,6 +197,7 @@ try{
   const days = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
   const fmtEsFull = (s) => { const d = new Date(s+'T00:00:00'); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); };
   const classFromLong = (x) => { const t=(x||"").toLowerCase(); if(t.startsWith("mañ")||t.startsWith("man"))return"ps-m"; if(t.startsWith("tar"))return"ps-t"; if(t.startsWith("noch"))return"ps-n"; if(t.startsWith("desc"))return"ps-d"; return"ps-empty"; };
+  const isNight = (r) => { const t=(r.TextoDia||r.TurnoLargo||r.Turno||"").toLowerCase(); return t.includes("noch") || r.Turno==="N"; };
   const parseYMD = s => { const [y,m,d]=(s||"").split('-').map(n=>parseInt(n,10)); return new Date(y,(m||1)-1,d||1); };
   const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const dayIdx = s => { const x=parseYMD(s); return (x.getDay()+6)%7; };
@@ -199,7 +205,7 @@ try{
   const weekEndStr = s => { const x=parseYMD(s); const w=(x.getDay()+6)%7; x.setDate(x.getDate()+(6-w)); return ymd(x); };
 
   const hotelSel = document.getElementById('hotel');
-  const hotels = Array.from(new Set(rowsAll.map(r=>r.Hotel).filter(Boolean)));
+  const hotels = Array.from(new Set(rowsAll.map(r=>r.Hotel).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'es'));
   hotels.forEach(h=>{ const o=document.createElement('option'); o.value=h; o.textContent=h; hotelSel.appendChild(o); });
 
   const desdeEl=document.getElementById('desde'), hastaEl=document.getElementById('hasta');
@@ -214,7 +220,7 @@ try{
     const minDate=state.desde?(state.desde>todayStr?state.desde:todayStr):todayStr;
     let r=rows.filter(x=>(!state.hotel||state.hotel==="__ALL__"||x.Hotel===state.hotel));
     r=r.filter(x=>x.Fecha>=minDate);
-    const emps=Array.from(new Set(r.map(x=>x.Empleado).filter(Boolean)));
+    const emps=Array.from(new Set(r.map(x=>x.Empleado).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'es'));
     const empleadoSel=document.getElementById('empleado');
     empleadoSel.innerHTML='<option value="">— Selecciona —</option>'+emps.map(e=>`<option value="${e}">${e}</option>`).join('');
   }
@@ -264,8 +270,12 @@ try{
       if(lower.includes("vaca") || r.TipoEmpleado==="Ausente"){ const text=r.TextoDia||"Ausencia"; mainRow.cells[idx]={kind:"abs", long:text}; }
       else{ const text=r.TextoDia||r.TurnoLargo||r.Turno||""; mainRow.cells[idx]={kind:"shift", long:text, icon:r.Icono||""}; }
     });
+
     const ordered=Array.from(groups.values()).sort((a,b)=>(a.wstart<b.wstart?-1: a.wstart>b.wstart?1: a.hotel.localeCompare(b.hotel)));
     let gi=0;
+
+    function isMonthEnd(s){ const d=parseYMD(s); const nx=new Date(d); nx.setDate(d.getDate()+1); return nx.getMonth()!==d.getMonth(); }
+
     function renderNextGroup(){
       if(gi>=ordered.length) return;
       const g=ordered[gi++]; let entries=Array.from(g.rows.values());
@@ -279,7 +289,26 @@ try{
       const cellHTML=c=>{ if(!c) return '<div class="pill-shift ps-empty">&nbsp;</div>'; if(c.kind==="abs"){ return `<div class="pill-shift is-abs abs" title="${c.long||""}">${c.long||"&nbsp;"}</div>`;} const cls=classFromLong(c.long); const icon=c.icon?(c.icon+"&nbsp;"):""; return `<div class="pill-shift ${cls}" title="${c.long||""}">${icon}${c.long||"&nbsp;"}</div>`; };
       entries.forEach(row=>{ const nameCell=`<div class="name-with-dot"><div class="row"><span class="dot"></span><b>${row.name}</b></div></div>`; const tr=document.createElement('tr'); tr.innerHTML = `<td class="namecol">${nameCell}</td>${row.cells.map(c=>`<td>${cellHTML(c)}</td>`).join('')}`; tbody.appendChild(tr); });
       table.appendChild(tbody);
-      document.getElementById('root').appendChild(card); card.appendChild(table);
+      card.appendChild(table);
+
+      // Resumen de NOCHES por mes al final de mes (teniendo en cuenta sustituciones)
+      if(isMonthEnd(g.wend)){
+        const m0=parseYMD(g.wend);
+        const ym=`${m0.getFullYear()}-${String(m0.getMonth()+1).padStart(2,'0')}`;
+        const hotelRows=rows.filter(rr=>rr.Hotel===g.hotel && rr.Fecha.startsWith(ym));
+        const counts=new Map();
+        hotelRows.forEach(r=>{ if(isNight(r)) counts.set(r.Empleado,(counts.get(r.Empleado)||0)+1); });
+        const items=Array.from(counts.entries()).filter(([n,c])=>c>0).sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0],'es'));
+        const footer=document.createElement('div');
+        let htmlFooter=`<div style="padding:10px 12px;border-top:1px solid #e7edf3;background:#fbfdff;"><b>Resumen Noches ${String(m0.getMonth()+1).padStart(2,'0')}/${m0.getFullYear()}</b>`;
+        htmlFooter+='<div style="overflow:auto;"><table style="width:100%;border-collapse:separate;border-spacing:0;margin-top:6px"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid #eef3f8">Empleado</th><th style="padding:6px 8px;border-bottom:1px solid #eef3f8;text-align:center">Noches</th></tr></thead><tbody>';
+        items.forEach(([name,n])=>{ htmlFooter+=`<tr><td style="text-align:left;padding:6px 8px;border-bottom:1px solid #f1f5f9">${name}</td><td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:center">${n}</td></tr>`; });
+        if(!items.length){ htmlFooter+='<tr><td colspan="2" style="text-align:center;padding:10px 8px;color:#7a8ca2">Sin noches este mes</td></tr>'; }
+        htmlFooter+='</tbody></table></div></div>';
+        footer.innerHTML=htmlFooter; card.appendChild(footer);
+      }
+
+      document.getElementById('root').appendChild(card);
       requestAnimationFrame(renderNextGroup);
     }
     requestAnimationFrame(renderNextGroup);
@@ -304,12 +333,13 @@ def main():
     melted = df.melt(id_vars=["Semana","Empleado","Hotel","HotelOrder","EmpOrder"],
                      value_vars=days, var_name="Dia", value_name="TurnoRaw").dropna(subset=["Empleado"]).copy()
 
+    # Fecha exacta por día
     idx = {d:i for i,d in enumerate(days)}
     week_start = melted["Semana"] - pd.to_timedelta(melted["Semana"].dt.weekday, unit="D")
     offs = melted["Dia"].map(idx).fillna(0).astype(int)
     melted["Fecha"] = (week_start + pd.to_timedelta(offs, unit="D")).dt.strftime("%Y-%m-%d")
 
-    # clasificación
+    # Clasificación de celdas (texto -> M/T/N/Desc/Ausencias…)
     cl = melted["TurnoRaw"].map(classify_cell).tolist()
     melted["Turno"]      = [c["code"] for c in cl]
     melted["TurnoLargo"] = [c["long"] for c in cl]
@@ -319,46 +349,69 @@ def main():
     melted["NameColorC"] = ""
     melted["Sustituto"] = ""
 
-    # Guardar base para clonar turnos originales (antes de sustituciones)
+    # Copia base para clonar antes de sustituciones
     melted_orig = melted.copy()
 
-    # Sustituciones (si existe)
-    subs = read_substitutions(xls)
-    for _, r in subs.iterrows():
-        hotel, emp, fecha = r["Hotel"], r["Empleado"], r["Fecha"]
-        sustituto, tipo_raw, cambio = r["Sustituto"], r["TipoAusencia"], r["CambioDeTurno"]
-        m_emp = (melted["Hotel"]==hotel)&(melted["Empleado"]==emp)&(melted["Fecha"]==fecha)
+    # ---- Sustituciones con prioridad por (Hotel,Fecha,Empleado) ----
+    subs = read_substitutions(xls).copy()
+    if not subs.empty:
+        subs["_key"] = subs["Hotel"].astype(str)+"|"+subs["Fecha"].astype(str)+"|"+subs["Empleado"].astype(str)
 
-        # Cambio de turno 🔄
-        if _strip(cambio):
-            m_other = (melted["Hotel"]==hotel)&(melted["Empleado"]==cambio)&(melted["Fecha"]==fecha)
-            if m_emp.any() and m_other.any():
-                t1 = melted.loc[m_emp,  ["Turno","TurnoLargo","TextoDia"]].iloc[0].to_dict()
-                t2 = melted.loc[m_other,["Turno","TurnoLargo","TextoDia"]].iloc[0].to_dict()
-                melted.loc[m_emp,  ["Turno","TurnoLargo","TextoDia","Icono"]] = [t2["Turno"],t2["TurnoLargo"],t2["TextoDia"],"🔄"]
-                melted.loc[m_other,["Turno","TurnoLargo","TextoDia","Icono"]] = [t1["Turno"],t1["TurnoLargo"],t1["TextoDia"],"🔄"]
-            continue
+        for key, grp in subs.groupby("_key"):
+            hotel, fecha, emp = key.split("|", 2)
+            has_abs = grp["TipoAusencia"].astype(str).str.strip().ne("").any()
+            cambios  = [c for c in grp["CambioDeTurno"].astype(str).str.strip().tolist() if c]
+            sustit   = [s for s in grp["Sustituto"].astype(str).str.strip().tolist() if s]
 
-        # Ausencia explícita
-        if _strip(tipo_raw) and m_emp.any():
-            melted.loc[m_emp, ["TipoEmpleado","TextoDia"]] = ["Ausente", tipo_raw]
+            mask_emp = (melted["Hotel"]==hotel)&(melted["Empleado"]==emp)&(melted["Fecha"]==fecha)
+            if not mask_emp.any():
+                continue
 
-        # Clonar turno del titular al sustituto
-        if _strip(sustituto) and m_emp.any():
+            # turno original del titular (previo a sustituciones)
             orig = melted_orig[(melted_orig["Hotel"]==hotel)&(melted_orig["Empleado"]==emp)&(melted_orig["Fecha"]==fecha)]
-            turno = orig["Turno"].iloc[0] if not orig.empty else melted.loc[m_emp,"Turno"].iloc[0]
-            largo = orig["TurnoLargo"].iloc[0] if not orig.empty else melted.loc[m_emp,"TurnoLargo"].iloc[0]
-            texto = orig["TextoDia"].iloc[0] if not orig.empty else melted.loc[m_emp,"TextoDia"].iloc[0]
-            m_sub = (melted["Hotel"]==hotel)&(melted["Empleado"]==sustituto)&(melted["Fecha"]==fecha)
-            if m_sub.any():
-                melted.loc[m_sub, ["Turno","TurnoLargo","TextoDia","Icono"]] = [turno, largo, texto, ""]
+            turno = orig["Turno"].iloc[0]      if not orig.empty else melted.loc[mask_emp,"Turno"].iloc[0]
+            largo = orig["TurnoLargo"].iloc[0] if not orig.empty else melted.loc[mask_emp,"TurnoLargo"].iloc[0]
+            texto = orig["TextoDia"].iloc[0]   if not orig.empty else melted.loc[mask_emp,"TextoDia"].iloc[0]
+
+            if has_abs:
+                # 1) AUSENCIA → marcar titular Ausente y clonar a Sustitutos; IGNORAR cambios
+                tipo_raw_list = grp["TipoAusencia"].astype(str).str.strip().replace({"nan":""}).tolist()
+                tipo_raw = next((t for t in tipo_raw_list if t), "Ausencia")
+                melted.loc[mask_emp, ["TipoEmpleado","TextoDia"]] = ["Ausente", tipo_raw]
+
+                for s in sustit:
+                    m_sub = (melted["Hotel"]==hotel)&(melted["Empleado"]==s)&(melted["Fecha"]==fecha)
+                    if m_sub.any():
+                        melted.loc[m_sub, ["Turno","TurnoLargo","TextoDia","Icono"]] = [turno, largo, texto, ""]
+                    else:
+                        base = melted.loc[mask_emp].iloc[0].copy()
+                        base["Empleado"] = s
+                        base["Turno"], base["TurnoLargo"], base["TextoDia"] = turno, largo, texto
+                        base["TipoEmpleado"] = "Normal"
+                        base["Icono"] = ""
+                        melted = pd.concat([melted, pd.DataFrame([base])], ignore_index=True)
+
             else:
-                base = melted.loc[m_emp].iloc[0].copy()
-                base["Empleado"] = sustituto
-                base["Turno"], base["TurnoLargo"], base["TextoDia"] = turno, largo, texto
-                base["TipoEmpleado"] = "Normal"
-                base["Icono"] = ""
-                melted = pd.concat([melted, pd.DataFrame([base])], ignore_index=True)
+                # 2) SIN AUSENCIA → aplicar Cambios 🔄 y clonar a Sustitutos
+                for c in cambios:
+                    m_other = (melted["Hotel"]==hotel)&(melted["Empleado"]==c)&(melted["Fecha"]==fecha)
+                    if m_other.any():
+                        t1 = melted.loc[mask_emp,  ["Turno","TurnoLargo","TextoDia"]].iloc[0].to_dict()
+                        t2 = melted.loc[m_other,["Turno","TurnoLargo","TextoDia"]].iloc[0].to_dict()
+                        melted.loc[mask_emp,  ["Turno","TurnoLargo","TextoDia","Icono"]] = [t2["Turno"],t2["TurnoLargo"],t2["TextoDia"],"🔄"]
+                        melted.loc[m_other,["Turno","TurnoLargo","TextoDia","Icono"]] = [t1["Turno"],t1["TurnoLargo"],t1["TextoDia"],"🔄"]
+
+                for s in sustit:
+                    m_sub = (melted["Hotel"]==hotel)&(melted["Empleado"]==s)&(melted["Fecha"]==fecha)
+                    if m_sub.any():
+                        melted.loc[m_sub, ["Turno","TurnoLargo","TextoDia","Icono"]] = [turno, largo, texto, ""]
+                    else:
+                        base = melted.loc[mask_emp].iloc[0].copy()
+                        base["Empleado"] = s
+                        base["Turno"], base["TurnoLargo"], base["TextoDia"] = turno, largo, texto
+                        base["TipoEmpleado"] = "Normal"
+                        base["Icono"] = ""
+                        melted = pd.concat([melted, pd.DataFrame([base])], ignore_index=True)
 
     # claves de semana/orden para UI
     week_start2 = pd.to_datetime(melted["Fecha"])
