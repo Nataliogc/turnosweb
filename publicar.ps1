@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 cd "C:\Users\comun\Documents\Turnos web"
 
 # 1) Genera (solo reescribe el diagnóstico; no toca la visual)
-py -u .\generar_turnos.py
+py -u .\generar_turnos CSV.py
 
 # 2) Sube a GitHub SOLO si hubo cambios en index.html
 git pull --rebase
