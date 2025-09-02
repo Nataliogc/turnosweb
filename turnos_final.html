@@ -1,39 +1,337 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Cuadrante</title>
-  <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:16px;}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;}
-    .aus{background:#fee;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border:1px solid #ddd;padding:6px;}
-    th{background:#f6f6f6;}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cuadrantes de turnos</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --panel:#ffffff; --ink:#101828; --muted:#667085; --line:#e4e7ec;
+    --brand:#0f5a4a; --brand-2:#0b3d33; --ok:#16a34a; --warn:#eab308; --night:#6366f1; --rest:#94a3b8; --vac:#ef4444; --swap:#06b6d4;
+    --pill-bg:#f8fafc;
+    --chip:#eef2ff; --chip-border:#dbeafe;
+  }
+  *{box-sizing:border-box}
+  html,body{background:var(--bg);color:var(--ink);font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Arial, sans-serif}
+  body{margin:0;padding:16px}
+  .wrap{max-width:1200px;margin:0 auto}
+
+  /* header */
+  .topbar{
+    background:linear-gradient(0deg,#0f5a4a,#0f5a4a);
+    color:#fff;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 6px 18px rgba(15,90,74,.12)
+  }
+  .topbar img{width:40px;height:40px;object-fit:contain}
+  .topbar h1{font-size:18px;line-height:1.1;margin:0;font-weight:700}
+  .topbar .meta{margin-left:auto;font-size:12px;opacity:.85}
+
+  /* filtros */
+  .filters{display:grid;grid-template-columns:1fr 200px 200px 240px auto;gap:10px;margin:12px 0}
+  .filters .btn-clean{white-space:nowrap}
+  .input, .select, .btn{
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--ink)
+  }
+  .btn{cursor:pointer}
+  .btn:hover{filter:brightness(.98)}
+
+  /* resumen mensual */
+  .summary-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0 18px;
+    box-shadow:0 6px 18px rgba(16,24,40,.06);
+  }
+  .summary-card h3{margin:0 0 8px;font-size:14px;color:#0f5a4a}
+  .summary-grid{display:grid;grid-template-columns:1fr 100px;gap:8px;align-items:center}
+  .summary-grid .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .summary-grid .n{justify-self:end;font-weight:700}
+
+  /* bloque hotel + semana */
+  .hotel-block{margin-top:14px}
+  .hotel-title{
+    color:#0f5a4a;font-weight:800;margin:10px 0 8px;font-size:15px;display:flex;align-items:center;gap:8px
+  }
+  .week-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 6px 18px rgba(16,24,40,.06);margin-bottom:14px
+  }
+  .week-head{display:flex;justify-content:space-between;align-items:center;padding:6px 6px 12px;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+  .week-head .range{font-weight:700}
+  .week-head .small{color:var(--muted);font-size:12px}
+
+  /* tabla semana */
+  .grid{
+    width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:8px
+  }
+  .grid th{font-size:12px;color:var(--muted);font-weight:700;text-align:center}
+  .grid th.emp{text-align:left;padding-left:8px;min-width:190px}
+  .grid td{padding:6px}
+  .row{
+    background:var(--pill-bg);border:1px solid var(--line);border-radius:999px;overflow:hidden
+  }
+  .emp{
+    display:flex;align-items:center;gap:8px;padding:8px 10px
+  }
+  .dot{width:8px;height:8px;border-radius:999px;background:#cbd5e1}
+  .chip{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:#fff;border:1px solid var(--chip-border);
+    padding:6px 10px;border-radius:999px;min-width:92px;font-size:13px;font-weight:600;margin:4px auto
+  }
+  .m{background:#e7f0ff;border-color:#c7dcff}
+  .t{background:#fff3d3;border-color:#fde68a}
+  .n{background:#eae8ff;border-color:#dcd7ff}
+  .d{background:#eef2f7;border-color:#e4e7ec;color:#475569}
+  .v{background:#ffe5e5;border-color:#fecaca}
+  .swap{color:var(--swap);font-size:12px;margin-left:6px}
+  .note{color:#60a5fa;font-size:12px;margin-left:6px}
+
+  /* responsive */
+  @media (max-width:980px){
+    .filters{grid-template-columns:1fr 1fr 1fr 1fr auto}
+  }
+  @media (max-width:760px){
+    .filters{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,auto)}
+    .filters .btn-clean{grid-column:1 / -1}
+    .grid th:nth-child(n+3){font-size:11px}
+    .chip{min-width:76px;font-size:12px}
+    .week-head{gap:8px}
+  }
+</style>
 </head>
 <body>
-  <h1>Cuadrante</h1>
-  <script>
-    const DATA = __DATA_PLACEHOLDER__;
-  </script>
-  <div id="app"></div>
-  <script>
-    const rows = (DATA && DATA.rows) || [];
-    const t = document.createElement('table');
-    t.innerHTML = `<thead><tr>
-      <th>Hotel</th><th>Semana</th><th>Fecha</th><th>Empleado</th><th>Turno</th><th>Sustitución</th>
-    </tr></thead><tbody></tbody>`;
-    const tb = t.querySelector('tbody');
-    rows.forEach(r=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.Hotel}</td><td>${r.Semana}</td><td>${r.Fecha}</td><td>${r.Empleado}</td>
-        <td><span class="pill ${r.TipoEmpleado==='Ausente'?'aus':''}">${r.TextoDia||r.TurnoLargo||r.Turno||''}</span></td>
-        <td>${r.Sustituto||r.SustitucionPor||''}</td>`;
-      tb.appendChild(tr);
-    });
-    document.getElementById('app').appendChild(t);
-  </script>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="topbar">
+    <img src="Logo.png" alt="Guadiana & Cumbria" />
+    <h1>Cuadrantes de turnos</h1>
+    <div class="meta" id="lastUpdate"></div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filters">
+    <input id="q" class="input" placeholder="Buscar empleado u hotel…" />
+    <select id="selHotel" class="select"></select>
+    <input id="from" class="input" type="date" />
+    <input id="to" class="input" type="date" />
+    <button id="btnClean" class="btn btn-clean">Limpiar</button>
+  </div>
+
+  <!-- RESUMEN MENSUAL NOCHES -->
+  <div id="summary" class="summary-card" hidden>
+    <h3 id="summaryTitle">Recuento mensual de noches</h3>
+    <div id="summaryGrid" class="summary-grid"></div>
+  </div>
+
+  <div id="root"></div>
+</div>
+
+<script>
+// === DATA embebido por el script Python ===
+const DATA = __DATA_PLACEHOLDER__;
+
+// === utilidades de fecha (LOCAL) ===
+function startOfISOWeekLocal(isoStr){
+  const d = new Date(isoStr + "T00:00:00");         // local
+  const dow = d.getDay();                           // 0..6 (dom..sáb)
+  const shift = (dow === 0 ? -6 : 1 - dow);         // llevar a lunes
+  const m = new Date(d);
+  m.setDate(d.getDate() + shift);
+  m.setHours(0,0,0,0);
+  return m;
+}
+function addDaysLocal(d, n){
+  const x = new Date(d);
+  x.setDate(d.getDate() + n);
+  x.setHours(0,0,0,0);
+  return x;
+}
+function startOfMonthLocal(d){ const x=new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x; }
+function endOfMonthLocal(d){ const x=new Date(d); x.setMonth(x.getMonth()+1,0); x.setHours(23,59,59,999); return x; }
+function ymdLocal(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function weekKeyFromDateStr(isoStr){
+  return ymdLocal(startOfISOWeekLocal(isoStr));     // clave = lunes (YYYY-MM-DD)
+}
+function labelRangeFromWeekKey(weekKey){
+  const mon = new Date(weekKey + "T00:00:00");
+  const sun = addDaysLocal(mon, 6);
+  const fmt = (d)=> d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
+  return [fmt(mon), fmt(sun)];
+}
+function isNight(txt){
+  const s=(txt||'').toLowerCase();
+  return s.startsWith('n') || s.includes('noche'); // Noches / Noche / NOCHE...
+}
+
+// === Normalizar datos y clave de semana
+const RAW = (window.DATA && (DATA.rows || DATA)) || [];
+const rows = RAW.map((r,i)=>({
+  ...r,
+  _i:i,
+  Hotel: r.Hotel || r.hotel || '',
+  Fecha: r.Fecha || r.fecha,                     // 'YYYY-MM-DD'
+  Empleado: r.Empleado || r.empleado,
+  TurnoLargo: r.TurnoLargo || r.Turno || r.turno || '',
+  Sustituto: r.Sustituto || r.sustituto || '',
+  SustitucionPor: r.SustitucionPor || r.sustitucionPor || '',
+  SemanaKey: weekKeyFromDateStr(r.Fecha)         // Lunes de la semana (local)
+}));
+
+// Rellenar filtros y fechas por defecto (HOY -> HOY+30)
+const hotels = [...new Set(rows.map(r=>r.Hotel))].filter(Boolean).sort();
+const selHotel = document.getElementById('selHotel');
+selHotel.innerHTML = `<option value="">Todos los hoteles</option>` + hotels.map(h=>`<option>${h}</option>`).join('');
+document.getElementById('lastUpdate').textContent = `Actualizado: ${new Date().toLocaleString('es-ES')}`;
+
+const fromInput = document.getElementById('from');
+const toInput   = document.getElementById('to');
+(function setDefaultDates(){
+  const today = new Date();
+  const plus30 = addDaysLocal(today, 30);
+  fromInput.value = ymdLocal(today);
+  toInput.value   = ymdLocal(plus30);
+})();
+
+const root = document.getElementById('root');
+
+function render(){
+  const q = (document.getElementById('q').value||'').toLowerCase();
+  const hotel = (document.getElementById('selHotel').value||'');
+  const from = fromInput.value ? new Date(fromInput.value + "T00:00:00") : null;
+  const to   = toInput.value   ? new Date(toInput.value   + "T23:59:59") : null;
+
+  let data = rows.filter(r=>{
+    const okHotel = !hotel || r.Hotel === hotel;
+    const okQ = !q || (r.Empleado||'').toLowerCase().includes(q) || (r.Hotel||'').toLowerCase().includes(q);
+    const d = new Date(r.Fecha + "T12:00:00"); // mediodía local para evitar bordes
+    const okFrom = !from || d >= from;
+    const okTo   = !to   || d <= to;
+    return okHotel && okQ && okFrom && okTo;
+  });
+
+  // === Resumen mensual de NOCHES (incluye sustitutos) ===
+  const monthBase = from || new Date();
+  const monthStart = startOfMonthLocal(monthBase);
+  const monthEnd   = endOfMonthLocal(monthBase);
+  const nightlyCounter = new Map();      // nombre -> n
+  const seen = new Set();                // evitar dobles por trabajador/fecha/hotel
+  for(const r of rows){
+    const d = new Date(r.Fecha + "T12:00:00");
+    if (d < monthStart || d > monthEnd) continue;
+    if (hotel && r.Hotel !== hotel) continue;
+    if (!isNight(r.TurnoLargo)) continue;
+
+    // quién trabajó realmente la noche
+    const worker = (r.Sustituto && String(r.Sustituto).trim()) ? r.Sustituto : r.Empleado;
+    const key = `${worker}|${r.Fecha}|${r.Hotel}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    nightlyCounter.set(worker, (nightlyCounter.get(worker)||0) + 1);
+  }
+  // pintar resumen
+  const summaryDiv = document.getElementById('summary');
+  const summaryGrid = document.getElementById('summaryGrid');
+  const title = document.getElementById('summaryTitle');
+  const mm = monthStart.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+  title.textContent = `Recuento mensual de noches — ${mm}` + (hotel? ` — ${hotel}`:'');
+
+  if (nightlyCounter.size){
+    summaryDiv.hidden = false;
+    const rowsArr = [...nightlyCounter.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'es'));
+    summaryGrid.innerHTML = rowsArr.map(([name,n])=>`
+      <div class="name">${name}</div><div class="n">${n}</div>
+    `).join('');
+  } else {
+    summaryDiv.hidden = false;
+    summaryGrid.innerHTML = `<div class="name" style="grid-column:1/-1;color:#667085">Sin noches en este mes con los filtros actuales.</div>`;
+  }
+
+  // Agrupar: hotel -> SemanaKey -> empleado -> fecha (para la tabla)
+  const byHotel = {};
+  for(const r of data){
+    (byHotel[r.Hotel] ??= {});
+    (byHotel[r.Hotel][r.SemanaKey] ??= {});
+    (byHotel[r.Hotel][r.SemanaKey][r.Empleado] ??= {});
+    byHotel[r.Hotel][r.SemanaKey][r.Empleado][r.Fecha] = r;
+  }
+
+  const hotelKeys = Object.keys(byHotel).sort();
+  let html = '';
+
+  for(const h of hotelKeys){
+    html += `<div class="hotel-block"><div class="hotel-title">${h}</div>`;
+    const weeks = Object.keys(byHotel[h]).sort();           // orden por lunes (YYYY-MM-DD)
+
+    for(const wk of weeks){
+      const mon = new Date(wk + "T00:00:00");
+      const weekDays = [...Array(7)].map((_,i)=> ymdLocal(addDaysLocal(mon,i)));
+      const head = weekDays.map(d=>{
+        const label = new Date(d+"T00:00:00").toLocaleDateString('es-ES',{weekday:'long'});
+        const ddmm  = new Date(d+"T00:00:00").toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'});
+        return `<th>${label[0].toUpperCase()+label.slice(1)}<br><span class="small">${ddmm}</span></th>`;
+      }).join('');
+
+      const emps = Object.keys(byHotel[h][wk]).sort((a,b)=> a.localeCompare(b,'es'));
+      const body = emps.map(emp=>{
+        const tds = weekDays.map(d=>{
+          const r = byHotel[h][wk][emp][d];
+          if(!r) return `<td><span class="chip d">—</span></td>`;
+          const c = (txt)=>{
+            const s=(txt||'').toLowerCase();
+            if (s.startsWith('m')) return 'm';
+            if (s.startsWith('t')) return 't';
+            if (s.startsWith('n')) return 'n';
+            if (s.includes('vaca')||s.includes('perm')||s.includes('baja')||s.includes('ausen')||s.includes('fest')||s.includes('lib')) return 'v';
+            if (s.startsWith('d')) return 'd';
+            return '';
+          };
+          const swap = (r.Icono||'').includes('🔄') ? `<span class="swap">🔄</span>` : '';
+          const note = r.Sustituto ? `<span class="note">Sustituto: ${r.Sustituto}</span>` :
+                       r.SustitucionPor ? `<span class="note">Sustituye a ${r.SustitucionPor}</span>` : '';
+          return `<td><span class="chip ${c(r.TurnoLargo)}">${r.TurnoLargo}</span>${swap}${note}</td>`;
+        }).join('');
+        return `<tr class="row"><td class="emp"><span class="dot"></span><strong>${emp}</strong></td>${tds}</tr>`;
+      }).join('');
+
+      const [d1,d2] = labelRangeFromWeekKey(wk);
+      html += `
+        <div class="week-card">
+          <div class="week-head">
+            <div class="range">Semana ${wk} — ${d1} a ${d2}</div>
+            <div class="small">${emps.length} empleados / 7 días</div>
+          </div>
+          <table class="grid">
+            <thead><tr><th class="emp">Empleado</th>${head}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  root.innerHTML = html || `<div class="week-card">No hay resultados con los filtros aplicados.</div>`;
+}
+
+// Eventos filtros
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('selHotel').addEventListener('change', render);
+fromInput.addEventListener('change', render);
+toInput.addEventListener('change', render);
+document.getElementById('btnClean').addEventListener('click', ()=>{
+  document.getElementById('q').value='';
+  document.getElementById('selHotel').value='';
+  const today = new Date();
+  fromInput.value = ymdLocal(today);
+  toInput.value   = ymdLocal(addDaysLocal(today,30));
+  render();
+});
+
+// Primer render
+render();
+</script>
 </body>
 </html>

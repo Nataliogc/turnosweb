@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Turnos Web</title>
   <style>
+:root{--bg:#f6f8fb;--card:#ffffff;--fg:#101828;--muted:#667085;--grid:#e4e7ec;--accent:#0f5a4a}
+body{background:var(--bg);color:var(--fg)}
+.panel{background:var(--card);border:1px solid var(--grid);border-radius:16px}
+.badge{border-color:#c7dcff;background:#e7f0ff}
+
     body{font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji; background:#f6f7fb; margin:0; padding:16px;}
     .wrap{max-width:1100px; margin:0 auto;}
     .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
@@ -30,6 +35,11 @@
   </style>
 </head>
 <body>
+<div class="topbar" style="background:#0f5a4a;color:#fff;border-radius:14px;padding:12px 14px;margin:0 0 12px;display:flex;align-items:center;gap:10px">
+  <img src="assets/logo-gc.png" style="width:34px;height:34px;object-fit:contain" alt="">
+  <strong>Cuadrantes · Live</strong>
+</div>
+
 <div class="wrap">
   <div class="controls">
     <label>Hotel:</label>
