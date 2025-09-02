@@ -1,3 +1,4 @@
+Set-Content -Path ".\turnos_final.html" -Encoding UTF8 -Value @'
 <!doctype html>
 <html lang="es">
 <head>
@@ -80,7 +81,7 @@
   .n{background:#eae8ff;border-color:#dcd7ff}
   .d{background:#eef2f7;border-color:#e4e7ec;color:#475569}
   .v{background:#ffe5e5;border-color:#fecaca}
-  .swap{color:var(--swap);font-size:12px;margin-left:6px}
+  .swap{color:#06b6d4;font-size:12px;margin-left:6px}
   .note{color:#60a5fa;font-size:12px;margin-left:6px}
 
   /* responsive */
@@ -163,7 +164,7 @@ function labelRangeFromWeekKey(weekKey){
 }
 function isNight(txt){
   const s=(txt||'').toLowerCase();
-  return s.startsWith('n') || s.includes('noche'); // Noches / Noche / NOCHE...
+  return s.startsWith('n') || s.includes('noche');
 }
 
 // === Normalizar datos y clave de semana
@@ -172,12 +173,12 @@ const rows = RAW.map((r,i)=>({
   ...r,
   _i:i,
   Hotel: r.Hotel || r.hotel || '',
-  Fecha: r.Fecha || r.fecha,                     // 'YYYY-MM-DD'
+  Fecha: r.Fecha || r.fecha,
   Empleado: r.Empleado || r.empleado,
   TurnoLargo: r.TurnoLargo || r.Turno || r.turno || '',
   Sustituto: r.Sustituto || r.sustituto || '',
   SustitucionPor: r.SustitucionPor || r.sustitucionPor || '',
-  SemanaKey: weekKeyFromDateStr(r.Fecha)         // Lunes de la semana (local)
+  SemanaKey: weekKeyFromDateStr(r.Fecha)
 }));
 
 // Rellenar filtros y fechas por defecto (HOY -> HOY+30)
@@ -206,25 +207,24 @@ function render(){
   let data = rows.filter(r=>{
     const okHotel = !hotel || r.Hotel === hotel;
     const okQ = !q || (r.Empleado||'').toLowerCase().includes(q) || (r.Hotel||'').toLowerCase().includes(q);
-    const d = new Date(r.Fecha + "T12:00:00"); // mediodía local para evitar bordes
+    const d = new Date(r.Fecha + "T12:00:00");
     const okFrom = !from || d >= from;
     const okTo   = !to   || d <= to;
     return okHotel && okQ && okFrom && okTo;
   });
 
-  // === Resumen mensual de NOCHES (incluye sustitutos) ===
+  // === Recuento mensual de NOCHES (incluye sustitutos) ===
   const monthBase = from || new Date();
   const monthStart = startOfMonthLocal(monthBase);
   const monthEnd   = endOfMonthLocal(monthBase);
-  const nightlyCounter = new Map();      // nombre -> n
-  const seen = new Set();                // evitar dobles por trabajador/fecha/hotel
+  const nightlyCounter = new Map();
+  const seen = new Set();
   for(const r of rows){
     const d = new Date(r.Fecha + "T12:00:00");
     if (d < monthStart || d > monthEnd) continue;
     if (hotel && r.Hotel !== hotel) continue;
     if (!isNight(r.TurnoLargo)) continue;
 
-    // quién trabajó realmente la noche
     const worker = (r.Sustituto && String(r.Sustituto).trim()) ? r.Sustituto : r.Empleado;
     const key = `${worker}|${r.Fecha}|${r.Hotel}`;
     if (seen.has(key)) continue;
@@ -232,13 +232,11 @@ function render(){
 
     nightlyCounter.set(worker, (nightlyCounter.get(worker)||0) + 1);
   }
-  // pintar resumen
   const summaryDiv = document.getElementById('summary');
   const summaryGrid = document.getElementById('summaryGrid');
   const title = document.getElementById('summaryTitle');
   const mm = monthStart.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
   title.textContent = `Recuento mensual de noches — ${mm}` + (hotel? ` — ${hotel}`:'');
-
   if (nightlyCounter.size){
     summaryDiv.hidden = false;
     const rowsArr = [...nightlyCounter.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'es'));
@@ -250,7 +248,7 @@ function render(){
     summaryGrid.innerHTML = `<div class="name" style="grid-column:1/-1;color:#667085">Sin noches en este mes con los filtros actuales.</div>`;
   }
 
-  // Agrupar: hotel -> SemanaKey -> empleado -> fecha (para la tabla)
+  // Agrupar: hotel -> SemanaKey -> empleado -> fecha
   const byHotel = {};
   for(const r of data){
     (byHotel[r.Hotel] ??= {});
@@ -264,7 +262,7 @@ function render(){
 
   for(const h of hotelKeys){
     html += `<div class="hotel-block"><div class="hotel-title">${h}</div>`;
-    const weeks = Object.keys(byHotel[h]).sort();           // orden por lunes (YYYY-MM-DD)
+    const weeks = Object.keys(byHotel[h]).sort();
 
     for(const wk of weeks){
       const mon = new Date(wk + "T00:00:00");
@@ -335,3 +333,4 @@ render();
 </script>
 </body>
 </html>
+'@
