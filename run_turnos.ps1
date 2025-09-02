@@ -2,16 +2,16 @@
   [string]$Mensaje = "update: turnos y live"
 )
 
-# 1) Regenerar CSV desde el Excel maestro
-py ".\2generar_turnos CSV.py"
+# 1) Regenerar CSV desde el Excel maestro (ya sin comillas porque no hay espacios)
+py .\2generar_turnos_CSV.py
 if ($LASTEXITCODE -ne 0) { Write-Host "Error generando CSV"; exit 1 }
 
 # 2) Generar index.html
-py ".\generar_index.py"
+py .\generar_index.py
 if ($LASTEXITCODE -ne 0) { Write-Host "Error generando index.html"; exit 1 }
 
 # 3) Generar live.html
-py ".\generar_live.py"
+py .\generar_live.py
 if ($LASTEXITCODE -ne 0) { Write-Host "Error generando live.html"; exit 1 }
 
 # 4) Publicar a GitHub
