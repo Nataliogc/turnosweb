@@ -1,0 +1,6 @@
+=== LOG Turnos Web === 
+Inicio: 02/09/2025 14:57:41,66 
+Args:  
+
+C:\Users\comun\AppData\Local\Programs\Python\Launcher\py.exe
+C:\Users\comun\AppData\Local\Programs\Python\Python313\python.exe: can't open file 'C:\\Users\\comun\\Documents\\Turnos web\\generar_turnos.py': [Errno 2] No such file or directory
