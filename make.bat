@@ -17,6 +17,7 @@ if errorlevel 1 (
   goto :end
 )
 
+REM === Comprobar scripts necesarios ===
 set MISS=0
 for %%F in ("2generar_turnos CSV.py" generar_index.py generar_live.py) do (
   if not exist %%F (
@@ -27,7 +28,7 @@ for %%F in ("2generar_turnos CSV.py" generar_index.py generar_live.py) do (
 if "!MISS!"=="1" goto :end
 
 echo.
-echo [1/4] Generando/actualizando CSV de sustituciones desde Excel...
+echo [1/4] Generando/actualizando CSV de sustituciones...
 py ".\2generar_turnos CSV.py"
 if errorlevel 1 (
   echo [ERROR] Fallo al generar "sustituciones_diagnostico.csv"
@@ -35,12 +36,12 @@ if errorlevel 1 (
 )
 
 echo.
-echo [2/4] Generando datos para index.html...
+echo [2/4] Ejecutando generar_index.py...
 py .\generar_index.py
 if errorlevel 1 goto :end
 
 echo.
-echo [3/4] Generando datos para live.html...
+echo [3/4] Ejecutando generar_live.py...
 py .\generar_live.py
 if errorlevel 1 goto :end
 
@@ -49,11 +50,13 @@ echo [4/4] Abriendo index.html...
 if exist "index.html" start "" "index.html"
 
 echo.
-echo ✅ Proceso completado correctamente.
-goto :eof
+echo ✅ Todo correcto.
+goto :ok
 
 :end
 echo.
 echo ❌ Proceso interrumpido. Revisa los mensajes anteriores.
+
+:ok
 popd
 endlocal
