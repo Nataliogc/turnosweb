@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cuadrante</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:16px;}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;}
+    .aus{background:#fee;}
+    table{border-collapse:collapse;width:100%;}
+    th,td{border:1px solid #ddd;padding:6px;}
+    th{background:#f6f6f6;}
+  </style>
+</head>
+<body>
+  <h1>Cuadrante</h1>
+  <script>
+    const DATA = __DATA_PLACEHOLDER__;
+  </script>
+  <div id="app"></div>
+  <script>
+    const rows = (DATA && DATA.rows) || [];
+    const t = document.createElement('table');
+    t.innerHTML = `<thead><tr>
+      <th>Hotel</th><th>Semana</th><th>Fecha</th><th>Empleado</th><th>Turno</th><th>Sustitución</th>
+    </tr></thead><tbody></tbody>`;
+    const tb = t.querySelector('tbody');
+    rows.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.Hotel}</td><td>${r.Semana}</td><td>${r.Fecha}</td><td>${r.Empleado}</td>
+        <td><span class="pill ${r.TipoEmpleado==='Ausente'?'aus':''}">${r.TextoDia||r.TurnoLargo||r.Turno||''}</span></td>
+        <td>${r.Sustituto||r.SustitucionPor||''}</td>`;
+      tb.appendChild(tr);
+    });
+    document.getElementById('app').appendChild(t);
+  </script>
+</body>
+</html>
