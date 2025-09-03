@@ -1,39 +1,54 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Cuadrante</title>
+  <title>Cuadrantes de turnos</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:16px;}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;}
-    .aus{background:#fee;}
-    table{border-collapse:collapse;width:100%;}
-    th,td{border:1px solid #ddd;padding:6px;}
-    th{background:#f6f6f6;}
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:16px;background:#f6f7fb;}
+    .card{background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden;}
+    table{width:100%; border-collapse:separate; border-spacing:0;}
+    th,td{padding:10px 12px; border-bottom:1px solid #f0f2f6; text-align:left; font-size:14px;}
+    thead th{background:#fafbff; font-weight:600; color:#111827; position:sticky; top:0; z-index:1;}
+    tbody tr:hover td{background:#fafafa;}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb;}
+    .p-mañana{background:#ecfdf5; border-color:#d1fae5;}
+    .p-tarde{background:#fffbeb; border-color:#fde68a;}
+    .p-noche{background:#eef2ff; border-color:#c7d2fe;}
+    .p-descanso{background:#fee2e2; border-color:#fecaca;}
+    .p-vacaciones{background:#f3f4f6; border-color:#e5e7eb;}
+    .muted{color:#6b7280;}
+    .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
+    select{padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px;}
   </style>
 </head>
 <body>
-  <h1>Cuadrante</h1>
-  <script>
-    const DATA = __DATA_PLACEHOLDER__;
-  </script>
-  <div id="app"></div>
-  <script>
-    const rows = (DATA && DATA.rows) || [];
-    const t = document.createElement('table');
-    t.innerHTML = `<thead><tr>
-      <th>Hotel</th><th>Semana</th><th>Fecha</th><th>Empleado</th><th>Turno</th><th>Sustitución</th>
-    </tr></thead><tbody></tbody>`;
-    const tb = t.querySelector('tbody');
-    rows.forEach(r=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.Hotel}</td><td>${r.Semana}</td><td>${r.Fecha}</td><td>${r.Empleado}</td>
-        <td><span class="pill ${r.TipoEmpleado==='Ausente'?'aus':''}">${r.TextoDia||r.TurnoLargo||r.Turno||''}</span></td>
-        <td>${r.Sustituto||r.SustitucionPor||''}</td>`;
-      tb.appendChild(tr);
-    });
-    document.getElementById('app').appendChild(t);
-  </script>
+  <div class="controls">
+    <label>Hotel:</label>
+    <select id="selHotel"></select>
+    <label>Semana:</label>
+    <select id="selSemana"></select>
+    <span class="muted" id="meta"></span>
+  </div>
+
+  <div class="card">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Empleado</th>
+          <th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th>
+          <th>Viernes</th><th>Sábado</th><th>Domingo</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="resumen-noches"></div>
+
+  <!-- Aquí se inyectan los datos desde Python -->
+  <script>window.DATA = __DATA_PLACEHOLDER__;</script>
+  <!-- Adaptador que pinta la tabla semanal -->
+  <script src="plantilla_adapter_semana.js"></script>
 </body>
 </html>
