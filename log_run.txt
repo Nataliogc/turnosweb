@@ -1,4 +1,4 @@
-=== 03/09/2025 11:31:03,91 Inicio ===
+=== 03/09/2025 11:35:27,70 Inicio ===
 C:\Users\comun\AppData\Local\Programs\Python\Python313\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Data Validation extension is not supported and will be removed
   warn(msg)
 OK Excel usado: Plantilla Cuadrante con Sustituciones v.6.0.xlsx

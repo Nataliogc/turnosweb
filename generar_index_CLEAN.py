@@ -1,9 +1,9 @@
-﻿# generar_index_CLEAN.py (v2 - acepta plantilla; filtra hojas auxiliares)
+# generar_index_CLEAN.py (v2 - acepta plantilla; filtra hojas auxiliares)
 import csv, json, sys, unicodedata
 from pathlib import Path
 from datetime import datetime
 
-def _norm(s): 
+def _norm(s):
     return unicodedata.normalize("NFKD", (s or "")).encode("ascii","ignore").decode("ascii").strip().lower()
 
 ROOT = Path(".")

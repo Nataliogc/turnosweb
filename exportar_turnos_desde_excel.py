@@ -1,4 +1,4 @@
-﻿# exportar_turnos_desde_excel.py  (v2.2 ASCII-safe + excluye hojas auxiliares)
+# exportar_turnos_desde_excel.py  (v2.2 ASCII-safe + excluye hojas auxiliares)
 import sys, re, unicodedata, traceback
 from pathlib import Path
 import pandas as pd
@@ -20,7 +20,7 @@ EXCLUDE_SHEETS = {"datos de validacion","validacion","validaciones","datos valid
 
 def pick_excel_path(arg_path:str|None)->Path:
     if arg_path:
-        p=Path(arg_path); 
+        p=Path(arg_path)
         if not p.exists(): raise FileNotFoundError(f"No existe el Excel: {p}")
         return p
     cands=sorted(Path(".").glob("*.xlsx"))
@@ -78,7 +78,7 @@ def main():
 
     out=pd.concat(frames, ignore_index=True)
 
-    # Filtra filas residuales "Datos de Validación" por seguridad
+    # Seguridad: filtra residuales "Datos de Validación"
     mask = out["Hotel"].astype(str).map(lambda s: norm(s)!="datos de validacion")
     out=out[mask]
 
