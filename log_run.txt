@@ -1,0 +1,24 @@
+=== 03/09/2025 11:31:03,91 Inicio ===
+C:\Users\comun\AppData\Local\Programs\Python\Python313\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Data Validation extension is not supported and will be removed
+  warn(msg)
+OK Excel usado: Plantilla Cuadrante con Sustituciones v.6.0.xlsx
+- Datos de Validación: hoja auxiliar, se omite.
+- Cumbria Spa&Hotel: anadida columna Hotel='Cumbria Spa&Hotel'.
+- Sercotel Guadiana: anadida columna Hotel='Sercotel Guadiana'.
+- Sustituciones: columna Hotel OK.
+OK generado turnos_mes.csv (filas=3601)
+OK Generado index.html (filas=3601) Rango:  -> 2025-11-25 00:00:00  Plantilla: turnos_final.html
+C:\Users\comun\AppData\Local\Programs\Python\Python313\Lib\site-packages\openpyxl\worksheet\_reader.py:329: UserWarning: Data Validation extension is not supported and will be removed
+  warn(msg)
+OK -> live.html actualizado (hoteles=2, sustituciones=0)
+En C:\Users\comun\Documents\Turnos web\publicar.ps1: 21 Carácter: 40
++ Read-Host "Fin. Pulsa ENTER para cerrar"
++                                        ~
+Falta la cadena en el terminador: ".
+En C:\Users\comun\Documents\Turnos web\publicar.ps1: 17 Carácter: 8
++ } else {
++        ~
+Falta la llave de cierre "}" en el bloque de instrucciones o la definición de tipo.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 

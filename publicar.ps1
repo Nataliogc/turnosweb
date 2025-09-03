@@ -1,22 +1,21 @@
-﻿param(
-  [string]$Mensaje = "update: turnos"
-)
+# publicar.ps1
+$ErrorActionPreference = "Stop"
+cd "C:\Users\comun\Documents\Turnos web"
 
-# Añadir cambios
-git add -A
+# 1) Genera (solo reescribe el diagnóstico; no toca la visual)
+py -u .\generar_turnos CSV.py
 
-# Si hay cambios en staging, comitea; si no, solo push
-git diff --cached --quiet
-if ($LASTEXITCODE -eq 1) {
-  git commit -m $Mensaje
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "No se pudo hacer commit. Revisa el estado del repo."
-    exit 1
-  }
-  git push origin main
-  Write-Host "Publicado: cambios nuevos enviados."
+# 2) Sube a GitHub SOLO si hubo cambios en index.html
+git pull --rebase
+git add .\index.html
+git diff --cached --quiet; $hasStaged=$LASTEXITCODE
+if ($hasStaged -ne 0) {
+  $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+  git commit -m "build: index.html ($stamp)"
+  git push
+  Write-Host "✅ Cambios publicados en GitHub ($stamp)"
 } else {
-  Write-Host "No hay cambios para commit. Se hace push igualmente por si hay commits previos."
-  git push origin main
-  Write-Host "Publicado: push realizado."
+  Write-Host "ℹ️ No hay cambios en index.html. Nada que publicar."
 }
+
+Read-Host "Fin. Pulsa ENTER para cerrar"

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Turnos · Cumbria & Guadiana</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/modern-normalize@2/modern-normalize.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b3d2e; --bg2:#0f4f3c; --card:#ffffff; --muted:#6b7280; --acc:#10b981;
+  --radius:14px; --gap:12px;
+}
+body{ background:linear-gradient(180deg,var(--bg),var(--bg2)); min-height:100vh; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; color:#0b1a13;}
+.wrapper{ max-width:1100px; margin:28px auto; padding:0 14px;}
+.header{ display:flex; align-items:center; gap:16px; color:#eafaf4; margin-bottom:18px;}
+.header img{ width:42px; height:42px; border-radius:10px; object-fit:contain; background:#fff; padding:6px; }
+.header h1{ font-size:22px; margin:0; letter-spacing:.2px;}
+.toolbar{ display:flex; flex-wrap:wrap; gap:var(--gap); background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.25); border-radius:var(--radius); padding:12px; color:#eafaf4; }
+.group{ display:flex; align-items:center; gap:8px; }
+.sel, .date, .btn{ height:36px; padding:6px 10px; border-radius:9px; border:1px solid rgba(0,0,0,.15); }
+.sel, .date{ background:#fff; color:#111; }
+.btn{ background:var(--acc); color:#07281f; font-weight:600; cursor:pointer; }
+.btn.outline{ background:transparent; color:#eafaf4; border:1px solid rgba(255,255,255,.5);}
+.kpis{ display:flex; gap:var(--gap); margin:16px 0; flex-wrap:wrap;}
+.kpi{ flex:1; min-width:180px; background:#fff; border-radius:var(--radius); padding:12px 14px; box-shadow:0 6px 20px rgba(0,0,0,.12);}
+.kpi b{ font-size:22px; display:block; color:#0b3d2e;}
+.kpi span{ color:#6b7280; font-size:12px;}
+.list{ margin-top:10px;}
+.week{ background:#fff; border-radius:var(--radius); margin-bottom:14px; box-shadow:0 6px 20px rgba(0,0,0,.12); overflow:hidden;}
+.week>h3{ margin:0; padding:10px 14px; background:#f3faf7; color:#064e3b; border-bottom:1px solid #e5e7eb; font-size:14px; letter-spacing:.3px;}
+.day{ padding:8px 14px; border-top:1px dashed #eef2f7; display:grid; grid-template-columns:120px 1fr; gap:10px; }
+.day:first-child{ border-top:0;}
+.emp{ display:flex; flex-wrap:wrap; gap:6px;}
+.badge{ background:#eefcf6; color:#065f46; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #bbf7d0; }
+.footer{ text-align:center; color:#d1fae5; margin:18px 0; font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <img src="Logo.png" alt="Logo">
+    <h1>Turnos · Cumbria Spa&Hotel & Sercotel Guadiana</h1>
+  </div>
+
+  <div class="toolbar">
+    <div class="group">
+      <label>Hotel</label>
+      <select id="hotel" class="sel">
+        <option value="">Todos</option>
+        <option value="Cumbria Spa&Hotel">Cumbria Spa&Hotel</option>
+        <option value="Sercotel Guadiana">Sercotel Guadiana</option>
+      </select>
+    </div>
+    <div class="group">
+      <label>Desde</label>
+      <input id="desde" type="date" class="date">
+    </div>
+    <div class="group">
+      <label>Hasta</label>
+      <input id="hasta" type="date" class="date">
+    </div>
+    <div class="group">
+      <button id="aplicar" class="btn">Aplicar</button>
+      <button id="limpiar" class="btn outline">Limpiar</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><b id="kTotal">0</b><span>Cargados</span></div>
+    <div class="kpi"><b id="kFiltrados">0</b><span>Filtrados por rango</span></div>
+    <div class="kpi"><b id="kNoches">0</b><span>Noches (mes actual, incluye sustitutos)</span></div>
+  </div>
+
+  <div id="list" class="list"></div>
+  <div class="footer">© Turnos</div>
+</div>
+
+<script>
+"use strict";
+const DATA = __DATA_PLACEHOLDER__;
+
+const rows = (DATA.rows || DATA || []).map(r => ({
+  Hotel: r.Hotel || "",
+  Fecha: r.Fecha || "",
+  Empleado: r.Empleado || "",
+  TurnoLargo: r.TurnoLargo || r.Turno || "",
+  Icono: r.Icono || "",
+  Sustituto: r.Sustituto || "",
+  SustitucionPor: r.SustitucionPor || ""
+}));
+
+const kTotal = document.getElementById("kTotal");
+const kFil = document.getElementById("kFiltrados");
+const kNoc = document.getElementById("kNoches");
+const list = document.getElementById("list");
+const selHotel = document.getElementById("hotel");
+const inpDesde = document.getElementById("desde");
+const inpHasta = document.getElementById("hasta");
+const btnAplicar = document.getElementById("aplicar");
+const btnLimpiar = document.getElementById("limpiar");
+
+function parseISO(d){ return new Date(d+"T00:00:00"); }
+function fmtSpan(d){ return d.toISOString().slice(0,10); }
+
+function calcNochesMesActual(rows){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const ini = new Date(y, m, 1);
+  const fin = new Date(y, m+1, 0);
+  let c = 0;
+  for(const r of rows){
+    if(!r.Fecha) continue;
+    const f = parseISO(r.Fecha);
+    if(f>=ini && f<=fin){
+      const turno = (r.TurnoLargo||"").toLowerCase();
+      if(turno.includes("noc")) c++;
+    }
+  }
+  return c;
+}
+
+function groupByWeekAndDay(rows){
+  const byDay = {};
+  for(const r of rows){
+    if(!byDay[r.Fecha]) byDay[r.Fecha]=[];
+    byDay[r.Fecha].push(r);
+  }
+  const fechas = Object.keys(byDay).sort();
+  const weeks = [];
+  let currentWeek = null, currentStart = null;
+  function monday(d){
+    const t=new Date(d); const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day); return t;
+  }
+  for(const f of fechas){
+    const dateObj = parseISO(f);
+    const start = monday(dateObj);
+    const key = fmtSpan(start);
+    if(!currentWeek || currentStart!==key){
+      currentWeek = {start:key, days:[]};
+      weeks.push(currentWeek);
+      currentStart = key;
+    }
+    const emps = byDay[f].slice().sort((a,b)=>a.Empleado.localeCompare(b.Empleado));
+    currentWeek.days.push({fecha:f, empleados:emps});
+  }
+  return weeks;
+}
+
+function render(listRows){
+  list.innerHTML = "";
+  const weeks = groupByWeekAndDay(listRows);
+  for(const w of weeks){
+    const wrap = document.createElement("div"); wrap.className="week";
+    const h3 = document.createElement("h3");
+    const ini = parseISO(w.start);
+    const fin = new Date(ini); fin.setDate(fin.getDate()+6);
+    h3.textContent = `Semana del ${w.start} al ${fmtSpan(fin)}`;
+    wrap.appendChild(h3);
+
+    for(const d of w.days){
+      const row = document.createElement("div"); row.className="day";
+      const left = document.createElement("div"); left.innerHTML = `<strong>${d.fecha}</strong>`;
+      const right = document.createElement("div"); right.className="emp";
+      for(const e of d.empleados){
+        const badge = document.createElement("span"); badge.className="badge";
+        let txt = `${e.Empleado} · ${e.TurnoLargo||""}`;
+        if(e.Sustituto){
+          txt += ` · Sustituto: ${e.Sustituto}`;
+          if(e.SustitucionPor) txt += ` (${e.SustitucionPor})`;
+        }
+        badge.textContent = txt;
+        right.appendChild(badge);
+      }
+      row.appendChild(left); row.appendChild(right);
+      wrap.appendChild(row);
+    }
+    list.appendChild(wrap);
+  }
+}
+
+function aplicar(){
+  const hotel = selHotel.value.trim();
+  let desde = inpDesde.value || DATA.defaultDesde || "";
+  let hasta = inpHasta.value || DATA.defaultHasta || "";
+  let arr = rows.slice();
+  if(hotel) arr = arr.filter(r => r.Hotel===hotel);
+  if(desde) arr = arr.filter(r => r.Fecha && r.Fecha>=desde);
+  if(hasta) arr = arr.filter(r => r.Fecha && r.Fecha<=hasta);
+
+  if(arr.length===0 && rows.length){
+    const fechas = rows.map(r=>r.Fecha).filter(Boolean).sort();
+    const f0 = parseISO(fechas[0]);
+    const f1 = new Date(f0.getFullYear(), f0.getMonth()+1, 0);
+    desde = fmtSpan(f0); hasta = fmtSpan(f1);
+    inpDesde.value = desde; inpHasta.value = hasta;
+    arr = rows.filter(r => r.Fecha>=desde && r.Fecha<=hasta && (!hotel || r.Hotel===hotel));
+  }
+
+  kTotal.textContent = rows.length;
+  kFil.textContent = arr.length;
+  kNoc.textContent = calcNochesMesActual(rows);
+  render(arr);
+}
+
+btnAplicar.addEventListener("click", aplicar);
+btnLimpiar.addEventListener("click", () => {
+  selHotel.value = "";
+  inpDesde.value = DATA.defaultDesde || "";
+  inpHasta.value = DATA.defaultHasta || "";
+  aplicar();
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  selHotel.value = "";
+  inpDesde.value = DATA.defaultDesde || "";
+  inpHasta.value = DATA.defaultHasta || "";
+  kTotal.textContent = rows.length;
+  kNoc.textContent = calcNochesMesActual(rows);
+  aplicar();
+});
+</script>
+</body>
+</html>

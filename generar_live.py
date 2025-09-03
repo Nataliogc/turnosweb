@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Genera live.html leyendo SIEMPRE las sustituciones desde 'sustituciones_diagnostico.csv'
 (si existe) y, si no, cae al Excel/CSV genéricos.
@@ -126,7 +126,7 @@ def minimal_html(data_obj: dict, now_str: str) -> str:
             "(DATA.hoteles||[]).forEach(h=>{const d=document.createElement('div');d.className='card';"
             "d.innerHTML = `<h2>${h.nombre}</h2><ol>` + (h.orden||[]).map(x=>`<li>${x}</li>`).join('') + `</ol>`; app.appendChild(d);});"
             "if ((DATA.sustituciones||[]).length){const s=document.createElement('div');s.className='card';"
-            "s.innerHTML = '<h2>Sustituciones</h2>' + (DATA.sustituciones||[]).map(x=>`${x.fecha||''} - ${x.hotel||''} - ${x.empleado||''} -> ${x.sustituto||''} (${x.tipo||''} ${x.cambio||''})`).join('<br>');"
+            "s.innerHTML = '<h2>Sustituciones</h2>' + (DATA.sustituciones||[]).map(x=>`${x.fecha||''} – ${x.hotel||''} – ${x.empleado||''} → ${x.sustituto||''} (${x.tipo||''} ${x.cambio||''})`).join('<br>');"
             "app.appendChild(s);}"
             "</script></body></html>")
 

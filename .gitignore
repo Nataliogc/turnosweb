@@ -1,17 +1,7 @@
-﻿# Python
 __pycache__/
 *.pyc
-*.pyo
-
-# Logs / temporales
-log_run.txt
-exportar_turnos.log
-
-# Backups y artefactos
-*backup*.html
-turnos_mes_*.csv
-
-# Datos generados
-index.html
-live.html
-turnos_mes.csv
+*.zip
+*.bak
+.DS_Store
+_diagnostics/
+*.xlsx

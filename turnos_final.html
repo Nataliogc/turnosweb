@@ -1,74 +1,39 @@
-﻿<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Cuadrante | Turnos</title>
-<link rel="icon" href="Logo.png">
-<style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:#f6f7fb;margin:0;padding:16px}
-.wrap{max-width:1200px;margin:0 auto}
-.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 14px}
-select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
-.card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden}
-table{width:100%;border-collapse:separate;border-spacing:0}
-th,td{padding:10px 12px;border-bottom:1px solid #f0f2f6;text-align:left;font-size:14px}
-thead th{background:#fafbff;font-weight:600;color:#111827;position:sticky;top:0;z-index:1}
-tbody tr:hover td{background:#fafafa}
-.muted{color:#6b7280}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #dbe2ee;background:#f3f6fb}
-</style></head><body>
-<div class="wrap">
-  <div class="controls">
-    <label>Hotel:</label><select id="selHotel"></select>
-    <label>Semana:</label><select id="selSemana"></select>
-    <span id="stats" class="badge">Cargando…</span>
-  </div>
-
-  <div class="card">
-    <table id="tabla">
-      <thead><tr>
-        <th>Empleado</th><th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th>
-        <th>Viernes</th><th>Sábado</th><th>Domingo</th>
-      </tr></thead><tbody></tbody>
-    </table>
-  </div>
-
-  <div class="card" style="margin-top:12px;padding:10px">
-    <div id="preview"></div>
-  </div>
-</div>
-
-<!-- Datos inyectados por el generador -->
-<script>window.DATA = __DATA_PLACEHOLDER__;</script>
-
-<!-- Adaptador del cuadrante (tu archivo existente) -->
-<script src="plantilla_adapter_semana.js"></script>
-
-<script>
-(function(){
-  const rows = (window.DATA && (window.DATA.rows || window.DATA)) || [];
-  const norm = s => (s||"").normalize("NFD").replace(/\p{Diacritic}/gu,"").toLowerCase().trim();
-  function by(arr,k){ return [...new Set(arr.map(r=>r[k]??r[String(k).toLowerCase()]))].filter(Boolean); }
-  function el(id){ return document.getElementById(id); }
-
-  function populate(){
-    let hoteles = by(rows,'Hotel').filter(h => norm(h)!=="datos de validacion");
-    let semanas = by(rows,'Semana');
-    el('selHotel').innerHTML  = '<option value="">(Todos)</option>'+hoteles.map(h=>`<option>${h}</option>`).join('');
-    el('selSemana').innerHTML = '<option value="">(Todas)</option>'+semanas.map(s=>`<option>${s}</option>`).join('');
-    el('stats').textContent = `${rows.length.toLocaleString('es-ES')} filas · ${hoteles.length} hoteles`;
-  }
-  function fallback(){
-    const sample = rows.slice(0,40), cols=[...new Set(sample.flatMap(r=>Object.keys(r)))];
-    el('preview').innerHTML = !sample.length ? '<p class="muted">Sin datos.</p>' :
-      `<div style="overflow:auto"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-        <tbody>${sample.map(r=>`<tr>${cols.map(c=>`<td>${(r[c]??'').toString().replace(/</g,'&lt;')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-  }
-  function render(){
-    if(typeof window.renderCuadrante==='function'){
-      try{ window.renderCuadrante({DATA:rows, elCuadrante:document.querySelector('#tabla tbody'),
-                                   elResumen:null, selHotel:el('selHotel'), selSemana:el('selSemana')}); return; }catch(e){}
-    }
-    fallback();
-  }
-  document.addEventListener('DOMContentLoaded', ()=>{ populate(); render(); });
-})();
-</script>
-</body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cuadrante</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:16px;}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;}
+    .aus{background:#fee;}
+    table{border-collapse:collapse;width:100%;}
+    th,td{border:1px solid #ddd;padding:6px;}
+    th{background:#f6f6f6;}
+  </style>
+</head>
+<body>
+  <h1>Cuadrante</h1>
+  <script>
+    const DATA = __DATA_PLACEHOLDER__;
+  </script>
+  <div id="app"></div>
+  <script>
+    const rows = (DATA && DATA.rows) || [];
+    const t = document.createElement('table');
+    t.innerHTML = `<thead><tr>
+      <th>Hotel</th><th>Semana</th><th>Fecha</th><th>Empleado</th><th>Turno</th><th>Sustitución</th>
+    </tr></thead><tbody></tbody>`;
+    const tb = t.querySelector('tbody');
+    rows.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.Hotel}</td><td>${r.Semana}</td><td>${r.Fecha}</td><td>${r.Empleado}</td>
+        <td><span class="pill ${r.TipoEmpleado==='Ausente'?'aus':''}">${r.TextoDia||r.TurnoLargo||r.Turno||''}</span></td>
+        <td>${r.Sustituto||r.SustitucionPor||''}</td>`;
+      tb.appendChild(tr);
+    });
+    document.getElementById('app').appendChild(t);
+  </script>
+</body>
+</html>
