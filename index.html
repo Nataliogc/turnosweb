@@ -1,337 +1,280 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Cuadrantes de turnos</title>
-<style>
-  :root{
-    --bg:#f6f8fb; --panel:#ffffff; --ink:#101828; --muted:#667085; --line:#e4e7ec;
-    --brand:#0f5a4a; --brand-2:#0b3d33; --ok:#16a34a; --warn:#eab308; --night:#6366f1; --rest:#94a3b8; --vac:#ef4444; --swap:#06b6d4;
-    --pill-bg:#f8fafc;
-    --chip:#eef2ff; --chip-border:#dbeafe;
-  }
-  *{box-sizing:border-box}
-  html,body{background:var(--bg);color:var(--ink);font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Arial, sans-serif}
-  body{margin:0;padding:16px}
-  .wrap{max-width:1200px;margin:0 auto}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Turnos Web</title>
+  <style>
+:root{--bg:#f6f8fb;--card:#ffffff;--fg:#101828;--muted:#667085;--grid:#e4e7ec;--accent:#0f5a4a}
+body{background:var(--bg);color:var(--fg)}
+.panel{background:var(--card);border:1px solid var(--grid);border-radius:16px}
+.badge{border-color:#c7dcff;background:#e7f0ff}
 
-  /* header */
-  .topbar{
-    background:linear-gradient(0deg,#0f5a4a,#0f5a4a);
-    color:#fff;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 6px 18px rgba(15,90,74,.12)
-  }
-  .topbar img{width:40px;height:40px;object-fit:contain}
-  .topbar h1{font-size:18px;line-height:1.1;margin:0;font-weight:700}
-  .topbar .meta{margin-left:auto;font-size:12px;opacity:.85}
-
-  /* filtros */
-  .filters{display:grid;grid-template-columns:1fr 200px 200px 240px auto;gap:10px;margin:12px 0}
-  .filters .btn-clean{white-space:nowrap}
-  .input, .select, .btn{
-    background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--ink)
-  }
-  .btn{cursor:pointer}
-  .btn:hover{filter:brightness(.98)}
-
-  /* resumen mensual */
-  .summary-card{
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0 18px;
-    box-shadow:0 6px 18px rgba(16,24,40,.06);
-  }
-  .summary-card h3{margin:0 0 8px;font-size:14px;color:#0f5a4a}
-  .summary-grid{display:grid;grid-template-columns:1fr 100px;gap:8px;align-items:center}
-  .summary-grid .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .summary-grid .n{justify-self:end;font-weight:700}
-
-  /* bloque hotel + semana */
-  .hotel-block{margin-top:14px}
-  .hotel-title{
-    color:#0f5a4a;font-weight:800;margin:10px 0 8px;font-size:15px;display:flex;align-items:center;gap:8px
-  }
-  .week-card{
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:0 6px 18px rgba(16,24,40,.06);margin-bottom:14px
-  }
-  .week-head{display:flex;justify-content:space-between;align-items:center;padding:6px 6px 12px;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
-  .week-head .range{font-weight:700}
-  .week-head .small{color:var(--muted);font-size:12px}
-
-  /* tabla semana */
-  .grid{
-    width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:8px
-  }
-  .grid th{font-size:12px;color:var(--muted);font-weight:700;text-align:center}
-  .grid th.emp{text-align:left;padding-left:8px;min-width:190px}
-  .grid td{padding:6px}
-  .row{
-    background:var(--pill-bg);border:1px solid var(--line);border-radius:999px;overflow:hidden
-  }
-  .emp{
-    display:flex;align-items:center;gap:8px;padding:8px 10px
-  }
-  .dot{width:8px;height:8px;border-radius:999px;background:#cbd5e1}
-  .chip{
-    display:inline-flex;align-items:center;justify-content:center;
-    background:#fff;border:1px solid var(--chip-border);
-    padding:6px 10px;border-radius:999px;min-width:92px;font-size:13px;font-weight:600;margin:4px auto
-  }
-  .m{background:#e7f0ff;border-color:#c7dcff}
-  .t{background:#fff3d3;border-color:#fde68a}
-  .n{background:#eae8ff;border-color:#dcd7ff}
-  .d{background:#eef2f7;border-color:#e4e7ec;color:#475569}
-  .v{background:#ffe5e5;border-color:#fecaca}
-  .swap{color:var(--swap);font-size:12px;margin-left:6px}
-  .note{color:#60a5fa;font-size:12px;margin-left:6px}
-
-  /* responsive */
-  @media (max-width:980px){
-    .filters{grid-template-columns:1fr 1fr 1fr 1fr auto}
-  }
-  @media (max-width:760px){
-    .filters{grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,auto)}
-    .filters .btn-clean{grid-column:1 / -1}
-    .grid th:nth-child(n+3){font-size:11px}
-    .chip{min-width:76px;font-size:12px}
-    .week-head{gap:8px}
-  }
-</style>
+    body{font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji; background:#f6f7fb; margin:0; padding:16px;}
+    .wrap{max-width:1100px; margin:0 auto;}
+    .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
+    select{padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;}
+    .card{background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden;}
+    table{width:100%; border-collapse:separate; border-spacing:0;}
+    th,td{padding:10px 12px; border-bottom:1px solid #f0f2f6; text-align:left; font-size:14px;}
+    thead th{background:#fafbff; font-weight:600; color:#111827; position:sticky; top:0; z-index:1;}
+    tbody tr:hover td{background:#fafafa;}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb;}
+    .p-mañana{background:#ecfdf5; border-color:#d1fae5;}
+    .p-tarde{background:#fffbeb; border-color:#fde68a;}
+    .p-noche{background:#eef2ff; border-color:#c7d2fe;}
+    .p-descanso{background:#fee2e2; border-color:#fecaca;}
+    .p-vacaciones{background:#f3f4f6; border-color:#e5e7eb;}
+    .muted{color:#6b7280;}
+    .summary{margin-top:12px;}
+    .summary .box{border:1px solid #e5e7eb; border-radius:12px; background:#fff; padding:12px;}
+    .summary h3{margin:0 0 8px 0; font-size:14px;}
+    .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:6px; margin:0; padding-left:18px;}
+    .tag{display:inline-block; padding:.15rem .5rem; background:#eef2ff; border:1px solid #c7d2fe; border-radius:999px; font-size:12px;}
+    .icon{font-size:14px}
+  </style>
 </head>
 <body>
+<div class="topbar" style="background:#0f5a4a;color:#fff;border-radius:14px;padding:12px 14px;margin:0 0 12px;display:flex;align-items:center;gap:10px">
+  <img src="assets/logo-gc.png" style="width:34px;height:34px;object-fit:contain" alt="">
+  <strong>Cuadrantes · Live</strong>
+</div>
+
 <div class="wrap">
-
-  <!-- HEADER -->
-  <div class="topbar">
-    <img src="Logo.png" alt="Guadiana & Cumbria" />
-    <h1>Cuadrantes de turnos</h1>
-    <div class="meta" id="lastUpdate"></div>
+  <div class="controls">
+    <label>Hotel:</label>
+    <select id="selHotel"></select>
+    <label>Semana:</label>
+    <select id="selSemana"></select>
+    <span class="muted" id="meta"></span>
   </div>
 
-  <!-- FILTROS -->
-  <div class="filters">
-    <input id="q" class="input" placeholder="Buscar empleado u hotel…" />
-    <select id="selHotel" class="select"></select>
-    <input id="from" class="input" type="date" />
-    <input id="to" class="input" type="date" />
-    <button id="btnClean" class="btn btn-clean">Limpiar</button>
+  <div class="card">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Empleado</th>
+          <th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th>
+          <th>Viernes</th><th>Sábado</th><th>Domingo</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <!-- RESUMEN MENSUAL NOCHES -->
-  <div id="summary" class="summary-card" hidden>
-    <h3 id="summaryTitle">Recuento mensual de noches</h3>
-    <div id="summaryGrid" class="summary-grid"></div>
-  </div>
-
-  <div id="root"></div>
+  <div id="resumen-noches" class="summary"></div>
 </div>
 
 <script>
-// === DATA embebido por el script Python ===
-const DATA = {"rows":[{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-09","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-10","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-11","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-12","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-13","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-14","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-15","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-16","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-16","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-17","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-17","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-18","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-18","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-19","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-19","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-20","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-20","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-21","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-21","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-22","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-22","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-23","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-23","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-24","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-24","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-25","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-25","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-26","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-26","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-27","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-27","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-28","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-28","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-29","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-29","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-06-30","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-06-30","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-01","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-01","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-02","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-02","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-03","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-03","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-04","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-04","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-05","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-05","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-06","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-06","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-07","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-07","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-08","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-08","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-09","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-09","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-10","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-10","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-11","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-11","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-12","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-12","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-13","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-13","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-14","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-14","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-15","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-15","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-16","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-16","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-17","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-17","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-18","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-18","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-19","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-19","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-20","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-20","Empleado":"Diana","TurnoLargo":"Diana","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-21","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-21","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-22","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-22","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-23","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-23","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-24","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-24","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-25","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-25","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-26","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-26","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-27","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-27","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-28","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-28","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-29","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-29","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-30","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-30","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-07-31","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-07-31","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-01","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-01","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-02","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-02","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-03","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-03","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-04","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-04","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-05","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-05","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-06","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-06","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-07","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-07","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-08","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-08","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-09","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-09","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-10","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-10","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-11","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-11","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-12","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-12","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-13","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-13","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-14","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-14","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-15","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-15","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-16","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-16","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-17","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-17","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-18","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-18","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-19","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-19","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-20","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-20","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-21","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-21","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-22","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-22","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-23","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-23","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-24","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-24","Empleado":"Dani","TurnoLargo":"Dani","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-25","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-25","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-26","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-26","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-27","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-27","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-28","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-28","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-29","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-29","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-30","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-30","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-08-31","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-08-31","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-01","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-01","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-02","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-02","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-03","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-03","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-04","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-04","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-05","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-05","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-06","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-06","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-07","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-07","Empleado":"Federico","TurnoLargo":"Federico","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-08","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-08","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-09","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-09","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-10","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-10","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-11","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-11","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-12","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-12","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-13","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-13","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-14","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Sercotel Guadiana","Fecha":"2025-09-14","Empleado":"Macarena","TurnoLargo":"Macarena","Icono":"","Sustituto":"Esther","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-15","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-16","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-17","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-18","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-19","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-20","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-21","Empleado":"Valentín","TurnoLargo":"Valentín","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-22","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-23","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-24","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-25","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-26","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-27","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-28","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-29","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-09-30","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-01","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-02","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-03","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-04","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-05","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-06","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-07","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-08","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-09","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-10","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-11","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-12","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-13","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-14","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-15","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-16","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-17","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-18","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-10-19","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-03","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-04","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-05","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-06","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-07","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-08","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-09","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-17","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-18","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-19","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-20","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-21","Empleado":"Cristina","TurnoLargo":"Cristina","Icono":"","Sustituto":"Míriam","SustitucionPor":"Vacaciones 🏖️"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-22","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"Pedro Antonio","SustitucionPor":"Baja 🤒"},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-22","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"","SustitucionPor":""},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-23","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"","SustitucionPor":""},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-24","Empleado":"Natalio","TurnoLargo":"Natalio","Icono":"","Sustituto":"","SustitucionPor":""},{"Hotel":"Cumbria Spa&Hotel","Fecha":"2025-11-25","Empleado":"Sergio","TurnoLargo":"Sergio","Icono":"","Sustituto":"Sofía","SustitucionPor":"Permiso ➡️"}]};
+// ---- Este bloque será sobreescrito por los scripts generar_*.py ----
+const DATA = {"hoteles": [{"nombre": "Cumbria Spa&Hotel", "orden": ["Natalio", "Antonio", "Cristina", "Valentín", "Isabel Hidalgo", "Gustavo", "Esther", "Míriam", "Sergio"]}, {"nombre": "Sercotel Guadiana", "orden": ["Diana", "Dani", "Macarena", "Federico", "¿?", "Isabel Hidalgo", "Sergio Sánchez"]}], "sustituciones": []}; // placeholder
+// -------------------------------------------------------------------
 
-// === utilidades de fecha (LOCAL) ===
-function startOfISOWeekLocal(isoStr){
-  const d = new Date(isoStr + "T00:00:00");         // local
-  const dow = d.getDay();                           // 0..6 (dom..sáb)
-  const shift = (dow === 0 ? -6 : 1 - dow);         // llevar a lunes
-  const m = new Date(d);
-  m.setDate(d.getDate() + shift);
-  m.setHours(0,0,0,0);
-  return m;
-}
-function addDaysLocal(d, n){
-  const x = new Date(d);
-  x.setDate(d.getDate() + n);
-  x.setHours(0,0,0,0);
-  return x;
-}
-function startOfMonthLocal(d){ const x=new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x; }
-function endOfMonthLocal(d){ const x=new Date(d); x.setMonth(x.getMonth()+1,0); x.setHours(23,59,59,999); return x; }
-function ymdLocal(d){
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,'0');
-  const dd = String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${dd}`;
-}
-function weekKeyFromDateStr(isoStr){
-  return ymdLocal(startOfISOWeekLocal(isoStr));     // clave = lunes (YYYY-MM-DD)
-}
-function labelRangeFromWeekKey(weekKey){
-  const mon = new Date(weekKey + "T00:00:00");
-  const sun = addDaysLocal(mon, 6);
-  const fmt = (d)=> d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});
-  return [fmt(mon), fmt(sun)];
-}
-function isNight(txt){
-  const s=(txt||'').toLowerCase();
-  return s.startsWith('n') || s.includes('noche'); // Noches / Noche / NOCHE...
+// Utilidades
+const normalize = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const titleCase = s => String(s||'').replace(/\w\S*/g, t=>t.charAt(0).toUpperCase()+t.slice(1));
+
+const KEYMAP = {
+  semana: ['semana','week'],
+  hotel: ['hotel'],
+  empleado: ['empleado','worker','employee','nombre'],
+  lunes: ['lunes','monday'],
+  martes: ['martes','tuesday'],
+  miercoles: ['miercoles','miércoles','wednesday'],
+  jueves: ['jueves','thursday'],
+  viernes: ['viernes','friday'],
+  sabado: ['sabado','sábado','saturday'],
+  domingo: ['domingo','sunday'],
+};
+
+function pick(obj, keys){
+  // case-insensitive
+  const lowerMap = {};
+  for (const k of Object.keys(obj)) lowerMap[k.toLowerCase()] = k; // mapa real->original
+  for (const k of keys){
+    for (const c of KEYMAP[k]){
+      const real = lowerMap[c];
+      if (real !== undefined) return obj[real];
+    }
+  }
+  return undefined;
 }
 
-// === Normalizar datos y clave de semana
-const RAW = (window.DATA && (DATA.rows || DATA)) || [];
-const rows = RAW.map((r,i)=>({
-  ...r,
-  _i:i,
-  Hotel: r.Hotel || r.hotel || '',
-  Fecha: r.Fecha || r.fecha,                     // 'YYYY-MM-DD'
-  Empleado: r.Empleado || r.empleado,
-  TurnoLargo: r.TurnoLargo || r.Turno || r.turno || '',
-  Sustituto: r.Sustituto || r.sustituto || '',
-  SustitucionPor: r.SustitucionPor || r.sustitucionPor || '',
-  SemanaKey: weekKeyFromDateStr(r.Fecha)         // Lunes de la semana (local)
-}));
+function parseRows(){
+  const rows = (DATA && (DATA.rows||DATA)) || [];
+  return rows.map(r => {
+    return {
+      semana: pick(r, ['semana']),
+      hotel:  pick(r, ['hotel']),
+      empleado: pick(r, ['empleado']),
+      turnos: [
+        pick(r,['lunes']), pick(r,['martes']), pick(r,['miercoles']),
+        pick(r,['jueves']), pick(r,['viernes']), pick(r,['sabado']), pick(r,['domingo'])
+      ]
+    };
+  });
+}
 
-// Rellenar filtros y fechas por defecto (HOY -> HOY+30)
-const hotels = [...new Set(rows.map(r=>r.Hotel))].filter(Boolean).sort();
-const selHotel = document.getElementById('selHotel');
-selHotel.innerHTML = `<option value="">Todos los hoteles</option>` + hotels.map(h=>`<option>${h}</option>`).join('');
-document.getElementById('lastUpdate').textContent = `Actualizado: ${new Date().toLocaleString('es-ES')}`;
+function uniqueInOrder(arr){
+  const out=[]; const seen=new Set();
+  for(const v of arr){ const k=JSON.stringify(v); if(!seen.has(k)){ seen.add(k); out.push(v); } }
+  return out;
+}
 
-const fromInput = document.getElementById('from');
-const toInput   = document.getElementById('to');
-(function setDefaultDates(){
-  const today = new Date();
-  const plus30 = addDaysLocal(today, 30);
-  fromInput.value = ymdLocal(today);
-  toInput.value   = ymdLocal(plus30);
-})();
+function allHoteles(rows){ return uniqueInOrder(rows.map(r=>r.hotel).filter(Boolean)); }
+function allSemanas(rows, hotel){ return uniqueInOrder(rows.filter(r=>normalize(r.hotel)===normalize(hotel)).map(r=>r.semana).filter(Boolean)); }
 
-const root = document.getElementById('root');
+function clasePill(v){
+  const t = normalize(v);
+  if (t==='mañana' || t==='manana') return 'p-mañana';
+  if (t==='tarde') return 'p-tarde';
+  if (t==='noche') return 'p-noche';
+  if (t==='descanso') return 'p-descanso';
+  if (t.includes('vacac')) return 'p-vacaciones';
+  return '';
+}
+
+// -------- SUSTITUCIONES (CSV) --------
+function idxSustituciones(){
+  const S = (DATA && DATA.sustituciones) || [];
+  const out = new Map(); // key: hotel|fechaISO|empleadoLower -> array rows
+  for (const r of S){
+    // columnas posibles (case-insensitive)
+    const lower = {}; for (const k in r) lower[k.toLowerCase()] = k;
+    function get(k){ return r[lower[k]]; }
+    const hotel = String(get('hotel') ?? '').trim();
+    const empleado = String(get('empleado') ?? '').trim();
+    const sustituto = String(get('sustituto') ?? '').trim();
+    const tipoInter = String(get('tipointerpretado') ?? get('tipointerpretado') ?? '').trim();
+    const motivo = String(get('motivo') ?? '').trim();
+    const fechaNorm = String(get('fechanorm') ?? get('fechanormalizada') ?? get('fechanormal') ?? '').slice(0,10); // yyyy-mm-dd
+
+    // Indexar para el titular y el sustituto (para poder marcar 🔄 en ambos si procede)
+    for (const persona of [empleado, sustituto]){
+      if (!persona) continue;
+      const key = `${hotel.toLowerCase()}|${fechaNorm}|${persona.toLowerCase()}`;
+      if (!out.has(key)) out.set(key, []);
+      out.get(key).push({tipoInter, motivo});
+    }
+  }
+  return out;
+}
+
+function formatISO(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
+function semanaBaseToDate(semanaStr){
+  // admite dd/mm/yyyy o d/m/yy
+  const s = String(semanaStr||'').trim();
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m){ let d=parseInt(m[1],10), M=parseInt(m[2],10)-1, Y=parseInt(m[3],10); if (Y<100) Y+=2000; return new Date(Y,M,d); }
+  const dt = new Date(s); return isNaN(dt) ? null : dt;
+}
+// --------------------------------------
 
 function render(){
-  const q = (document.getElementById('q').value||'').toLowerCase();
-  const hotel = (document.getElementById('selHotel').value||'');
-  const from = fromInput.value ? new Date(fromInput.value + "T00:00:00") : null;
-  const to   = toInput.value   ? new Date(toInput.value   + "T23:59:59") : null;
+  const rows = parseRows();
+  const selHotel = document.getElementById('selHotel');
+  const selSemana = document.getElementById('selSemana');
+  const meta = document.getElementById('meta');
+  const tb = document.querySelector('#tabla tbody');
 
-  let data = rows.filter(r=>{
-    const okHotel = !hotel || r.Hotel === hotel;
-    const okQ = !q || (r.Empleado||'').toLowerCase().includes(q) || (r.Hotel||'').toLowerCase().includes(q);
-    const d = new Date(r.Fecha + "T12:00:00"); // mediodía local para evitar bordes
-    const okFrom = !from || d >= from;
-    const okTo   = !to   || d <= to;
-    return okHotel && okQ && okFrom && okTo;
-  });
-
-  // === Resumen mensual de NOCHES (incluye sustitutos) ===
-  const monthBase = from || new Date();
-  const monthStart = startOfMonthLocal(monthBase);
-  const monthEnd   = endOfMonthLocal(monthBase);
-  const nightlyCounter = new Map();      // nombre -> n
-  const seen = new Set();                // evitar dobles por trabajador/fecha/hotel
-  for(const r of rows){
-    const d = new Date(r.Fecha + "T12:00:00");
-    if (d < monthStart || d > monthEnd) continue;
-    if (hotel && r.Hotel !== hotel) continue;
-    if (!isNight(r.TurnoLargo)) continue;
-
-    // quién trabajó realmente la noche
-    const worker = (r.Sustituto && String(r.Sustituto).trim()) ? r.Sustituto : r.Empleado;
-    const key = `${worker}|${r.Fecha}|${r.Hotel}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    nightlyCounter.set(worker, (nightlyCounter.get(worker)||0) + 1);
+  // inicializar selects una vez
+  if (!selHotel.dataset.ready){
+    for(const h of allHoteles(rows)){ const opt=document.createElement('option'); opt.value=opt.textContent=h; selHotel.appendChild(opt); }
+    selHotel.dataset.ready = '1';
   }
-  // pintar resumen
-  const summaryDiv = document.getElementById('summary');
-  const summaryGrid = document.getElementById('summaryGrid');
-  const title = document.getElementById('summaryTitle');
-  const mm = monthStart.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
-  title.textContent = `Recuento mensual de noches — ${mm}` + (hotel? ` — ${hotel}`:'');
+  const hotel = selHotel.value || selHotel.options[0]?.value || '';
+  selHotel.value = hotel;
 
-  if (nightlyCounter.size){
-    summaryDiv.hidden = false;
-    const rowsArr = [...nightlyCounter.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'es'));
-    summaryGrid.innerHTML = rowsArr.map(([name,n])=>`
-      <div class="name">${name}</div><div class="n">${n}</div>
-    `).join('');
-  } else {
-    summaryDiv.hidden = false;
-    summaryGrid.innerHTML = `<div class="name" style="grid-column:1/-1;color:#667085">Sin noches en este mes con los filtros actuales.</div>`;
-  }
+  // semanas del hotel
+  selSemana.innerHTML='';
+  for(const s of allSemanas(rows, hotel)){ const opt=document.createElement('option'); opt.value=opt.textContent=s; selSemana.appendChild(opt); }
+  const semana = selSemana.value || selSemana.options[0]?.value || '';
+  selSemana.value = semana;
 
-  // Agrupar: hotel -> SemanaKey -> empleado -> fecha (para la tabla)
-  const byHotel = {};
-  for(const r of data){
-    (byHotel[r.Hotel] ??= {});
-    (byHotel[r.Hotel][r.SemanaKey] ??= {});
-    (byHotel[r.Hotel][r.SemanaKey][r.Empleado] ??= {});
-    byHotel[r.Hotel][r.SemanaKey][r.Empleado][r.Fecha] = r;
-  }
+  // Filas visibles (mantener ORDEN ORIGINAL tal como vienen del Excel)
+  const vis = rows.filter(r=>normalize(r.hotel)===normalize(hotel) && String(r.semana)===String(semana));
 
-  const hotelKeys = Object.keys(byHotel).sort();
-  let html = '';
+  // Meta
+  meta.textContent = `${vis.length} empleados / 7 días`;
 
-  for(const h of hotelKeys){
-    html += `<div class="hotel-block"><div class="hotel-title">${h}</div>`;
-    const weeks = Object.keys(byHotel[h]).sort();           // orden por lunes (YYYY-MM-DD)
+  // Índice de sustituciones
+  const idx = idxSustituciones();
+  const base = semanaBaseToDate(semana);
 
-    for(const wk of weeks){
-      const mon = new Date(wk + "T00:00:00");
-      const weekDays = [...Array(7)].map((_,i)=> ymdLocal(addDaysLocal(mon,i)));
-      const head = weekDays.map(d=>{
-        const label = new Date(d+"T00:00:00").toLocaleDateString('es-ES',{weekday:'long'});
-        const ddmm  = new Date(d+"T00:00:00").toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'});
-        return `<th>${label[0].toUpperCase()+label.slice(1)}<br><span class="small">${ddmm}</span></th>`;
-      }).join('');
+  // Pintar tabla
+  tb.innerHTML='';
+  for(const r of vis){
+    const tr=document.createElement('tr');
+    const tdN=document.createElement('td'); tdN.innerHTML = `<strong>${r.empleado||''}</strong>`; tr.appendChild(tdN);
+    for (let i=0;i<7;i++){
+      const v = r.turnos[i] ?? '';
+      const td=document.createElement('td');
+      const cls = 'pill ' + clasePill(v);
 
-      const emps = Object.keys(byHotel[h][wk]).sort((a,b)=> a.localeCompare(b,'es'));
-      const body = emps.map(emp=>{
-        const tds = weekDays.map(d=>{
-          const r = byHotel[h][wk][emp][d];
-          if(!r) return `<td><span class="chip d">—</span></td>`;
-          const c = (txt)=>{
-            const s=(txt||'').toLowerCase();
-            if (s.startsWith('m')) return 'm';
-            if (s.startsWith('t')) return 't';
-            if (s.startsWith('n')) return 'n';
-            if (s.includes('vaca')||s.includes('perm')||s.includes('baja')||s.includes('ausen')||s.includes('fest')||s.includes('lib')) return 'v';
-            if (s.startsWith('d')) return 'd';
-            return '';
-          };
-          const swap = (r.Icono||'').includes('🔄') ? `<span class="swap">🔄</span>` : '';
-          const note = r.Sustituto ? `<span class="note">Sustituto: ${r.Sustituto}</span>` :
-                       r.SustitucionPor ? `<span class="note">Sustituye a ${r.SustitucionPor}</span>` : '';
-          return `<td><span class="chip ${c(r.TurnoLargo)}">${r.TurnoLargo}</span>${swap}${note}</td>`;
-        }).join('');
-        return `<tr class="row"><td class="emp"><span class="dot"></span><strong>${emp}</strong></td>${tds}</tr>`;
-      }).join('');
-
-      const [d1,d2] = labelRangeFromWeekKey(wk);
-      html += `
-        <div class="week-card">
-          <div class="week-head">
-            <div class="range">Semana ${wk} — ${d1} a ${d2}</div>
-            <div class="small">${emps.length} empleados / 7 días</div>
-          </div>
-          <table class="grid">
-            <thead><tr><th class="emp">Empleado</th>${head}</tr></thead>
-            <tbody>${body}</tbody>
-          </table>
-        </div>`;
+      // calcular fecha del día i y buscar sustituciones
+      let cell = '';
+      if (base){
+        const d = new Date(base); d.setDate(d.getDate()+i);
+        const key = `${String(hotel).toLowerCase()}|${formatISO(d)}|${String(r.empleado||'').toLowerCase()}`;
+        const susts = idx.get(key) || [];
+        const hayCambio = susts.some(x => normalize(x.tipoInter).includes('cambio') || normalize(x.motivo).includes('cambio'));
+        const label = v ? titleCase(String(v)) : '';
+        cell = `<span class="${cls}">${label}${hayCambio ? ' <span class="icon">🔄</span>' : ''}</span>`;
+      } else {
+        const label = v ? titleCase(String(v)) : '';
+        cell = `<span class="${cls}">${label}</span>`;
+      }
+      td.innerHTML = cell;
+      tr.appendChild(td);
     }
-    html += `</div>`;
+    tb.appendChild(tr);
   }
 
-  root.innerHTML = html || `<div class="week-card">No hay resultados con los filtros aplicados.</div>`;
+  renderResumenNoches(vis);
 }
 
-// Eventos filtros
-document.getElementById('q').addEventListener('input', render);
+function contarNochesPorEmpleado(rowsSemana) {
+  const map = new Map(); // mantiene orden de inserción
+  for (const r of rowsSemana) {
+    const noches = (r.turnos || []).reduce((acc, v) => {
+      const t = normalize(v);
+      return acc + (t === 'noche' ? 1 : 0);
+    }, 0);
+    map.set(r.empleado, (map.get(r.empleado) || 0) + noches);
+  }
+  return map;
+}
+
+function renderResumenNoches(rowsSemana) {
+  const cont = document.getElementById('resumen-noches');
+  if (!cont) return;
+  const nochesMap = contarNochesPorEmpleado(rowsSemana);
+  const ya = new Set(); const items = [];
+  let total = 0;
+  for (const r of rowsSemana) {
+    if (ya.has(r.empleado)) continue;
+    ya.add(r.empleado);
+    const n = nochesMap.get(r.empleado) || 0;
+    total += n;
+    items.push(`<li><strong>${r.empleado||''}</strong>: ${n}</li>`);
+  }
+  cont.innerHTML = `
+    <div class="box">
+      <h3>Resumen de noches <span class="tag">Total: ${total}</span></h3>
+      <ul class="grid">
+        ${items.join('')}
+      </ul>
+    </div>
+  `;
+}
+
+// Eventos
 document.getElementById('selHotel').addEventListener('change', render);
-fromInput.addEventListener('change', render);
-toInput.addEventListener('change', render);
-document.getElementById('btnClean').addEventListener('click', ()=>{
-  document.getElementById('q').value='';
-  document.getElementById('selHotel').value='';
-  const today = new Date();
-  fromInput.value = ymdLocal(today);
-  toInput.value   = ymdLocal(addDaysLocal(today,30));
-  render();
-});
+document.getElementById('selSemana').addEventListener('change', render);
 
 // Primer render
-render();
-</script>
+window.addEventListener('DOMContentLoaded', () => { setTimeout(render, 0); });
+<script src="plantilla_adapter_semana.js"></script>
 </body>
+
 </html>
