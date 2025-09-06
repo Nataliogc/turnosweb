@@ -1,83 +1,34 @@
 @echo off
-setlocal enabledelayedexpansion
+chcp 65001 >nul
+setlocal
 cd /d "%~dp0"
 
-rem ===== Consola/entorno =====
-chcp 65001 >nul
-set PYTHONIOENCODING=utf-8
-set LOG=log_run.txt
+if not exist logs mkdir logs
 
-rem Fecha/hora para commit
-for /f "tokens=1-3 delims=/- " %%a in ("%date%") do set FECHA=%%c-%%b-%%a
-for /f "tokens=1-2 delims=:.," %%a in ("%time%") do set HORA=%%a-%%b
-set NOW=%FECHA%_%HORA%
-
-echo === %DATE% %TIME% Inicio ===> "%LOG%"
-
-rem ===== [1/6] Exportar CSV desde Excel =====
-echo [1/6] Exportando turnos...
-py ".\exportar_turnos_desde_excel.py" >> "%LOG%" 2>&1
-if errorlevel 1 (
-  echo ERROR: exportar_turnos_desde_excel.py fallo. Revisa "%LOG%".
-  exit /b 1
+echo [1/2] Extrayendo datos desde Excel a CSV...
+python -u "1_ExtraerDatosExcel.py" > "logs\1_exportacion.log" 2>&1
+type "logs\1_exportacion.log"
+if %errorlevel% neq 0 (
+    echo [ERROR] Fallo al extraer desde Excel. Revisa logs\1_exportacion.log
+    pause
+    exit /b 1
 )
 
-rem ===== [2/6] Generar index desde plantilla (compatibilidad / fallback) =====
-echo [2/6] Generando index.html (plantilla)...
-py ".\generar_index_CLEAN.py" >> "%LOG%" 2>&1
-
-rem ===== [3/6] Generar live (UI completa) =====
-echo [3/6] Generando live.html (UI completa)...
-py ".\generar_live.py" >> "%LOG%" 2>&1
-if errorlevel 1 (
-  echo ERROR: generar_live.py fallo. Revisa "%LOG%".
-  exit /b 1
+echo.
+echo [2/2] Generando cuadrante completo y embebiendo en HTML...
+python -u "2_GenerarCuadranteHTML.py" > "logs\2_generacion_html.log" 2>&1
+type "logs\2_generacion_html.log"
+if %errorlevel% neq 0 (
+    echo [ERROR] Fallo al generar el HTML. Revisa logs\2_generacion_html.log
+    pause
+    exit /b 1
 )
 
-rem ===== [4/6] Igualar formato bonito a index =====
-echo [4/6] Copiando live.html -> index.html...
-copy /y ".\live.html" ".\index.html" >nul
+echo.
+echo Abriendo resultado en index.html...
+start "" "%~dp0index.html"
 
-rem ===== [5/6] Publicar (opcional) tareas previas, si existe publicar.ps1 =====
-if exist ".\publicar.ps1" (
-  echo [5/6] Ejecutando publicar.ps1...
-  powershell -ExecutionPolicy Bypass -File ".\publicar.ps1" >> "%LOG%" 2>&1
-)
-
-rem ===== [6/6] Limpieza =====
-echo [6/6] Limpiando...
-if not exist "_old" mkdir "_old" >nul 2>&1
-
-for %%F in (
-  "generar_index.py"
-  "generar_index_NEW.py"
-  "generar_index_NEW.bak"
-  "run_turnos.ps1"
-  "0todo_en_un_click.ps1"
-  "1actualizar.bat"
-  "2generar_turnos CSV.py"
-  "make.bat"
-  "turnos_final_backup.html"
-  "sustituciones_diagnostico.csv"
-  "data_dump.json"
-  "sanear_unicode.ps1"
-) do (
-  if exist "%%~F" move /y "%%~F" "_old\" >nul
-)
-
-for %%F in ("turnos_mes_*.csv") do if exist "%%~F" move /y "%%~F" "_old\" >nul
-
-rem logs antiguos / cache
-del /q /f exportar_turnos.log 2>nul
-if exist "__pycache__" rmdir /s /q "__pycache__" 2>nul
-
-rem ===== Git: add/commit/push =====
-echo Subiendo a GitHub...
-git add -A
-git commit -m "Auto: actualizacion turnos %NOW%" 1>nul 2>&1
-git push 1>nul 2>&1
-
-echo === %DATE% %TIME% Fin ===>> "%LOG%"
-echo Listo. Abriendo index.html...
-start "" ".\index.html"
-exit /b 0
+echo ---------------------------------------------
+echo Proceso completado AUTOMATICAMENTE.
+echo ---------------------------------------------
+pause

@@ -1,17 +1,9 @@
-# Python
+﻿.tmp.driveupload/
+turnosweb/
 __pycache__/
 *.pyc
-*.pyo
-
-# Logs
-log_run.txt
-exportar_turnos.log
-
-# Backups/artefactos
-*backup*.html
-turnos_mes_*.csv
-
-# (Permitimos versionar los generados)
-# index.html
-# live.html
-# turnos_mes.csv
+.venv/
+venv/
+logs/
+Thumbs.db
+.DS_Store

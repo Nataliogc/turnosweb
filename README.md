@@ -1,31 +1,19 @@
-# Turnos Web (última versión)
+# Turnos Web – Front (estático)
 
-Este paquete deja **tu visualización intacta** y solo reescribe `sustituciones_diagnostico.csv`
-desde el Excel maestro en OneDrive:
+Este paquete contiene una capa *front-end* para visualizar cuadrantes semanales.
 
-```
-C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx
-```
+## Archivos
 
-## Requisitos
-- Python 3.10+
-- `pip install -r requirements.txt`
+- `index.html`: página principal. Si tu generador inyecta `window.DATA = { rows:[...] }` dentro del propio HTML, se utiliza directamente. Si no existe, intentará cargar `DATA_preview.json` únicamente a efectos de prueba.
+- `plantilla_adapter_semana.js`: lógica de pintado semanal (lunes→domingo), etiquetas de ausencia, mapeo de turnos a **Mañana/Tarde/Noche/Descanso**, empleados ausentes toda la semana al final, filtros y rango *Desde/Hasta*.
+- `styles.css`: estilos.
+- `run_front.bat`: servidor local en `http://localhost:8000` (evita el problema de *Cargando…* por `file:///`).
+- `DATA_preview.json`: ejemplo vacío para que abra sin datos.
 
-## Uso
-1. Ejecuta el generador (desde la carpeta del repo):
-   ```powershell
-   py -u .\generar_turnos.py
-   ```
-2. Publica en GitHub (incluye CSV/HTML si cambiaron):
-   ```powershell
-   .\actualizar.ps1
-   ```
+## Uso rápido
 
-## GitHub Pages
-- Settings → Pages → “Deploy from a branch” → `main` → root (`/`).
-- `.nojekyll` fuerza contenido estático sin procesado Jekyll.
+1. Copia estos archivos en el mismo directorio donde generas `index.html` con tus datos (o usa este `index.html` si lo prefieres).
+2. Ejecuta `run_front.bat` para abrir `http://localhost:8000/index.html`.
+3. Si `window.DATA` existe en el `index.html` con tus filas, se pintará automáticamente. Si no, modifica `DATA_preview.json` con tu esquema `{"rows":[...]}` para probar.
 
----
-**Notas**
-- El script tolera el bloqueo de OneDrive/Excel copiando a temporal.
-- Fechas en español (ej. `lu 09/jun 25`). Lee **hasta la última fila** de la hoja.
+> Nota: el front espera al menos los campos `Hotel`, `Persona` y `Fecha` (YYYY-MM-DD, YYYY-MM-DD HH:MM:SS o DD/MM/YYYY). Para el turno usa `Turno` (M/T/N/D) o `TurnoLargo`. Para ausencias acepta `TipoAusencia | Causa | Ausencia | Motivo | Tipo` y `Etiquetas`.
