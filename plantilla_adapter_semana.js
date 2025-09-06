@@ -1,14 +1,24 @@
 /**
- * plantilla_adapter_semana.js — v37.2
- * - Rutas de logos corregidas (file:///C:/... con %20 en espacios)
+ * plantilla_adapter_semana.js — v37.4
+ * - Logos: en local usa file:///C:/...; en web (http/https) usa ./img/...
  * - Si un logo falla en carga, se oculta (no rompe el render)
  * - Mantiene el punto clave final y el orden correcto de empleados
  */
 (function () {
   // ---------- Config de logos ----------
-  const HOTEL_LOGOS = {
+  // Local (abrir index.html con file://)
+  const LOCAL_LOGOS = {
     "Sercotel Guadiana": "file:///C:/Users/comun/Documents/Turnos%20web/guadiana%20logo.jpg",
     "Cumbria Spa&Hotel": "file:///C:/Users/comun/Documents/Turnos%20web/cumbria%20logo.jpg",
+  };
+  // Web (GitHub Pages)
+  const WEB_LOGOS = {
+    "Sercotel Guadiana": "./img/guadiana.jpg",
+    "Cumbria Spa&Hotel": "./img/cumbria.jpg",
+  };
+  const getLogo = (hotel) => {
+    const isWeb = /^https?:/i.test(location.protocol);
+    return (isWeb ? WEB_LOGOS[hotel] : LOCAL_LOGOS[hotel]) || "";
   };
 
   // ---------- Utilidades de fecha ----------
@@ -161,7 +171,7 @@
       return `<tr><td>${emp}</td>${tds}</tr>`;
     }).join("");
 
-    const logo = HOTEL_LOGOS[hotelGroup.hotel] || "";
+    const logo = getLogo(hotelGroup.hotel);
     // Si el logo no se puede cargar, lo quitamos (no rompe el render).
     const logoHtml = logo ? `<img class="hotel-logo" src="${logo}" alt="${hotelGroup.hotel}" onerror="this.remove()">` : "";
 
