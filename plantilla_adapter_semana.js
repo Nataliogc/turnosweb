@@ -1,15 +1,24 @@
 /**
- * plantilla_adapter_semana.js — LTS 6.5
- * - Logos por ruta relativa (img/)
- * - Calendario es-ES con Flatpickr
- * - Botón "↻ Actualizar"
- * - Listeners protegidos (no errores si falta un nodo)
+ * plantilla_adapter_semana.js — v37.4
+ * - Logos: en local usa file:///C:/...; en web (http/https) usa ./img/...
+ * - Si un logo falla en carga, se oculta (no rompe el render)
+ * - Mantiene el punto clave final y el orden correcto de empleados
  */
 (function () {
-  // ---------- Config de logos (rutas relativas) ----------
-  const HOTEL_LOGOS = {
-    "Sercotel Guadiana": "img/guadiana.jpg",
-    "Cumbria Spa&Hotel": "img/cumbria.jpg",
+  // ---------- Config de logos ----------
+  // Local (abrir index.html con file://)
+  const LOCAL_LOGOS = {
+    "Sercotel Guadiana": "file:///C:/Users/comun/Documents/Turnos%20web/guadiana%20logo.jpg",
+    "Cumbria Spa&Hotel": "file:///C:/Users/comun/Documents/Turnos%20web/cumbria%20logo.jpg",
+  };
+  // Web (GitHub Pages)
+  const WEB_LOGOS = {
+    "Sercotel Guadiana": "./img/guadiana.jpg",
+    "Cumbria Spa&Hotel": "./img/cumbria.jpg",
+  };
+  const getLogo = (hotel) => {
+    const isWeb = /^https?:/i.test(location.protocol);
+    return (isWeb ? WEB_LOGOS[hotel] : LOCAL_LOGOS[hotel]) || "";
   };
 
   // ---------- Utilidades de fecha ----------
@@ -56,14 +65,12 @@
 
   // ---------- Render principal ----------
   function renderContent(data, filters) {
-    const app = document.getElementById("app"); if (!app) return;
-    app.innerHTML = "";
+    const app = document.getElementById("app"); app.innerHTML = "";
     updateHeaderSubtitle(filters.hotel);
 
     if (!data || !Array.isArray(data.schedule) || data.schedule.length === 0) {
       app.innerHTML = "<p style='padding:1rem;color:#6c757d'>No hay datos para mostrar.</p>";
-      const box = document.getElementById("monthly-summary-container");
-      if (box) box.innerHTML = "";
+      document.getElementById("monthly-summary-container").innerHTML = "";
       return;
     }
 
@@ -100,7 +107,7 @@
     // Carga base
     hotelGroup.turnos.forEach(t => { if (grid[t.empleado]) grid[t.empleado][t.fecha] = t.turno; });
 
-    // Ausencias + sustituciones
+    // Procesar ausencias + sustituciones
     for (const emp of hotelGroup.orden_empleados) {
       for (const day of weekDays) {
         const raw = grid[emp]?.[day];
@@ -131,9 +138,11 @@
 
   function renderHotelWeek(container, hotelGroup, weekDays, filters) {
     const {grid, meta, absenceCount, subCandidate} = buildWeekGrid(hotelGroup, weekDays);
+
+    // Empleados ausentes TODA la semana
     const weekAbsent = new Set(Object.keys(absenceCount).filter(emp => absenceCount[emp] === weekDays.length));
 
-    // Orden visual estable
+    // Orden visual
     let display = hotelGroup.orden_empleados.map(e => weekAbsent.has(e) ? (subCandidate[e] || e) : e).filter(Boolean);
     display = [...new Set(display)];
     display = display.filter(e => !weekAbsent.has(e));
@@ -147,7 +156,7 @@
     const headers = weekDays.map(d => {
       const date = fromISO(d);
       const weekday = date.toLocaleDateString("es-ES",{weekday:"long"});
-      return `<th><span class="day-name">${weekday.toUpperCase()}</span><br/><span class="day-number">${fmtDayLabelLower(d)}</span></th>`;
+      return `<th><span class="day-name">${weekday}</span><span class="day-number">${fmtDayLabelLower(d)}</span></th>`;
     }).join("");
 
     const body = display.map(emp => {
@@ -159,10 +168,11 @@
         const mark = m && m.isSub ? ` <small title="Sustituto de ${m.for}">↔︎</small>` : "";
         return `<td><span class="turno-pill ${cls}">${label}${mark}</span></td>`;
       }).join("");
-      return `<tr><td><strong>${emp}</strong></td>${tds}</tr>`;
+      return `<tr><td>${emp}</td>${tds}</tr>`;
     }).join("");
 
-    const logo = HOTEL_LOGOS[hotelGroup.hotel] || "";
+    const logo = getLogo(hotelGroup.hotel);
+    // Si el logo no se puede cargar, lo quitamos (no rompe el render).
     const logoHtml = logo ? `<img class="hotel-logo" src="${logo}" alt="${hotelGroup.hotel}" onerror="this.remove()">` : "";
 
     const wnum = weekNumberISO(weekDays[0]);
@@ -185,10 +195,9 @@
     container.insertAdjacentHTML("beforeend", weekHTML);
   }
 
-  // ---------- Resumen mensual ----------
+  // ---------- Resumen mensual (rango visible) ----------
   function renderMonthlySummary(data, filters) {
     const box = document.getElementById("monthly-summary-container");
-    if (!box) return;
     box.innerHTML = "";
     const rows = data.schedule || [];
     if (!rows.length) return;
@@ -242,13 +251,11 @@
     el.textContent = hotel ? hotel : "Sercotel Guadiana / Cumbria Spa&Hotel";
   }
 
-  // ---------- Filtros y calendario ----------
+  // ---------- Filtros y Flatpickr ----------
   function populateFilters(data) {
     const hotelSelect = document.getElementById("hotelSelect");
     const dateFrom = document.getElementById("dateFrom");
     const dateTo = document.getElementById("dateTo");
-
-    if (!hotelSelect || !dateFrom || !dateTo) return;
 
     const hotels = [...new Set((data.schedule || []).map(g => g.hotel))].sort();
     hotelSelect.innerHTML = `<option value="">— Hotel —</option>` + hotels.map(h => `<option value="${h}">${h}</option>`).join("");
@@ -256,14 +263,17 @@
     const today = toISO(new Date());
     const plus30 = toISO(new Date(fromISO(today).getTime() + 30*24*3600*1000));
 
+    const isWide = window.matchMedia("(min-width: 992px)").matches;
+    const localeEs = window.flatpickr ? Object.assign({}, flatpickr.l10ns.es, { firstDayOfWeek: 1 }) : null;
+    const handle = () => { const f = currentFilters(); refreshEmployeeOptions(data, f); renderContent(data, f); };
+
     if (window.flatpickr) {
       flatpickr.localize(flatpickr.l10ns.es);
-      const isWide = window.matchMedia("(min-width: 992px)").matches;
       let dateToFp;
       flatpickr(dateFrom, {
         defaultDate: today, dateFormat: "Y-m-d",
         altInput: true, altFormat: "d/M/Y",
-        weekNumbers: true, disableMobile: true, showMonths: isWide ? 2 : 1,
+        locale: localeEs, weekNumbers: true, disableMobile: true, showMonths: isWide ? 2 : 1,
         onChange: (sel) => {
           if (sel && sel[0]) {
             const min = isoLocal(sel[0]);
@@ -277,8 +287,8 @@
       dateToFp = flatpickr(dateTo, {
         defaultDate: plus30, dateFormat: "Y-m-d",
         altInput: true, altFormat: "d/M/Y",
-        weekNumbers: true, disableMobile: true, showMonths: isWide ? 2 : 1,
-        minDate: today, onChange: () => handle()
+        locale: localeEs, weekNumbers: true, disableMobile: true, showMonths: isWide ? 2 : 1,
+        minDate: today, onChange: handle
       });
     } else {
       dateFrom.value = today; dateTo.value = plus30;
@@ -286,17 +296,14 @@
 
     updateHeaderSubtitle("");
     refreshEmployeeOptions(data, currentFilters());
-
-    function handle(){ const f = currentFilters(); refreshEmployeeOptions(data, f); renderContent(data, f); }
   }
 
   function refreshEmployeeOptions(data, filters) {
     const list = getVisibleEmployees(data, filters);
     const empFilter = document.getElementById("employeeFilter");
     const empIcs = document.getElementById("employeeSelectIcs");
-    if (!empFilter || !empIcs) return;
-
     const prev1 = empFilter.value, prev2 = empIcs.value;
+
     const opts1 = `<option value="">— Empleado —</option>` + list.map(e => `<option value="${e}">${e}</option>`).join("");
     const opts2 = `<option value="">— Exportar Horario de... —</option>` + list.map(e => `<option value="${e}">${e}</option>`).join("");
 
@@ -306,10 +313,10 @@
   }
 
   function currentFilters() {
-    const hotel = (document.getElementById("hotelSelect")?.value || "");
-    const employee = (document.getElementById("employeeFilter")?.value || "");
-    const dateFrom = toISO(document.getElementById("dateFrom")?.value) || toISO(new Date());
-    const dateTo = toISO(document.getElementById("dateTo")?.value) || toISO(new Date(fromISO(dateFrom).getTime()+30*24*3600*1000));
+    const hotel = document.getElementById("hotelSelect").value || "";
+    const employee = document.getElementById("employeeFilter").value || "";
+    const dateFrom = toISO(document.getElementById("dateFrom").value) || toISO(new Date());
+    const dateTo = toISO(document.getElementById("dateTo").value) || toISO(new Date(fromISO(dateFrom).getTime()+30*24*3600*1000));
     return { hotel, employee, dateFrom, dateTo };
   }
 
@@ -321,22 +328,15 @@
 
     ["hotelSelect","dateFrom","dateTo"].forEach(id => {
       const el = document.getElementById(id);
-      if (!el) return;
       el.addEventListener("change", () => { const f=currentFilters(); refreshEmployeeOptions(data,f); renderContent(data,f); });
       el.addEventListener("input",  () => { const f=currentFilters(); refreshEmployeeOptions(data,f); renderContent(data,f); });
     });
 
-    const emp = document.getElementById("employeeFilter");
-    if (emp) emp.addEventListener("change", () => renderContent(data, currentFilters()));
+    document.getElementById("employeeFilter").addEventListener("change", () => renderContent(data, currentFilters()));
 
-    // Botón REFRESH
-    const btnRefresh = document.getElementById("btnRefresh");
-    if (btnRefresh) btnRefresh.addEventListener("click", () => window.location.reload());
-
-    // Export ICS
-    const btnICS = document.getElementById("btnICS");
-    if (btnICS) btnICS.addEventListener("click", () => {
-      const who = document.getElementById("employeeSelectIcs")?.value;
+    // Export ICS: turno tal cual se ve, sin hotel
+    document.getElementById("btnICS").addEventListener("click", () => {
+      const who = document.getElementById("employeeSelectIcs").value;
       if (!who) return alert("Elige un empleado para exportar.");
       const filters = currentFilters();
 
