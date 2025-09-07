@@ -7,7 +7,7 @@ from pathlib import Path
 # --- CONFIGURACIÓN ---
 # ¡IMPORTANTE! Esta es la ruta completa a tu archivo Excel maestro.
 # Si lo mueves de sitio, solo tendrás que cambiar esta línea.
-EXCEL_FILE_PATH = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
+EXCEL_FILE_PATH = r"C:\Users\comun\OneDrive\02. Comp. Min Recepción\3. Turnos Web\Plantilla Cuadrante con Sustituciones v.6.0.xlsx"
 
 # Define las hojas que queremos exportar y cómo se llamarán los archivos CSV de salida.
 SHEETS_TO_EXPORT = {
