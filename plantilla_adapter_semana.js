@@ -1,24 +1,15 @@
 /**
- * plantilla_adapter_semana.js — v37.4
- * - Logos: en local usa file:///C:/...; en web (http/https) usa ./img/...
- * - Si un logo falla en carga, se oculta (no rompe el render)
+ * plantilla_adapter_semana.js — v37.3
+ * - Botón "↻ Refrescar" que recarga con cache-busting (?_r=timestamp)
+ * - Inyección de estilos del botón (sin tocar styles.css)
  * - Mantiene el punto clave final y el orden correcto de empleados
+ * - Rutas de logos locales con %20 en espacios
  */
 (function () {
   // ---------- Config de logos ----------
-  // Local (abrir index.html con file://)
-  const LOCAL_LOGOS = {
+  const HOTEL_LOGOS = {
     "Sercotel Guadiana": "file:///C:/Users/comun/Documents/Turnos%20web/guadiana%20logo.jpg",
     "Cumbria Spa&Hotel": "file:///C:/Users/comun/Documents/Turnos%20web/cumbria%20logo.jpg",
-  };
-  // Web (GitHub Pages)
-  const WEB_LOGOS = {
-    "Sercotel Guadiana": "./img/guadiana.jpg",
-    "Cumbria Spa&Hotel": "./img/cumbria.jpg",
-  };
-  const getLogo = (hotel) => {
-    const isWeb = /^https?:/i.test(location.protocol);
-    return (isWeb ? WEB_LOGOS[hotel] : LOCAL_LOGOS[hotel]) || "";
   };
 
   // ---------- Utilidades de fecha ----------
@@ -171,8 +162,7 @@
       return `<tr><td>${emp}</td>${tds}</tr>`;
     }).join("");
 
-    const logo = getLogo(hotelGroup.hotel);
-    // Si el logo no se puede cargar, lo quitamos (no rompe el render).
+    const logo = HOTEL_LOGOS[hotelGroup.hotel] || "";
     const logoHtml = logo ? `<img class="hotel-logo" src="${logo}" alt="${hotelGroup.hotel}" onerror="this.remove()">` : "";
 
     const wnum = weekNumberISO(weekDays[0]);
@@ -320,6 +310,69 @@
     return { hotel, employee, dateFrom, dateTo };
   }
 
+  // ---------- Botón de refresco ----------
+  function injectRefreshStyles() {
+    const css = `
+      .refresh-btn{
+        display:inline-flex; align-items:center; gap:.5rem;
+        border:1px solid rgba(0,0,0,.1); border-radius:999px; padding:.45rem .9rem;
+        background:#f8f9fa; font-weight:600; cursor:pointer; line-height:1;
+        box-shadow:0 1px 2px rgba(0,0,0,.06); transition:transform .06s ease, background .2s ease;
+      }
+      .refresh-btn:hover{ background:#eef1f4; }
+      .refresh-btn:active{ transform:scale(.98); }
+      .refresh-fab{
+        position:fixed; right:14px; bottom:14px; z-index:9999;
+      }
+      .refresh-btn .spin{ display:inline-block; }
+      .refresh-btn.loading .spin{ animation:spin 0.9s linear infinite; }
+      @keyframes spin{ from{ transform:rotate(0);} to{ transform:rotate(360deg);} }
+    `;
+    const tag = document.createElement("style");
+    tag.textContent = css;
+    document.head.appendChild(tag);
+  }
+
+  function forceRefresh() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("_r", Date.now().toString());
+      window.location.href = url.toString();
+    } catch (e) {
+      window.location.reload();
+    }
+  }
+
+  function createRefreshButton() {
+    injectRefreshStyles();
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btnRefresh";
+    btn.className = "refresh-btn";
+    btn.title = "Refrescar (forzar recarga sin caché)";
+    btn.innerHTML = `<span class="spin">↻</span> <span>Refrescar</span>`;
+    btn.addEventListener("click", () => {
+      btn.classList.add("loading");
+      forceRefresh();
+    });
+
+    // Intentar ubicarlo junto al botón ICS
+    const icsBtn = document.getElementById("btnICS");
+    if (icsBtn && icsBtn.parentElement) {
+      icsBtn.parentElement.appendChild(btn);
+      return;
+    }
+    // Intentar dentro del bloque de título/acciones
+    const titleBlock = document.querySelector(".title-block") || document.querySelector(".controls") || document.body;
+    // Si no hay contenedor claro, lo ponemos flotante
+    if (titleBlock === document.body) {
+      btn.classList.add("refresh-fab");
+      document.body.appendChild(btn);
+    } else {
+      titleBlock.appendChild(btn);
+    }
+  }
+
   // ---------- Ready ----------
   document.addEventListener("DOMContentLoaded", () => {
     const data = window.FULL_DATA || window.DATA || {};
@@ -375,5 +428,8 @@
       const blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `turnos_${who}.ics`; a.click(); URL.revokeObjectURL(a.href);
     });
+
+    // Botón de refresco (UI)
+    createRefreshButton();
   });
 })();
