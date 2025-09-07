@@ -1,90 +1,332 @@
-/* styles.css - v6.5 */
+/* =========================================================
+   styles.css — CG Turnos (pack v6.6)
+   - Mantiene el “punto clave final”
+   - Píldoras ovaladas (descanso rojo, noche gris + 🌙, etc.)
+   - Logos por hotel
+   - Cabecera/controles
+   - Resumen mensual
+   - Flatpickr (calendario) con aspecto como la captura
+   ========================================================= */
+
+/* -------------------- Variables -------------------- */
 :root{
-  --bg:#f8f9fa; --ink:#212529; --muted:#6c757d; --accent:#0d6efd; --br:#dee2e6;
-  --header-bg:#212529; --header-ink:#f8f9fa; --shadow:0 4px 6px -1px rgba(0,0,0,.1);
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --muted: #6c757d;
+  --text: #2b2f33;
+
+  --brand: #0d6efd;
+  --brand-600:#0b5ed7;
+
+  --pill-radius: 999px;
+
+  --manana-bg: #d6f5df;
+  --manana-tx: #276145;
+
+  --tarde-bg: #fff0c2;
+  --tarde-tx: #7f5f00;
+
+  --noche-bg: #e9ecef;
+  --noche-tx: #364049;
+
+  --descanso-bg: #f7c7ce;
+  --descanso-tx: #8a2332;
+
+  --vacaciones-bg:#d9f0ff;
+  --vacaciones-tx:#0a4a76;
+
+  --ausencia-bg:#ececec;
+  --ausencia-tx:#555;
+
+  --table-border:#e9ecef;
+  --row-alt:#fcfcfd;
+
+  --chip-bg:#eef1f6;
+  --chip-tx:#3e4a57;
 }
-*{box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
-body{margin:0; background:var(--bg); color:var(--ink); font-size:14px}
 
-/* Header de app */
-header{background:var(--header-bg); color:var(--header-ink); padding:1rem 1.5rem;
-  display:flex; flex-wrap:wrap; align-items:center; gap:1rem; box-shadow:var(--shadow); position:sticky; top:0; z-index:10}
-.header-brand{display:flex; align-items:center; gap:1rem; margin-right:auto}
-header img{width:48px; height:48px; border-radius:8px}
-.title-block .title{font-size:1.25rem; font-weight:600}
-.title-block .subtitle{font-size:.8rem; opacity:.7}
-.controls-container{display:flex; flex-wrap:wrap; gap:.75rem}
-.field{display:flex; align-items:center; gap:.5rem; background:#343a40; border:1px solid #495057; border-radius:.375rem; padding:.5rem .75rem}
-header input,header select,.btn{border:none; outline:none; background:transparent; font-size:.9rem; color:var(--header-ink)}
-header select option{color:#000}
-.btn{background:var(--accent); color:#fff; border-radius:.375rem; padding:.6rem 1rem; font-weight:600; cursor:pointer; transition:background-color .2s}
-.btn:hover{background-color:#0b5ed7}
-
-/* App */
-#app,#monthly-summary-container{padding:1rem 1.5rem}
-.week{background:#fff; border:1px solid var(--br); border-radius:.5rem; margin-bottom:1.5rem; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.week-head{display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; border-bottom:1px solid var(--br)}
-.week-head h3{margin:0; font-size:1rem; font-weight:600}
-
-/* Logos de hotel */
-.hotel-logo{
-  width:56px; height:56px; object-fit:contain;
-  border-radius:.5rem; border:1px solid var(--br); background:#fff;
-  box-shadow:0 1px 2px rgba(0,0,0,.05)
-}
-@media (max-width: 768px){
-  .hotel-logo{ width:42px; height:42px; }
+/* -------------------- Global -------------------- */
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
 }
 
-.table-container{overflow-x:auto}
-table{width:100%; border-collapse:collapse}
-th,td{padding:.75rem; text-align:center; border:1px solid var(--br); white-space:nowrap}
+/* -------------------- Layout -------------------- */
+.container{
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+}
 
-/* ← ANTES: th{text-transform:uppercase} (forzaba MAYÚSCULAS a todo) */
-th{
-  background-color:var(--bg);
-  font-weight:600;
-  font-size:.75rem;
+/* -------------------- Top bar -------------------- */
+.title-block{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:12px;
+}
+.title-block h1{
+  margin:0;
+  font-size:20px;
+  font-weight:700;
+}
+.title-block .subtitle{
   color:var(--muted);
-  text-transform:none;                  /* no transform por defecto */
+  font-size:13px;
 }
 
-th .day-name{
-  display:block; font-size:.9rem;
-  text-transform:uppercase;             /* solo el nombre del día en MAYÚSCULAS */
+/* Filtros / controles */
+.filters{
+  display:grid;
+  grid-template-columns: 180px 220px 220px 240px 160px auto;
+  gap:10px;
+  align-items:center;
+  background:var(--card);
+  border:1px solid var(--table-border);
+  border-radius:12px;
+  padding:10px;
+  margin-bottom:14px;
+}
+.filters .control{
+  display:flex; flex-direction:column; gap:6px;
+}
+.filters label{
+  color:var(--muted); font-size:12px;
+}
+.filters select,
+.filters input[type="text"],
+.filters input[type="date"]{
+  width:100%;
+  border:1px solid #d9dee5;
+  border-radius:10px;
+  padding:8px 10px;
+  background:#fff;
+  color:var(--text);
+}
+.btn{
+  display:inline-flex;
+  align-items:center; justify-content:center;
+  gap:8px;
+  border-radius:10px;
+  border:1px solid transparent;
+  background:var(--brand);
+  color:#fff;
+  padding:8px 12px;
+  cursor:pointer;
+  text-decoration:none;
+}
+.btn:hover{ background:var(--brand-600); }
+.btn-secondary{
+  background:#eef2f8;
+  color:#2a3b52;
+  border-color:#e3e8f1;
+}
+.btn-secondary:hover{ background:#e7ecf6; }
+
+/* -------------------- Week blocks -------------------- */
+.week{
+  background:var(--card);
+  border:1px solid var(--table-border);
+  border-radius:14px;
+  margin-bottom:14px;
+  overflow:hidden;
+  box-shadow: 0 1px 0 rgba(16,24,40,.02);
+}
+.week-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  background:#f9fbfe;
+  border-bottom:1px solid var(--table-border);
+}
+.week-head h3{
+  margin:0;
+  font-size:15px;
+  font-weight:700;
+}
+.hotel-logo{
+  width:32px;
+  height:32px;
+  object-fit:contain;
+  border-radius:6px;
+  border:1px solid #e9edf4;
+  background:#fff;
 }
 
-th .day-number{
-  font-size:.85rem; color:#666; display:block; margin-top:.15rem;
-  text-transform:none;                  /* fecha en minúscula: 01/sep/25 */
-  font-variant-numeric: tabular-nums;
+/* -------------------- Table -------------------- */
+.table-container{ overflow:auto; }
+table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+thead th{
+  position:sticky; top:0; z-index:2;
+  background:#fff;
+  border-bottom:1px solid var(--table-border);
+  padding:12px;
+  text-align:left;
+  font-weight:700;
+  color:#344055;
+  white-space:nowrap;
+}
+tbody td, tbody th{
+  border-bottom:1px solid var(--table-border);
+  padding:10px 12px;
+  vertical-align:middle;
+}
+tbody tr:nth-child(odd){ background:#fff; }
+tbody tr:nth-child(even){ background:var(--row-alt); }
+tbody td:first-child{
+  font-weight:600; color:#39475a; white-space:nowrap;
 }
 
-td:first-child{text-align:left; font-weight:600}
+/* Cabeceras de día: nombre + número en minúsculas 01/sep/25 */
+.day-name{
+  display:block; font-size:12px; color:#5c6a7b; font-weight:700; text-transform:uppercase;
+}
+.day-number{
+  display:block; font-size:12px; color:#7a8797;
+}
 
-/* Pills de turno / ausencias: ovaladas */
+/* -------------------- Turno pill -------------------- */
 .turno-pill{
-  display:inline-block;
-  padding:.42rem 1rem;
-  border-radius:9999px;
-  font-size:.85rem;
-  font-weight:500;
-  min-width:90px;
-  text-align:center;
-  border:1px solid rgba(0,0,0,.05)
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 12px;
+  border-radius: var(--pill-radius);
+  font-weight:600;
+  border:1px solid transparent;
+  white-space:nowrap;
+  min-width: 80px;
+  justify-content:center;
 }
 
-/* Colores */
-.turno-mañana,.turno-manana{background:#d4edda; color:#155724}
-.turno-tarde{background:#fff3cd; color:#856404}
-.turno-noche{background:#e9ecef; color:#212529}   /* gris para noches */
-.turno-descanso{background:#f8d7da; color:#721c24} /* rojo para descanso */
-.turno-vacaciones{background:#d1ecf1; color:#0c5460}
-.turno-baja{background:#f8d7da; color:#721c24}
-.turno-permiso{background:#e2d9f3; color:#3d2b56}
-.turno-formación,.turno-formacion{background:#e7f1ff; color:#234b8a}
+/* Tipos */
+.turno-manana{    background:var(--manana-bg);   color:var(--manana-tx);   border-color:#b8e8c7; }
+.turno-tarde{     background:var(--tarde-bg);    color:var(--tarde-tx);    border-color:#f5dfa0; }
+.turno-noche{     background:var(--noche-bg);    color:var(--noche-tx);    border-color:#d7dbe0; }
+.turno-descanso{  background:var(--descanso-bg); color:var(--descanso-tx); border-color:#f3aeba; }
+.turno-vacaciones{background:var(--vacaciones-bg); color:var(--vacaciones-tx); border-color:#bfe3ff; }
+.turno-ausencia{  background:var(--ausencia-bg); color:var(--ausencia-tx); border-color:#dedede; }
+.turno-default{   background:#f7f8fa; color:#657185; border-color:#e5e8ee; }
 
-.turno-pill small{opacity:.75; margin-left:.35rem; font-weight:700}
+/* Celdas vacías */
+td .turno-pill:empty{
+  display:inline-block; width:110px; height:12px; border-radius:8px;
+  padding:0; background:#f1f3f6; border:1px dashed #e1e5ea; content:"";
+}
 
-/* Resumen mensual */
-#monthly-summary-container table{max-width:640px; margin-bottom:1rem}
+/* Icono de sustitución ↔︎ */
+.turno-pill small{ font-weight:700; color:#778499; }
+
+/* -------------------- Chips / etiquetas ligeras -------------------- */
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--chip-bg); color:var(--chip-tx);
+  border:1px solid #dee3ea; border-radius:999px;
+  padding:6px 10px; font-weight:600;
+}
+
+/* -------------------- Resumen mensual -------------------- */
+#monthly-summary-container{
+  margin-top: 18px;
+}
+#monthly-summary-container h3{
+  margin: 10px 0 8px 2px;
+  font-size: 15px;
+}
+#monthly-summary-container .table-container{
+  border-radius: 12px;
+  border:1px solid var(--table-border);
+  overflow:hidden;
+  background:var(--card);
+}
+
+/* ==================== Flatpickr (Calendario) ==================== */
+/* Cuadro */
+.flatpickr-calendar{
+  border:1px solid #e6ebf3 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 24px rgba(16,24,40,.10) !important;
+}
+
+/* Cabecera: “septiembre de 2025” */
+.flatpickr-months{ background:#fff; border-bottom:1px solid #eef2f7; }
+.flatpickr-months .flatpickr-month{ height:44px; }
+.flatpickr-current-month{
+  padding-top:6px;
+  font-weight:700 !important;
+  text-transform:none !important;   /* minúsculas reales del locale */
+  color:#243041 !important;
+  font-size:14px !important;
+}
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month{
+  padding:10px; color:#5b6a7d !important;
+}
+.flatpickr-monthDropdown-months{
+  text-transform:none !important;
+}
+
+/* Nombres de día: L M X J V S D */
+.flatpickr-weekdays{ background:#fff; }
+span.flatpickr-weekday{
+  font-weight:700; color:#6b7788; font-size:12px; text-transform:none; /* dejamos “L M X…” tal cual */
+}
+
+/* Días */
+.flatpickr-day{
+  border-radius:8px !important;
+  height:34px; line-height:34px;
+}
+.flatpickr-day:hover{
+  background:#eef3ff;
+  border-color:#d8e3ff;
+}
+.flatpickr-day.today{
+  border:1px solid var(--brand) !important;
+  color: var(--brand) !important;
+}
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected:hover{
+  background: var(--brand) !important;
+  color:#fff !important;
+  border:1px solid var(--brand) !important;
+}
+.flatpickr-day.inRange{
+  background:#eff5ff !important;
+  border-color:#dce7ff !important;
+}
+
+/* Footer con “Borrar” y “Hoy” (si se usa .fp-footer desde JS) */
+.fp-footer{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 10px; border-top:1px solid #eef2f7; background:#fff;
+}
+.fp-footer a{
+  text-decoration:none; font-weight:700; font-size:12px;
+}
+.fp-footer .clear{ color:#a33; }
+.fp-footer .today{ color:var(--brand); }
+
+/* Campo alternativo (flatpickr altFormat) */
+.flatpickr-input[readonly]{ background:#fff; cursor:default; }
+
+/* ==================== Utilidades ==================== */
+.text-muted{ color:var(--muted); }
+.hide{ display:none !important; }
+
+/* -------------------- Botón de refrescar (si se usa .btn-refresh) -------------------- */
+.btn-refresh{
+  background:#e9f1ff; color:#0b4fb3; border:1px solid #cfe1ff;
+}
+.btn-refresh:hover{
+  background:#dceaff;
+}

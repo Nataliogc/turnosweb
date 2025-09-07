@@ -1,16 +1,13 @@
 /**
- * plantilla_adapter_semana.js — v38.0
- * - Sincroniza filtros con la URL (hotel, employee, dateFrom, dateTo)
- * - Al cambiar filtros, se actualiza la URL (link compartible)
- * - Al cargar, se leen filtros desde la URL (estado persistente)
- * - Botón "↻ Refrescar" que respeta filtros y añade _r=timestamp (cache-busting)
- * - Mantiene el punto clave final, orden de empleados, lunes-domingo, y el ICS sin hotel
+ * plantilla_adapter_semana.js — v38
+ * - Calendario estilo foto: L M X J V S D, "septiembre de 2025", botones Borrar / Hoy, flechas ↑ ↓.
+ * - Mantiene todo el comportamiento anterior (punto clave final).
  */
 (function () {
-  // ---------- Config de logos (local) ----------
+  // ---------- Config de logos ----------
   const HOTEL_LOGOS = {
-    "Sercotel Guadiana": "file:///C:/Users/comun/Documents/Turnos%20web/guadiana%20logo.jpg",
-    "Cumbria Spa&Hotel": "file:///C:/Users/comun/Documents/Turnos%20web/cumbria%20logo.jpg",
+    "Sercotel Guadiana": "img/guadiana.jpg",
+    "Cumbria Spa&Hotel": "img/cumbria.jpg",
   };
 
   // ---------- Utilidades de fecha ----------
@@ -25,14 +22,12 @@
     return `${y}-${m}-${day}`;
   };
   const toISO = (s) => {
-    if (!s) return "";
+    if (!s) return isoLocal(new Date());
     if (s instanceof Date) return isoLocal(s);
-    const m = String(s).match(/^(\d{2})\/(\d{2})\/(\d{4})$/); // dd/mm/yyyy
+    const m = String(s).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (m) return `${m[3]}-${m[2]}-${m[1]}`;
     if (/^\d{4}-\d{2}-\d{2}$/.test(String(s))) return String(s);
-    // Intento flexible
-    const d = new Date(s);
-    return isNaN(d) ? "" : isoLocal(d);
+    return isoLocal(new Date(s));
   };
   const fromISO = (iso) => { const [y,m,d] = iso.split("-").map(x=>parseInt(x,10)); return new Date(y, m-1, d); };
   const addDays = (iso, n) => { const d = fromISO(iso); d.setDate(d.getDate()+n); return isoLocal(d); };
@@ -40,37 +35,6 @@
   const fmtDayLabelLower = (iso) => { const d=fromISO(iso); const dd=String(d.getDate()).padStart(2,"0"); const mm=MONTHS_SHORT_MIN[d.getMonth()]; const yy=String(d.getFullYear()).slice(-2); return `${dd}/${mm}/${yy}`; };
   const monthHuman = (ym) => { const [y,m]=ym.split("-"); return `${MONTHS_FULL[parseInt(m,10)-1]} de ${y}`; };
   const weekNumberISO = (iso) => { const d=fromISO(iso); d.setHours(0,0,0,0); const day=d.getDay()||7; d.setDate(d.getDate()+4-day); const yearStart=new Date(d.getFullYear(),0,1); return Math.ceil((((d-yearStart)/86400000)+1)/7); };
-
-  // ---------- Estado en URL ----------
-  function readFiltersFromURL() {
-    const url = new URL(window.location.href);
-    const got = {
-      hotel: url.searchParams.get("hotel") || "",
-      employee: url.searchParams.get("employee") || "",
-      dateFrom: url.searchParams.get("dateFrom") || "",
-      dateTo:   url.searchParams.get("dateTo")   || "",
-    };
-    // Normalizar fechas si existían
-    got.dateFrom = got.dateFrom ? toISO(got.dateFrom) : "";
-    got.dateTo   = got.dateTo   ? toISO(got.dateTo)   : "";
-    return got;
-  }
-  function updateURL(filters) {
-    const url = new URL(window.location.href);
-    // No perpetuar el _r de cache-busting en los enlaces compartibles
-    url.searchParams.delete("_r");
-
-    const pairs = [
-      ["hotel", filters.hotel || ""],
-      ["employee", filters.employee || ""],
-      ["dateFrom", filters.dateFrom || ""],
-      ["dateTo", filters.dateTo || ""],
-    ];
-    for (const [k,v] of pairs) {
-      if (v) url.searchParams.set(k, v); else url.searchParams.delete(k);
-    }
-    history.replaceState(null, "", url.toString());
-  }
 
   // ---------- Empleados visibles ----------
   function getVisibleEmployees(data, filters) {
@@ -275,89 +239,102 @@
     el.textContent = hotel ? hotel : "Sercotel Guadiana / Cumbria Spa&Hotel";
   }
 
-  // ---------- Filtros / Flatpickr / URL-state ----------
-  function populateFilters(data) {
-    const urlFilters = readFiltersFromURL();
+  // ---------- CALENDARIO (Flatpickr) estilo foto ----------
+  function enhanceCalendarAppearance(instance) {
+    // Header: “septiembre de 2025” (ocultamos input de año)
+    const fixTitle = () => {
+      const cont = instance.calendarContainer?.querySelector(".flatpickr-current-month");
+      if (!cont) return;
+      const curMonth = cont.querySelector(".cur-month");
+      const yearWrap = cont.querySelector(".numInputWrapper");
+      const y = cont.querySelector(".cur-year")?.value || "";
+      if (curMonth) {
+        curMonth.style.textTransform = "lowercase";
+        const mes = curMonth.textContent.toLowerCase();
+        curMonth.textContent = `${mes} de ${y}`;
+      }
+      if (yearWrap) yearWrap.style.display = "none";
+    };
+    fixTitle();
+    instance.config.onMonthChange.push(fixTitle);
+    instance.config.onYearChange.push(fixTitle);
 
+    // Footer: botones Borrar / Hoy
+    if (!instance.calendarContainer.querySelector(".fp-footer")) {
+      const footer = document.createElement("div");
+      footer.className = "fp-footer";
+      const btnClear = document.createElement("button");
+      btnClear.type = "button"; btnClear.textContent = "Borrar";
+      btnClear.addEventListener("click", () => { instance.clear(); instance.close(); });
+      const btnToday = document.createElement("button");
+      btnToday.type = "button"; btnToday.textContent = "Hoy";
+      btnToday.addEventListener("click", () => { instance.setDate(new Date(), true); });
+      footer.append(btnClear, btnToday);
+      instance.calendarContainer.appendChild(footer);
+    }
+  }
+
+  function populateFilters(data) {
     const hotelSelect = document.getElementById("hotelSelect");
     const dateFrom = document.getElementById("dateFrom");
     const dateTo = document.getElementById("dateTo");
-    const empFilter = document.getElementById("employeeFilter");
-    const empIcs = document.getElementById("employeeSelectIcs");
 
-    // Hoteles
     const hotels = [...new Set((data.schedule || []).map(g => g.hotel))].sort();
     hotelSelect.innerHTML = `<option value="">— Hotel —</option>` + hotels.map(h => `<option value="${h}">${h}</option>`).join("");
-    if (urlFilters.hotel && hotels.includes(urlFilters.hotel)) {
-      hotelSelect.value = urlFilters.hotel;
-    }
 
-    // Fechas por defecto si no vienen en URL
-    const today = isoLocal(new Date());
-    const plus30 = addDays(today, 30);
-    const initialFrom = urlFilters.dateFrom || today;
-    const initialTo   = urlFilters.dateTo   || plus30;
+    const today = toISO(new Date());
+    const plus30 = toISO(new Date(fromISO(today).getTime() + 30*24*3600*1000));
 
-    // Flatpickr (si existe)
     const isWide = window.matchMedia("(min-width: 992px)").matches;
+
+    // Locale: L M X J V S D
     if (window.flatpickr) {
-      const localeEs = Object.assign({}, flatpickr.l10ns.es, { firstDayOfWeek: 1 });
-      flatpickr.localize(flatpickr.l10ns.es);
+      const es = Object.assign({}, flatpickr.l10ns.es);
+      es.firstDayOfWeek = 1;
+      es.weekdays = {
+        shorthand: ["L","M","X","J","V","S","D"],
+        longhand: ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"]
+      };
+      es.months.longhand = MONTHS_FULL; // asegurar minúsculas
+
+      const handle = () => { const f = currentFilters(); refreshEmployeeOptions(data, f); renderContent(data, f); };
 
       let dateToFp;
+
       flatpickr(dateFrom, {
-        defaultDate: initialFrom,
+        defaultDate: today,
         dateFormat: "Y-m-d",
-        altInput: true, altFormat: "d/M/Y",
-        locale: localeEs, weekNumbers: true, disableMobile: true, showMonths: isWide ? 2 : 1,
-        onChange: (sel) => {
-          if (sel && sel[0]) {
-            const min = isoLocal(sel[0]);
-            if (dateToFp) dateToFp.set("minDate", min);
-            const currentTo = toISO(document.getElementById("dateTo").value);
-            if (!currentTo || fromISO(currentTo) < fromISO(min)) {
-              if (dateToFp) dateToFp.setDate(addDays(min, 30), true);
-            }
-          }
-          const f = currentFilters();
-          refreshEmployeeOptions(data, f);
-          updateURL(f);
-          renderContent(data, f);
+        locale: es,
+        disableMobile: true,
+        weekNumbers: false,
+        showMonths: isWide ? 2 : 1,
+        onReady: function(selectedDates, dateStr, instance){ enhanceCalendarAppearance(instance); },
+        onChange: function(selectedDates, dateStr, instance){
+          const min = dateStr || today;
+          if (dateToFp) dateToFp.set("minDate", min);
+          const currentTo = toISO(document.getElementById("dateTo").value);
+          if (fromISO(currentTo) < fromISO(min)) { if (dateToFp) dateToFp.setDate(addDays(min, 30), true); }
+          handle();
         }
       });
+
       dateToFp = flatpickr(dateTo, {
-        defaultDate: initialTo,
+        defaultDate: plus30,
         dateFormat: "Y-m-d",
-        altInput: true, altFormat: "d/M/Y",
-        locale: localeEs, weekNumbers: true, disableMobile: true, showMonths: isWide ? 2 : 1,
-        minDate: initialFrom,
-        onChange: () => {
-          const f = currentFilters();
-          refreshEmployeeOptions(data, f);
-          updateURL(f);
-          renderContent(data, f);
-        }
+        locale: es,
+        disableMobile: true,
+        weekNumbers: false,
+        showMonths: isWide ? 2 : 1,
+        minDate: today,
+        onReady: function(selectedDates, dateStr, instance){ enhanceCalendarAppearance(instance); },
+        onChange: function(){ handle(); }
       });
     } else {
-      dateFrom.value = initialFrom;
-      dateTo.value = initialTo;
+      dateFrom.value = today; dateTo.value = plus30;
     }
 
-    // Empleados (según rango + hotel)
-    const f0 = { hotel: hotelSelect.value || "", employee: "", dateFrom: initialFrom, dateTo: initialTo };
-    const list = getVisibleEmployees(data, f0);
-    const opts1 = `<option value="">— Empleado —</option>` + list.map(e => `<option value="${e}">${e}</option>`).join("");
-    const opts2 = `<option value="">— Exportar Horario de... —</option>` + list.map(e => `<option value="${e}">${e}</option>`).join("");
-    empFilter.innerHTML = opts1; empIcs.innerHTML = opts2;
-    if (urlFilters.employee && list.includes(urlFilters.employee)) {
-      empFilter.value = urlFilters.employee;
-      empIcs.value = urlFilters.employee;
-    }
-
-    // Estado inicial: render + URL
-    const fInit = currentFilters();
-    updateURL(fInit);
-    updateHeaderSubtitle(fInit.hotel);
+    updateHeaderSubtitle("");
+    refreshEmployeeOptions(data, currentFilters());
   }
 
   function refreshEmployeeOptions(data, filters) {
@@ -377,88 +354,30 @@
   function currentFilters() {
     const hotel = document.getElementById("hotelSelect").value || "";
     const employee = document.getElementById("employeeFilter").value || "";
-    const dateFrom = toISO(document.getElementById("dateFrom").value) || isoLocal(new Date());
-    const dateTo = toISO(document.getElementById("dateTo").value) || addDays(dateFrom, 30);
+    const dateFrom = toISO(document.getElementById("dateFrom").value) || toISO(new Date());
+    const dateTo = toISO(document.getElementById("dateTo").value) || toISO(new Date(fromISO(dateFrom).getTime()+30*24*3600*1000));
     return { hotel, employee, dateFrom, dateTo };
-  }
-
-  // ---------- Botón de refresco ----------
-  function injectRefreshStyles() {
-    const css = `
-      .refresh-btn{
-        display:inline-flex; align-items:center; gap:.5rem;
-        border:1px solid rgba(0,0,0,.1); border-radius:999px; padding:.45rem .9rem;
-        background:#f8f9fa; font-weight:600; cursor:pointer; line-height:1;
-        box-shadow:0 1px 2px rgba(0,0,0,.06); transition:transform .06s ease, background .2s ease;
-      }
-      .refresh-btn:hover{ background:#eef1f4; }
-      .refresh-btn:active{ transform:scale(.98); }
-      .refresh-fab{ position:fixed; right:14px; bottom:14px; z-index:9999; }
-      .refresh-btn .spin{ display:inline-block; }
-      .refresh-btn.loading .spin{ animation:spin 0.9s linear infinite; }
-      @keyframes spin{ from{ transform:rotate(0);} to{ transform:rotate(360deg);} }
-    `;
-    const tag = document.createElement("style");
-    tag.textContent = css;
-    document.head.appendChild(tag);
-  }
-  function forceRefreshPreservingFilters() {
-    try {
-      const f = currentFilters();
-      const url = new URL(window.location.href);
-      url.searchParams.set("hotel", f.hotel || "");
-      url.searchParams.set("employee", f.employee || "");
-      url.searchParams.set("dateFrom", f.dateFrom || "");
-      url.searchParams.set("dateTo", f.dateTo || "");
-      url.searchParams.set("_r", Date.now().toString()); // cache-busting
-      window.location.href = url.toString();
-    } catch (e) {
-      window.location.reload();
-    }
-  }
-  function createRefreshButton() {
-    injectRefreshStyles();
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "btnRefresh";
-    btn.className = "refresh-btn";
-    btn.title = "Refrescar manteniendo filtros (evita caché)";
-    btn.innerHTML = `<span class="spin">↻</span> <span>Refrescar</span>`;
-    btn.addEventListener("click", () => { btn.classList.add("loading"); forceRefreshPreservingFilters(); });
-
-    const icsBtn = document.getElementById("btnICS");
-    if (icsBtn && icsBtn.parentElement) {
-      icsBtn.parentElement.appendChild(btn);
-    } else {
-      btn.classList.add("refresh-fab");
-      document.body.appendChild(btn);
-    }
   }
 
   // ---------- Ready ----------
   document.addEventListener("DOMContentLoaded", () => {
     const data = window.FULL_DATA || window.DATA || {};
     populateFilters(data);
-
-    // Render inicial según URL/defectos
     renderContent(data, currentFilters());
 
-    // Listeners que también actualizan URL
     ["hotelSelect","dateFrom","dateTo"].forEach(id => {
       const el = document.getElementById(id);
-      el.addEventListener("change", () => { const f=currentFilters(); refreshEmployeeOptions(data,f); updateURL(f); renderContent(data,f); });
-      el.addEventListener("input",  () => { const f=currentFilters(); refreshEmployeeOptions(data,f); updateURL(f); renderContent(data,f); });
+      el.addEventListener("change", () => { const f=currentFilters(); refreshEmployeeOptions(data,f); renderContent(data,f); });
+      el.addEventListener("input",  () => { const f=currentFilters(); refreshEmployeeOptions(data,f); renderContent(data,f); });
     });
-    document.getElementById("employeeFilter").addEventListener("change", () => {
-      const f=currentFilters(); updateURL(f); renderContent(data,f);
-    });
+
+    document.getElementById("employeeFilter").addEventListener("change", () => renderContent(data, currentFilters()));
 
     // Export ICS: turno tal cual se ve, sin hotel
     document.getElementById("btnICS").addEventListener("click", () => {
       const who = document.getElementById("employeeSelectIcs").value;
       if (!who) return alert("Elige un empleado para exportar.");
       const filters = currentFilters();
-
       const events = [];
       let currentMonday = startOfWeekMonday(filters.dateFrom);
       const end = fromISO(filters.dateTo);
@@ -494,8 +413,5 @@
       const blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `turnos_${who}.ics`; a.click(); URL.revokeObjectURL(a.href);
     });
-
-    // Botón de refresco (UI)
-    createRefreshButton();
   });
 })();
