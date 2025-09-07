@@ -1,112 +1,38 @@
 :root{
-  --bg: #f6f7fb;
-  --panel: #ffffff;
-  --line: #e5e7eb;
-  --text: #1f2937;
-  --muted:#6b7280;
-  --brand:#0b5c49;
-
-  --pill-bg:#eef2f7;
-  --pill-bd:#d6dbe4;
-
-  --shift-am:#d3f4e1;
-  --shift-pm:#fde9b5;
-  --shift-nt:#e7ecf8;
-  --shift-off:#f8d1d6;
-  --shift-vac:#d7eef7;
+  --bg:#fffdf7;
+  --ink:#24342b;
+  --muted:#6c757d;
+  --accent:#1a7f5a;
+  --pill:#f3f5f7;
+  --border:#e6e6e6;
 }
-
 *{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
-}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+h1,h2,h3{margin:0 0 .5rem}
+.container{max-width:1200px;margin:0 auto;padding:1rem}
 
-/* ---------- Top bar ---------- */
-.topbar{
-  position:sticky; top:0; z-index:10;
-  display:flex; align-items:center; justify-content:space-between;
-  gap:1rem; background:var(--panel);
-  border-bottom:1px solid var(--line);
-  padding:.8rem 1rem;
-}
-.brand{display:flex; align-items:center; gap:.75rem;}
-.brand-icon{width:36px; height:36px; border-radius:.5rem; object-fit:cover}
-.brand-title h1{margin:.1rem 0; font-size:1.05rem; font-weight:700}
-.brand-title .subtitle{font-size:.82rem; color:var(--muted)}
-.version-badge{
-  margin-left:.4rem; font-size:.72rem; font-weight:600;
-  color:#0b5c49; background:#eaf7f2; border:1px solid #cce9dc;
-  padding:.15rem .35rem; border-radius:.5rem;
-}
+.hero{background:#faf6ec;border-bottom:1px solid var(--border)}
+.title-block{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:1rem;padding:1rem}
+.title-block .brand{height:88px;width:auto;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.title-block .subtitle{color:var(--muted)}
 
-/* ---------- Controles ---------- */
-.filters{
-  display:flex; flex-wrap:wrap; gap:.5rem;
-  padding:.7rem 1rem; background:var(--panel);
-  border-bottom:1px solid var(--line);
-}
-.ctrl{
-  appearance:none; -webkit-appearance:none;
-  border:1px solid var(--line); border-radius:.55rem;
-  padding:.5rem .65rem; background:#fff; color:var(--text);
-  min-width:180px; font-size:.95rem;
-}
-.ctrl.narrow{min-width:200px}
-.btn{
-  border:1px solid var(--line); background:#fff; color:var(--text);
-  padding:.5rem .75rem; border-radius:.6rem; cursor:pointer; font-weight:600;
-}
-.btn:hover{filter:brightness(0.98)}
-.btn-light{background:#fff}
-.btn-primary{
-  background:#2563eb; color:#fff; border-color:#1e40af;
-}
-.actions{display:flex; gap:.5rem; align-items:center}
+.filters{background:#fff;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--border)}
+.filters-row{max-width:1200px;margin:0 auto;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem 1rem}
+.filters label{font-size:.85rem;color:var(--muted)}
+.filters select,.filters input{height:34px;padding:.25rem .5rem;border:1px solid var(--border);border-radius:8px;background:#fff;min-width:150px}
+.btn{height:34px;padding:0 .8rem;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+.btn.outline{background:#fff;color:var(--accent)}
+.btn:active{transform:translateY(1px)}
 
-/* ---------- Layout ---------- */
-.content{padding:1rem}
+.week{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem;margin:1rem 0}
+.week-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem}
+.week-head .hotel-logo{height:36px;width:auto;border-radius:8px}
+.table-container{overflow:auto;border:1px solid var(--border);border-radius:12px}
+table{width:100%;border-collapse:separate;border-spacing:0}
+th,td{padding:.55rem .6rem;border-bottom:1px solid var(--border);white-space:nowrap}
+thead th{position:sticky;top:0;background:#f9fafb;border-bottom:1px solid var(--border);font-weight:600}
+tbody tr:nth-child(odd){background:#fcfcfc}
 
-/* ---------- Tabla semanal ---------- */
-.week{
-  background:var(--panel); border:1px solid var(--line);
-  border-radius:12px; margin:0 0 1rem 0; overflow:hidden;
-}
-.week-head{
-  display:flex; align-items:center; gap:.75rem;
-  padding:.7rem 1rem; border-bottom:1px solid var(--line);
-  background:#fafafa;
-}
-.week-head .hotel-logo{width:34px; height:34px; object-fit:cover; border-radius:8px}
-.week-head h3{margin:0; font-size:1rem}
+.turno-pill{display:inline-block;padding:.2rem .5rem;border-radius:999px;background:var(--pill);border:1px solid var(--border);font-size:.85rem}
 
-.table-container{overflow:auto}
-table{border-collapse:separate; border-spacing:0; width:100%}
-th,td{border-bottom:1px solid var(--line); padding:.6rem .5rem; text-align:left; white-space:nowrap}
-thead th{position:sticky; top:0; z-index:1; background:#fff; font-size:.85rem}
-tbody td:first-child, thead th:first-child{position:sticky; left:0; z-index:2; background:#fff}
-
-.day-name{display:block; font-weight:700; font-size:.8rem; text-transform:uppercase; color:#374151}
-.day-number{display:block; font-size:.8rem; color:var(--muted)}
-
-/* ---------- Turnos (pills) ---------- */
-.turno-pill{
-  display:inline-flex; align-items:center; gap:.35rem;
-  padding:.35rem .7rem; border-radius:999px; border:1px solid var(--pill-bd);
-  background:var(--pill-bg); font-weight:600; font-size:.9rem;
-}
-.turno-manana{background:var(--shift-am); border-color:#bfe9cf}
-.turno-tarde{background:var(--shift-pm); border-color:#eadfa4}
-.turno-noche{background:#eef0f3; border-color:#d5dae2}
-.turno-descanso{background:var(--shift-off); border-color:#edb7bf}
-.turno-vacaciones{background:var(--shift-vac); border-color:#bde1ee}
-
-/* Pequeños ajustes */
-tbody td:first-child{font-weight:600}
-@media (max-width: 920px){
-  .brand-title h1{font-size:.98rem}
-  .ctrl{min-width:160px}
-}
+.footer{max-width:1200px;margin:1rem auto;padding:1rem;color:var(--muted)}
