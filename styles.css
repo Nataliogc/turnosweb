@@ -45,7 +45,7 @@ th{
   background-color:var(--bg);
   font-weight:600;
   font-size:.75rem;
-  color:var(--muted);
+  color:#6c757d;
   text-transform:none;                  /* no transform por defecto */
 }
 
@@ -88,3 +88,33 @@ td:first-child{text-align:left; font-weight:600}
 
 /* Resumen mensual */
 #monthly-summary-container table{max-width:640px; margin-bottom:1rem}
+
+/* --- Mejoras de tabla y responsividad (añadido) --- */
+
+/* Zebra + hover */
+tbody tr:nth-child(odd) td { background: #fcfcfd; }
+tbody tr:hover td { background: #f4f6f8; }
+
+/* Fines de semana */
+th.weekend, td.weekend { background: #f1f3f5; }
+
+/* Cabecera sticky y primera columna sticky */
+.table-container thead th {
+  position: sticky; top: 0; z-index: 2;
+  box-shadow: 0 1px 0 var(--br);
+}
+.table-container td:first-child, .table-container th:first-child {
+  position: sticky; left: 0; z-index: 3; background: #fff;
+  box-shadow: 1px 0 0 var(--br);
+}
+
+/* Badge junto al nombre (noches, descansos) */
+.emp-badges{ display:inline-flex; gap:.4rem; margin-left:.5rem; font-size:.75rem; color:#495057 }
+.emp-badges .b{ display:inline-flex; align-items:center; gap:.25rem; padding:.1rem .5rem; border:1px solid var(--br); border-radius:999px; background:#fff }
+
+/* Píldoras más compactas en pantallas pequeñas */
+@media (max-width: 768px){
+  .turno-pill{ min-width:72px; padding:.35rem .75rem; font-size:.8rem }
+  th .day-name{ font-size:.8rem }
+  th .day-number{ font-size:.8rem }
+}

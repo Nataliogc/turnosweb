@@ -1,8 +1,10 @@
 /**
- * plantilla_adapter_semana.js — v37.4
+ * plantilla_adapter_semana.js — v37.5 (mejoras de calendario sin tocar flujo)
  * - Logos: en local usa file:///C:/...; en web (http/https) usa ./img/...
  * - Si un logo falla en carga, se oculta (no rompe el render)
  * - Mantiene el punto clave final y el orden correcto de empleados
+ * - Añadido: navegación semanal (← Semana, Hoy, Semana →), cabeceras/1ª columna sticky,
+ *   marca fines de semana, zebra rows y badges de noches/descansos por semana.
  */
 (function () {
   // ---------- Config de logos ----------
@@ -46,6 +48,11 @@
   const fmtDayLabelLower = (iso) => { const d=fromISO(iso); const dd=String(d.getDate()).padStart(2,"0"); const mm=MONTHS_SHORT_MIN[d.getMonth()]; const yy=String(d.getFullYear()).slice(-2); return `${dd}/${mm}/${yy}`; };
   const monthHuman = (ym) => { const [y,m]=ym.split("-"); return `${MONTHS_FULL[parseInt(m,10)-1]} de ${y}`; };
   const weekNumberISO = (iso) => { const d=fromISO(iso); d.setHours(0,0,0,0); const day=d.getDay()||7; d.setDate(d.getDate()+4-day); const yearStart=new Date(d.getFullYear(),0,1); return Math.ceil((((d-yearStart)/86400000)+1)/7); };
+
+  // --- Utilidades de rango semana (añadido) ---
+  const mondayOf  = (iso) => startOfWeekMonday(iso);
+  const sundayOf  = (iso) => addDays(startOfWeekMonday(iso), 6);
+  const shiftISO  = (iso, days) => addDays(iso, days);
 
   // ---------- Empleados visibles ----------
   function getVisibleEmployees(data, filters) {
@@ -136,6 +143,7 @@
     return out;
   };
 
+  // ---------- Mejoras de UI: render con weekend + badges (REEMPLAZA versión previa) ----------
   function renderHotelWeek(container, hotelGroup, weekDays, filters) {
     const {grid, meta, absenceCount, subCandidate} = buildWeekGrid(hotelGroup, weekDays);
 
@@ -152,23 +160,46 @@
     display = display.filter(emp => weekDays.some(day => (grid[emp] && grid[emp][day])));
     if (display.length === 0) return;
 
-    // Cabeceras
+    // Cabeceras con marca de fin de semana
     const headers = weekDays.map(d => {
       const date = fromISO(d);
       const weekday = date.toLocaleDateString("es-ES",{weekday:"long"});
-      return `<th><span class="day-name">${weekday}</span><span class="day-number">${fmtDayLabelLower(d)}</span></th>`;
+      const isWeekend = (date.getDay() === 6 || date.getDay() === 0);
+      return `<th class="${isWeekend ? 'weekend' : ''}">
+                <span class="day-name">${weekday}</span>
+                <span class="day-number">${fmtDayLabelLower(d)}</span>
+              </th>`;
     }).join("");
 
+    // Cuerpo con badges por persona (noches/descansos de esa semana)
     const body = display.map(emp => {
+      // Contadores semanales
+      let nights = 0, rests = 0;
+      weekDays.forEach(day => {
+        const raw = grid[emp]?.[day];
+        const label = typeof raw === "string" ? raw : (raw?.TurnoOriginal || "");
+        if (/^n(oche)?/i.test(label || "")) nights++;
+        if (/^descanso/i.test(label || "")) rests++;
+      });
+      const badges = `<span class="emp-badges">
+        <span class="b" title="Noches en la semana">🌙 ${nights}</span>
+        <span class="b" title="Descansos en la semana">D ${rests}</span>
+      </span>`;
+
       const tds = weekDays.map(day => {
         let label = grid[emp]?.[day] || "";
         label = beautifyLabel(label);
         const cls = `turno-${(label || "default").toLowerCase().split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g,"")}`;
         const m = meta[emp][day];
         const mark = m && m.isSub ? ` <small title="Sustituto de ${m.for}">↔︎</small>` : "";
-        return `<td><span class="turno-pill ${cls}">${label}${mark}</span></td>`;
+        const isWeekend = [6,0].includes(fromISO(day).getDay());
+        const tip = m?.isSub ? `Sustituyendo a ${m.for}` : (typeof grid[emp]?.[day] === "string" ? grid[emp][day] : "");
+        return `<td class="${isWeekend ? 'weekend' : ''}" title="${tip}">
+                  <span class="turno-pill ${cls}">${label}${mark}</span>
+                </td>`;
       }).join("");
-      return `<tr><td>${emp}</td>${tds}</tr>`;
+
+      return `<tr><td>${emp}${badges}</td>${tds}</tr>`;
     }).join("");
 
     const logo = getLogo(hotelGroup.hotel);
@@ -320,9 +351,48 @@
     return { hotel, employee, dateFrom, dateTo };
   }
 
+  // ---------- Navegación semanal (inyectada sin tocar HTML) ----------
+  function injectNavButtons() {
+    const bar = document.querySelector(".controls-container");
+    if (!bar || bar.querySelector(".nav-weeks")) return;
+    const box = document.createElement("div");
+    box.className = "field nav-weeks";
+    box.innerHTML = `
+      <button class="btn" id="btnPrevW" type="button">← Semana</button>
+      <button class="btn" id="btnTodayW" type="button">Hoy</button>
+      <button class="btn" id="btnNextW" type="button">Semana →</button>
+    `;
+    bar.appendChild(box);
+
+    const setRange = (fromISO_, toISO_) => {
+      const df = document.getElementById("dateFrom");
+      const dt = document.getElementById("dateTo");
+      df.value = fromISO_; dt.value = toISO_;
+      const f = currentFilters(); refreshEmployeeOptions(window.__DATA__, f); renderContent(window.__DATA__, f);
+    };
+
+    document.getElementById("btnPrevW").onclick = () => {
+      const from = toISO(document.getElementById("dateFrom").value);
+      const newFrom = shiftISO(mondayOf(from), -7);
+      setRange(newFrom, sundayOf(newFrom));
+    };
+    document.getElementById("btnNextW").onclick = () => {
+      const from = toISO(document.getElementById("dateFrom").value);
+      const newFrom = shiftISO(mondayOf(from), 7);
+      setRange(newFrom, sundayOf(newFrom));
+    };
+    document.getElementById("btnTodayW").onclick = () => {
+      const today = toISO(new Date());
+      const m = mondayOf(today);
+      setRange(m, sundayOf(m));
+    };
+  }
+
   // ---------- Ready ----------
   document.addEventListener("DOMContentLoaded", () => {
     const data = window.FULL_DATA || window.DATA || {};
+    window.__DATA__ = data;                  // cache interno para navegación
+    injectNavButtons();                      // botones ← Hoy →
     populateFilters(data);
     renderContent(data, currentFilters());
 
