@@ -1,16 +1,22 @@
 /**
- * plantilla_adapter_semana.js — v38
- * - Calendario estilo foto: L M X J V S D, "septiembre de 2025", botones Borrar / Hoy, flechas ↑ ↓.
- * - Mantiene todo el comportamiento anterior (punto clave final).
+ * plantilla_adapter_semana.js — v6.5
+ * Punto clave mantenido:
+ *  - Semana de L→D (lunes a domingo)
+ *  - Empleados sólo del rango visible
+ *  - Ausencias con etiqueta exacta (columna F, TipoAusencia)
+ *  - Sustituciones: el sustituto sube a su posición si el titular está ausente toda la semana
+ *  - Noches con 🌙, descanso rojo, pills ovaladas
+ *  - Resumen mensual de noches (sólo rango seleccionado)
+ *  - Export ICS sin hotel (texto del turno tal cual se ve)
+ *  - Botón “Refrescar” (recarga DATA embebida)
  */
 (function () {
-  // ---------- Config de logos ----------
+  // ---------- Config ----------
   const HOTEL_LOGOS = {
-    "Sercotel Guadiana": "img/guadiana.jpg",
-    "Cumbria Spa&Hotel": "img/cumbria.jpg",
+    "Sercotel Guadiana": "./img/guadiana.jpg",
+    "Cumbria Spa&Hotel": "./img/cumbria.jpg",
   };
 
-  // ---------- Utilidades de fecha ----------
   const MONTHS_SHORT_CAP = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const MONTHS_SHORT_MIN = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
   const MONTHS_FULL  = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -152,6 +158,8 @@
       const tds = weekDays.map(day => {
         let label = grid[emp]?.[day] || "";
         label = beautifyLabel(label);
+
+        // clase por primer token “limpio”
         const cls = `turno-${(label || "default").toLowerCase().split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g,"")}`;
         const m = meta[emp][day];
         const mark = m && m.isSub ? ` <small title="Sustituto de ${m.for}">↔︎</small>` : "";
@@ -183,7 +191,7 @@
     container.insertAdjacentHTML("beforeend", weekHTML);
   }
 
-  // ---------- Resumen mensual (rango visible) ----------
+  // ---------- Resumen mensual ----------
   function renderMonthlySummary(data, filters) {
     const box = document.getElementById("monthly-summary-container");
     box.innerHTML = "";
@@ -234,46 +242,12 @@
 
   // ---------- Header subtitle ----------
   function updateHeaderSubtitle(hotel) {
-    const el = document.querySelector(".title-block .subtitle");
+    const el = document.querySelector(".title-block .subtitle") || document.querySelector(".subtitle");
     if (!el) return;
     el.textContent = hotel ? hotel : "Sercotel Guadiana / Cumbria Spa&Hotel";
   }
 
-  // ---------- CALENDARIO (Flatpickr) estilo foto ----------
-  function enhanceCalendarAppearance(instance) {
-    // Header: “septiembre de 2025” (ocultamos input de año)
-    const fixTitle = () => {
-      const cont = instance.calendarContainer?.querySelector(".flatpickr-current-month");
-      if (!cont) return;
-      const curMonth = cont.querySelector(".cur-month");
-      const yearWrap = cont.querySelector(".numInputWrapper");
-      const y = cont.querySelector(".cur-year")?.value || "";
-      if (curMonth) {
-        curMonth.style.textTransform = "lowercase";
-        const mes = curMonth.textContent.toLowerCase();
-        curMonth.textContent = `${mes} de ${y}`;
-      }
-      if (yearWrap) yearWrap.style.display = "none";
-    };
-    fixTitle();
-    instance.config.onMonthChange.push(fixTitle);
-    instance.config.onYearChange.push(fixTitle);
-
-    // Footer: botones Borrar / Hoy
-    if (!instance.calendarContainer.querySelector(".fp-footer")) {
-      const footer = document.createElement("div");
-      footer.className = "fp-footer";
-      const btnClear = document.createElement("button");
-      btnClear.type = "button"; btnClear.textContent = "Borrar";
-      btnClear.addEventListener("click", () => { instance.clear(); instance.close(); });
-      const btnToday = document.createElement("button");
-      btnToday.type = "button"; btnToday.textContent = "Hoy";
-      btnToday.addEventListener("click", () => { instance.setDate(new Date(), true); });
-      footer.append(btnClear, btnToday);
-      instance.calendarContainer.appendChild(footer);
-    }
-  }
-
+  // ---------- Filtros ----------
   function populateFilters(data) {
     const hotelSelect = document.getElementById("hotelSelect");
     const dateFrom = document.getElementById("dateFrom");
@@ -284,54 +258,8 @@
 
     const today = toISO(new Date());
     const plus30 = toISO(new Date(fromISO(today).getTime() + 30*24*3600*1000));
-
-    const isWide = window.matchMedia("(min-width: 992px)").matches;
-
-    // Locale: L M X J V S D
-    if (window.flatpickr) {
-      const es = Object.assign({}, flatpickr.l10ns.es);
-      es.firstDayOfWeek = 1;
-      es.weekdays = {
-        shorthand: ["L","M","X","J","V","S","D"],
-        longhand: ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"]
-      };
-      es.months.longhand = MONTHS_FULL; // asegurar minúsculas
-
-      const handle = () => { const f = currentFilters(); refreshEmployeeOptions(data, f); renderContent(data, f); };
-
-      let dateToFp;
-
-      flatpickr(dateFrom, {
-        defaultDate: today,
-        dateFormat: "Y-m-d",
-        locale: es,
-        disableMobile: true,
-        weekNumbers: false,
-        showMonths: isWide ? 2 : 1,
-        onReady: function(selectedDates, dateStr, instance){ enhanceCalendarAppearance(instance); },
-        onChange: function(selectedDates, dateStr, instance){
-          const min = dateStr || today;
-          if (dateToFp) dateToFp.set("minDate", min);
-          const currentTo = toISO(document.getElementById("dateTo").value);
-          if (fromISO(currentTo) < fromISO(min)) { if (dateToFp) dateToFp.setDate(addDays(min, 30), true); }
-          handle();
-        }
-      });
-
-      dateToFp = flatpickr(dateTo, {
-        defaultDate: plus30,
-        dateFormat: "Y-m-d",
-        locale: es,
-        disableMobile: true,
-        weekNumbers: false,
-        showMonths: isWide ? 2 : 1,
-        minDate: today,
-        onReady: function(selectedDates, dateStr, instance){ enhanceCalendarAppearance(instance); },
-        onChange: function(){ handle(); }
-      });
-    } else {
-      dateFrom.value = today; dateTo.value = plus30;
-    }
+    dateFrom.value = today;
+    dateTo.value = plus30;
 
     updateHeaderSubtitle("");
     refreshEmployeeOptions(data, currentFilters());
@@ -365,19 +293,20 @@
     populateFilters(data);
     renderContent(data, currentFilters());
 
+    // cambios filtros
     ["hotelSelect","dateFrom","dateTo"].forEach(id => {
       const el = document.getElementById(id);
       el.addEventListener("change", () => { const f=currentFilters(); refreshEmployeeOptions(data,f); renderContent(data,f); });
       el.addEventListener("input",  () => { const f=currentFilters(); refreshEmployeeOptions(data,f); renderContent(data,f); });
     });
-
     document.getElementById("employeeFilter").addEventListener("change", () => renderContent(data, currentFilters()));
 
-    // Export ICS: turno tal cual se ve, sin hotel
+    // Export ICS (sin hotel, turno tal cual)
     document.getElementById("btnICS").addEventListener("click", () => {
       const who = document.getElementById("employeeSelectIcs").value;
       if (!who) return alert("Elige un empleado para exportar.");
       const filters = currentFilters();
+
       const events = [];
       let currentMonday = startOfWeekMonday(filters.dateFrom);
       const end = fromISO(filters.dateTo);
@@ -412,6 +341,11 @@
       const ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Turnos//CG//ES\n" + events.join("\n") + "\nEND:VCALENDAR";
       const blob = new Blob([ics], {type:"text/calendar;charset=utf-8"});
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `turnos_${who}.ics`; a.click(); URL.revokeObjectURL(a.href);
+    });
+
+    // Botón Refrescar: recarga la página (manteniendo archivos enlazados con ?v=6.5)
+    document.getElementById("btnRefresh").addEventListener("click", () => {
+      location.reload();
     });
   });
 })();

@@ -1,61 +1,112 @@
-/* ===== Restaurar CABECERA / TOPBAR (barra superior) ===== */
+:root{
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --line: #e5e7eb;
+  --text: #1f2937;
+  --muted:#6b7280;
+  --brand:#0b5c49;
 
-/* Soporta varias clases que has usado en versiones anteriores */
-.topbar, .app-header, header.site-header, .nav-header {
-  position: sticky; top: 0; z-index: 50;
-  background: #0f172a; /* azul grisáceo oscuro */
-  color: #fff;
-  box-shadow: 0 2px 0 rgba(16,24,40,.06);
+  --pill-bg:#eef2f7;
+  --pill-bd:#d6dbe4;
+
+  --shift-am:#d3f4e1;
+  --shift-pm:#fde9b5;
+  --shift-nt:#e7ecf8;
+  --shift-off:#f8d1d6;
+  --shift-vac:#d7eef7;
 }
 
-/* Contenedor centrado */
-.topbar .wrap, .app-header .wrap, header.site-header .wrap, .nav-header .wrap {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
 }
 
-/* Título a la izquierda */
-.topbar .title, .app-header .title, header.site-header .title, .nav-header .title {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 18px; font-weight: 700; color: #fff;
+/* ---------- Top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; background:var(--panel);
+  border-bottom:1px solid var(--line);
+  padding:.8rem 1rem;
+}
+.brand{display:flex; align-items:center; gap:.75rem;}
+.brand-icon{width:36px; height:36px; border-radius:.5rem; object-fit:cover}
+.brand-title h1{margin:.1rem 0; font-size:1.05rem; font-weight:700}
+.brand-title .subtitle{font-size:.82rem; color:var(--muted)}
+.version-badge{
+  margin-left:.4rem; font-size:.72rem; font-weight:600;
+  color:#0b5c49; background:#eaf7f2; border:1px solid #cce9dc;
+  padding:.15rem .35rem; border-radius:.5rem;
 }
 
-/* Logo de cabecera: tamaño controlado */
-.topbar .brand-logo,
-.app-header .brand-logo,
-header.site-header .brand-logo,
-.nav-header .brand-logo {
-  width: 28px; height: 28px; object-fit: contain;
-  border-radius: 6px; background: #fff; border: 1px solid rgba(255,255,255,.35);
+/* ---------- Controles ---------- */
+.filters{
+  display:flex; flex-wrap:wrap; gap:.5rem;
+  padding:.7rem 1rem; background:var(--panel);
+  border-bottom:1px solid var(--line);
 }
+.ctrl{
+  appearance:none; -webkit-appearance:none;
+  border:1px solid var(--line); border-radius:.55rem;
+  padding:.5rem .65rem; background:#fff; color:var(--text);
+  min-width:180px; font-size:.95rem;
+}
+.ctrl.narrow{min-width:200px}
+.btn{
+  border:1px solid var(--line); background:#fff; color:var(--text);
+  padding:.5rem .75rem; border-radius:.6rem; cursor:pointer; font-weight:600;
+}
+.btn:hover{filter:brightness(0.98)}
+.btn-light{background:#fff}
+.btn-primary{
+  background:#2563eb; color:#fff; border-color:#1e40af;
+}
+.actions{display:flex; gap:.5rem; align-items:center}
 
-/* Zona derecha (acciones, “Actualizado…”, botón refrescar, etc.) */
-.topbar .actions, .app-header .actions, header.site-header .actions, .nav-header .actions {
-  display: flex; align-items: center; gap: 8px;
-  color: #e5e7eb; font-size: 12px;
-}
-.topbar .actions .btn, .app-header .actions .btn,
-header.site-header .actions .btn, .nav-header .actions .btn {
-  border-radius: 9px; padding: 6px 10px;
-}
+/* ---------- Layout ---------- */
+.content{padding:1rem}
 
-/* Breadcrumbs (línea bajo la barra) */
-.breadcrumbs{
-  max-width: 1400px; margin: 6px auto 8px; padding: 0 16px;
-  color: #64748b; font-size: 13px;
+/* ---------- Tabla semanal ---------- */
+.week{
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:12px; margin:0 0 1rem 0; overflow:hidden;
 }
-.breadcrumbs a{ color: inherit; text-decoration: none; }
-.breadcrumbs a:hover{ color: #0ea5e9; }
-
-/* Evitar que cualquier imagen en cabecera crezca de más */
-.topbar img, .app-header img, header.site-header img, .nav-header img {
-  max-height: 28px; width: auto;
+.week-head{
+  display:flex; align-items:center; gap:.75rem;
+  padding:.7rem 1rem; border-bottom:1px solid var(--line);
+  background:#fafafa;
 }
+.week-head .hotel-logo{width:34px; height:34px; object-fit:cover; border-radius:8px}
+.week-head h3{margin:0; font-size:1rem}
 
-/* Mantener el tamaño de los logos por semana (no tocar) */
-.week-head .hotel-logo{ width:32px; height:32px; }
+.table-container{overflow:auto}
+table{border-collapse:separate; border-spacing:0; width:100%}
+th,td{border-bottom:1px solid var(--line); padding:.6rem .5rem; text-align:left; white-space:nowrap}
+thead th{position:sticky; top:0; z-index:1; background:#fff; font-size:.85rem}
+tbody td:first-child, thead th:first-child{position:sticky; left:0; z-index:2; background:#fff}
+
+.day-name{display:block; font-weight:700; font-size:.8rem; text-transform:uppercase; color:#374151}
+.day-number{display:block; font-size:.8rem; color:var(--muted)}
+
+/* ---------- Turnos (pills) ---------- */
+.turno-pill{
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.35rem .7rem; border-radius:999px; border:1px solid var(--pill-bd);
+  background:var(--pill-bg); font-weight:600; font-size:.9rem;
+}
+.turno-manana{background:var(--shift-am); border-color:#bfe9cf}
+.turno-tarde{background:var(--shift-pm); border-color:#eadfa4}
+.turno-noche{background:#eef0f3; border-color:#d5dae2}
+.turno-descanso{background:var(--shift-off); border-color:#edb7bf}
+.turno-vacaciones{background:var(--shift-vac); border-color:#bde1ee}
+
+/* Pequeños ajustes */
+tbody td:first-child{font-weight:600}
+@media (max-width: 920px){
+  .brand-title h1{font-size:.98rem}
+  .ctrl{min-width:160px}
+}
