@@ -80,3 +80,33 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+// === Ocultar "Exportar horario..." y "Descargar ICS" SOLO en móvil (<=640px), por texto o ID ===
+(function(){
+  function hideIcsMobile(){
+    if (window.matchMedia('(max-width: 640px)').matches) {
+      // 1) Por ID (si existen)
+      const byId = ['#employeeSelectIcs', '#btnICS'];
+      byId.forEach(sel => { const el = document.querySelector(sel); if (el) el.style.display = 'none'; });
+
+      // 2) Por texto del label / botón (independiente del ID/clase)
+      document.querySelectorAll('label, button, select, div').forEach(el => {
+        const t = (el.textContent || '').toLowerCase();
+        if (t.includes('exportar horario') || t.includes('descargar ics')) {
+          // Oculta el propio nodo y su contenedor inmediato si es un campo
+          el.style.display = 'none';
+          const parent = el.closest('.field');
+          if (parent) parent.style.display = 'none';
+        }
+      });
+    }
+  }
+  // Ejecuta al cargar y si algo vuelve a renderizar
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', hideIcsMobile);
+  } else {
+    hideIcsMobile();
+  }
+  const mo = new MutationObserver(hideIcsMobile);
+  mo.observe(document.documentElement, { childList:true, subtree:true });
+})();
+

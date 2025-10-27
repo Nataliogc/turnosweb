@@ -10,8 +10,18 @@
 }
 
 /* Forzar modo claro, evitar inversiones automáticas */
-:root { color-scheme: only light; }
-html, body{ background:var(--bg)!important; color:var(--text); }
+:root { color-scheme: only light; }            /* sin modo oscuro automático */
+.controls-container, .field, select, input { color:#111 !important; }
+.field select, .field input, select, input{
+  background:#fff !important;
+  border:2px solid #e2e8f0 !important;
+  color:#111 !important;
+  -webkit-text-fill-color:#111 !important;
+  font-weight:600;
+}
+::placeholder{ color:#64748b !important; opacity:1 !important; }
+.flatpickr-input{ color:#111 !important; -webkit-text-fill-color:#111 !important; }
+select option{ color:#111 !important; background:#fff !important; }html, body{ background:var(--bg)!important; color:var(--text); }
 
 /* ===== Header ultra-compacto ===== */
 header{
