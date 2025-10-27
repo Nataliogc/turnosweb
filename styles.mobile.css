@@ -1,4 +1,4 @@
-/* === Turnos Mobile Kit (compacto + legible + oculta export/ICS en móvil) === */
+/* === Turnos Mobile (v10) === */
 :root{
   --brand:#0b2d6b; --muted:#d9e3f5; --text:#16202a; --bg:#ffffff;
   --pill:#f5f7fb; --danger:#ffe8e8; --header-top:40px;
@@ -33,10 +33,10 @@ select option{ color:#111!important; background:#fff!important; }
 .week-header .cell:first-child, .grid .cell.name{ position:sticky; left:0; z-index:3; background:#fff; box-shadow:1px 0 0 0 var(--muted); }
 
 .cell{ min-height:44px; padding:6px; border-radius:12px; border:1px solid var(--muted); background:#fff }
-.pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:var(--pill); border:1px solid var(--muted) }
-.pill.descanso{ background:var(--danger); border-color:#ffc7c7; color:#8b1b1b }
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#f5f7fb; border:1px solid var(--muted) }
+.pill.descanso{ background:#ffe8e8; border-color:#ffc7c7; color:#8b1b1b }
 
-/* SOLO móvil: ocultar Exportar/ICS */
+/* SOLO móvil: oculta Exportar/ICS */
 @media (max-width:640px){
   #employeeSelectIcs,
   #btnICS,

@@ -1,4 +1,4 @@
-// Turnos Mobile Patch: scroll horizontal, foco en hoy y ocultar Exportar/ICS si reaparece
+// Turnos Mobile Patch v10: scroll horizontal, foco en hoy y ocultación robusta de Exportar/ICS
 (function(){
   const $ = (s, r=document)=>r.querySelector(s);
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
@@ -32,14 +32,13 @@
 
   function hideIcs(){
     if (!matchMedia('(max-width:640px)').matches) return;
-    // por IDs
-    ['#employeeSelectIcs','#btnICS'].forEach(sel=>{ const el=$(sel); if(el){ el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none'; } });
-    // por texto (por si cambian IDs)
+    ['#employeeSelectIcs','#btnICS'].forEach(sel=>{
+      const el=$(sel); if(el){ el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none'; }
+    });
     $$('label, button, select, div').forEach(el=>{
       const t=(el.textContent||'').toLowerCase();
       if (t.includes('exportar horario') || t.includes('descargar ics')){
-        el.style.display='none';
-        const p=el.closest('.field'); if(p)p.style.display='none';
+        el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none';
       }
     });
   }
