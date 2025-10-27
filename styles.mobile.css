@@ -1,3 +1,12 @@
 #employeeSelectIcs,
 #btnICS,
 label[for="employeeSelectIcs"]{ display:none !important; }
+/* APP: animación suave de la barra de controles */
+.controls-container { transition: opacity .3s ease; }
+
+/* APP: oculta ICS siempre */
+#employeeSelectIcs, #btnICS, label[for="employeeSelectIcs"] { display:none !important; }
+
+/* APP: botón Filtros visible en cabecera */
+#btnFilters { margin-left:.25rem; }
+
