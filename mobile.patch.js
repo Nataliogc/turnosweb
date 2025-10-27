@@ -1,28 +1,49 @@
-(function(){
-  const $ = (s, r=document)=>r.querySelector(s);
-  const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+(function() {
+  const $ = (s, r = document) => r.querySelector(s);
+  const controls = () => document.querySelector('.controls-container');
+  let hideTimer;
 
-  function hideIcs(){
-    if (!matchMedia('(max-width:640px)').matches) return;
-    ['#employeeSelectIcs','#btnICS'].forEach(sel=>{
-      const el=$(sel); if(el){ el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none'; }
-    });
-    $$('label, button, select, div').forEach(el=>{
-      const t=(el.textContent||'').toLowerCase();
-      if (t.includes('exportar horario') || t.includes('descargar ics')){
-        el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none';
-      }
-    });
-  }
-
-  function init(){
-    hideIcs();
-    const app = $('#app');
-    if (app){
-      const mo = new MutationObserver(()=>{ hideIcs(); });
-      mo.observe(app, { childList:true, subtree:true });
+  // Mostrar controles
+  function showControls() {
+    const c = controls();
+    if (c) {
+      c.style.display = 'flex';
+      c.style.opacity = '1';
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(hideControls, 8000); // Ocultar tras 8 s
     }
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+
+  // Ocultar controles (pantalla limpia)
+  function hideControls() {
+    const c = controls();
+    if (c) {
+      c.style.opacity = '0';
+      setTimeout(() => {
+        c.style.display = 'none';
+      }, 500);
+    }
+  }
+
+  // Inicializar cuando el DOM está listo
+  function init() {
+    const c = controls();
+    if (!c) return;
+    c.style.transition = 'opacity 0.5s ease';
+    showControls();
+
+    // Mostrar controles al tocar la cabecera
+    const header = $('header');
+    if (header) header.addEventListener('click', showControls);
+
+    // También si cambia algo (fecha, filtros, etc.)
+    c.addEventListener('change', showControls);
+    c.addEventListener('click', showControls);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
