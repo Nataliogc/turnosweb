@@ -1,5 +1,5 @@
-// --- Turnos mobile v2 patch ---
-// Scroll horizontal + foco en hoy + header compacto con botón Filtros
+
+// Turnos mobile v3: scroll + focus hoy + header compacto + botón Filtros + fix sticky
 (function(){
   const q = (s, r=document)=>r.querySelector(s);
   const qa = (s, r=document)=>Array.from(r.querySelectorAll(s));
@@ -42,8 +42,7 @@
   function setupCompactHeader(){
     const header = q('header');
     if (!header) return;
-    // Botón "Filtros"
-    if (!q('#btnFilters')) {
+    if (!q('#btnFilters')){
       const btn = document.createElement('button');
       btn.id = 'btnFilters';
       btn.className = 'controls-toggle';
@@ -54,7 +53,7 @@
       if (localStorage.getItem(KEY)==='1') document.body.classList.add('show-controls');
       btn.addEventListener('click', ()=>{
         document.body.classList.toggle('show-controls');
-        localStorage.setItem(KEY, document.body.classList.contains('show-controls')?'1':'0');
+        localStorage.setItem(KEY, document.body.classList.contains('show-controls') ? '1' : '0');
         fixStickyTop();
       });
     }

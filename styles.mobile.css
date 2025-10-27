@@ -1,37 +1,69 @@
-/* ===== Fix legibilidad de textos en móvil ===== */
-:root { color-scheme: only light; } /* NO auto-dark */
 
-body, header, #app { color: #16202a !important; }
+/* === Turnos Mobile v3 (compact + legible + light) === */
+:root{
+  --brand:#0b2d6b;
+  --muted:#d9e3f5;
+  --text:#16202a;
+  --bg:#ffffff;
+  --pill:#f5f7fb;
+  --danger:#ffe8e8;
+  --header-top: 40px;
+}
+:root { color-scheme: only light; }
+html, body{ background:var(--bg)!important; color:var(--text); }
 
-/* Inputs y selects */
-.field input,
-.field select,
-input,
-select {
-  color: #16202a !important;          /* texto principal */
-  background: #ffffff !important;      /* fondo claro */
-  -webkit-text-fill-color: #16202a !important; /* iOS/Android */
+/* Header ultra-compacto */
+header{
+  padding: 6px 10px !important;
+  gap: 6px !important;
+  background: #fff !important;
+  border-bottom: 1px solid var(--muted) !important;
+}
+.header-brand img{ width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--muted); }
+.title-block .title{ font-size: 15px; line-height: 1.05; font-weight: 800; color:#16202a !important; }
+.title-block .subtitle{ display:none; }
+
+/* Controles */
+.controls-container{ display:grid; grid-template-columns: 1fr; gap:10px; width:100% }
+@media (min-width:560px){ .controls-container{ grid-template-columns: 1fr 1fr; } }
+.field select, .field input, input, select{
+  width:100%;
+  padding:12px 12px;
+  border:1px solid var(--muted);
+  border-radius:12px;
+  background:#fff!important;
+  color:#16202a!important;
+  -webkit-text-fill-color:#16202a!important;
+  font-size:16px;
+}
+::placeholder{ color:#475569!important; opacity:1!important; }
+.flatpickr-input{ color:#16202a!important; }
+
+.btn{ width:100%; padding:12px 14px; border-radius:12px; font-weight:800 }
+
+/* Desplazable horizontal con sticky */
+.scrollwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.week-header,.grid{ min-width: calc(140px + 7 * 110px); }
+.week-header{ position: sticky; top: var(--header-top); background:#fff; z-index: 4; padding:6px 0 }
+.week-header, .grid{ gap:6px }
+.week-header{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
+.grid{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
+
+.week-header .cell:first-child, .grid .cell.name{
+  position: sticky; left:0; z-index:3; background:#fff; box-shadow:1px 0 0 0 var(--muted);
+}
+.cell{ min-height:44px; padding:6px 6px; border-radius:12px; border:1px solid var(--muted); background:#fff }
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:var(--pill); border:1px solid var(--muted) }
+.pill.descanso{ background:var(--danger); border-color:#ffc7c7; color:#8b1b1b }
+.pill.noche{ background:#f1f3f5 }
+.pill .icon{ font-size:14px }
+
+/* Botón Filtros */
+.controls-toggle{
+  appearance:none; border:1px solid var(--muted); background:#fff;
+  padding:6px 10px; border-radius:10px; font-weight:700; font-size:13px;
 }
 
-/* Placeholders (fechas, “— Hotel —”, etc.) */
-::placeholder { color: #475569 !important; opacity: 1 !important; }
-.field input::placeholder { color: #475569 !important; opacity: 1 !important; }
-
-/* Flatpickr */
-.flatpickr-input { color: #16202a !important; }
-
-/* Select: opciones y “placeholder” (opción vacía) */
-select option { color: #16202a !important; background:#fff !important; }
-select:invalid { color: #475569 !important; }           /* cuando está la opción “— … —” */
-option[value=""] { color: #475569 !important; }
-
-/* Autofill (Android/iOS) */
-input:-webkit-autofill,
-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #16202a !important;
-  box-shadow: 0 0 0px 1000px #ffffff inset !important;
-  transition: background-color 9999s ease-in-out 0s !important;
-}
-
-/* Título siempre visible */
-.title-block .title { color: #16202a !important; opacity: 1 !important; }
+body:not(.show-controls) .controls-container{ display:none!important; }
+body.show-controls .controls-container{ display:grid; }
+.week-header{ top: var(--header-top)!important; }
