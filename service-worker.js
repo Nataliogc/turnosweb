@@ -1,4 +1,4 @@
-const CACHE_NAME = "turnosweb-app-v3";
+const CACHE_NAME = "turnosweb-app-v5";
 const APP_SHELL = [
   "/turnosweb/",
   "/turnosweb/live.html",

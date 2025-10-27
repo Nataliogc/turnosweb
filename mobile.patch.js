@@ -1,5 +1,4 @@
-
-// Turnos mobile v3: scroll + focus hoy + header compacto + botón Filtros + fix sticky
+// Turnos mobile v3: scroll + foco hoy + header compacto + botón Filtros + fix sticky
 (function(){
   const q = (s, r=document)=>r.querySelector(s);
   const qa = (s, r=document)=>Array.from(r.querySelectorAll(s));
