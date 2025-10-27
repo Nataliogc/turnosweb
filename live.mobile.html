@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Cuadrantes de turnos (móvil)</title>
+  <title>Cuadrantes de turnos · APP</title>
 
   <meta name="color-scheme" content="light only">
   <meta name="supported-color-schemes" content="light">
-  <link rel="manifest" href="/turnosweb/manifest.json?v=10">
+  <link rel="manifest" href="/turnosweb/manifest.json?v=12">
   <meta name="theme-color" content="#0b2d6b">
   <link rel="apple-touch-icon" href="/turnosweb/icons/icon-192.png">
 
@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="styles.mobile.css">
 </head>
 <body>
-  <header>
+  <header class="app-header">
     <div class="header-brand">
       <img src="icons/icon-192.png" alt="Turnos Recepción">
       <div class="title-block">
@@ -25,19 +25,12 @@
     </div>
 
     <div class="controls-container">
-      <div class="field">
-        <select id="hotelSelect" aria-label="Hotel"><option value="">— Hotel —</option></select>
-      </div>
-      <div class="field">
-        <select id="employeeFilter" aria-label="Empleado"><option value="">— Empleado —</option></select>
-      </div>
-      <div class="field">
-        <input type="text" id="dateFrom" placeholder="Desde..." aria-label="Desde">
-      </div>
-      <div class="field">
-        <input type="text" id="dateTo" placeholder="Hasta..." aria-label="Hasta">
-      </div>
+      <div class="field"><select id="hotelSelect" aria-label="Hotel"><option value="">— Hotel —</option></select></div>
+      <div class="field"><select id="employeeFilter" aria-label="Empleado"><option value="">— Empleado —</option></select></div>
+      <div class="field"><input type="text" id="dateFrom" placeholder="Desde..." aria-label="Desde"></div>
+      <div class="field"><input type="text" id="dateTo" placeholder="Hasta..." aria-label="Hasta"></div>
 
+      <!-- Ocultos por CSS en móvil (dejamos nodos para no romper el JS) -->
       <div class="field">
         <label for="employeeSelectIcs">Exportar horario de</label>
         <select id="employeeSelectIcs"><option value="">— Selecciona —</option></select>
@@ -46,10 +39,12 @@
     </div>
   </header>
 
-  <div id="app"></div>
-  <div id="monthly-summary-container"></div>
+  <main>
+    <div id="app"></div>
+    <div id="monthly-summary-container"></div>
+  </main>
 
-  <!-- Si tu live.html tiene window.FULL_DATA inline, pégalo aquí igual -->
+  <!-- SI GENERAS DATOS INLINE, PÉGALOS AQUÍ -->
   <!-- <script>window.FULL_DATA = { ... };</script> -->
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
