@@ -1,9 +1,8 @@
-const CACHE_NAME = "turnosweb-app-v12";
+const CACHE_NAME = "turnosweb-app-v9";
 const APP_SHELL = [
   "/turnosweb/",
   "/turnosweb/live.html",
   "/turnosweb/live.mobile.html",
-  "/turnosweb/styles.css",
   "/turnosweb/styles.mobile.css",
   "/turnosweb/mobile.patch.js",
   "/turnosweb/manifest.json",
@@ -11,27 +10,29 @@ const APP_SHELL = [
   "/turnosweb/icons/icon-512.png"
 ];
 
-self.addEventListener("install", e => {
+self.addEventListener("install", (event) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
 });
 
-self.addEventListener("activate", e => {
-  e.waitUntil((async () => {
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
 
-self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
   if (url.origin !== location.origin) {
-    e.respondWith(
-      fetch(e.request).then(r => { caches.open(CACHE_NAME).then(c => c.put(e.request, r.clone())); return r; })
-      .catch(() => caches.match(e.request))
+    event.respondWith(
+      fetch(event.request).then((resp) => {
+        caches.open(CACHE_NAME).then((c) => c.put(event.request, resp.clone()));
+        return resp;
+      }).catch(() => caches.match(event.request))
     );
     return;
   }
-  e.respondWith(caches.match(e.request).then(c => c || fetch(e.request)));
+  event.respondWith(caches.match(event.request).then((c) => c || fetch(event.request)));
 });

@@ -1,7 +1,6 @@
 # 2_GenerarCuadranteHTML.py
-# Genera data.js con window.FULL_DATA = {...} a partir de los CSV exportados.
-# Ambas vistas (live.html y live.mobile.html) cargarán este único data.js.
-
+# Genera index.html embebiendo datos desde CSV (hojas semanales + sustituciones y cambios de turno)
+# y añade metadatos para el front.
 import csv, json
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -16,7 +15,9 @@ HOTEL_CSV_FILES = [
 EMPLEADOS_CSV = HERE / "Plantilla Cuadrante con Sustituciones v.6.0.xlsx - Empleados.csv"  # opcional
 SUSTITUCIONES_RAW_CSV = HERE / "Plantilla Cuadrante con Sustituciones v.6.0.xlsx - Sustituciones.csv"
 
-OUTPUT_DATA_JS = HERE / "data.js"   # ← único fichero de datos para ambas vistas
+TEMPLATE_PATH = HERE / "turnos_final.html"
+OUTPUT_PATH   = HERE / "index.html"
+PLACEHOLDER   = "__DATA_PLACEHOLDER__"
 
 DIAS_SEMANA = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
 
@@ -80,8 +81,9 @@ def leer_hojas_semanales() -> dict:
 
 def leer_y_procesar_sustituciones():
     """
-    subs[(hotel, fecha, empleado)] = {Sustituto, TipoAusencia}
-    swaps[(hotel, fecha)] = set( (empA, empB) )
+    Lee el CSV de 'Sustituciones' y devuelve:
+      - subs[(hotel, fecha, empleado)] = {Sustituto, TipoAusencia}
+      - swaps[(hotel, fecha)] = set( (empA, empB) )
     """
     if not SUSTITUCIONES_RAW_CSV.exists():
         return {}, defaultdict(set)
@@ -101,7 +103,7 @@ def leer_y_procesar_sustituciones():
             fecha = parse_date(_get(r, "Fecha"))
             hotel = _get(r, "Hotel")
             emp   = _get(r, "Empleado")
-            if not (fecha and hotel and emp):
+            if not (fecha and hotel and emp): 
                 continue
 
             cambio = _get(r, "Cambio de Turno", "Cambio de turno", "CambioTurno")
@@ -155,7 +157,7 @@ def main():
         for lunes, data in semanas.items():
             turnos = data["turnos"]
 
-            # 1) Cambios de turno (SWAPS)
+            # 1) SWAPS (cambios de turno)
             base = datetime.strptime(lunes, "%Y-%m-%d")
             fechas_semana = [(base + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
             for fecha in fechas_semana:
@@ -169,7 +171,7 @@ def main():
                         turnos[key_a] = _mark_swap(turno_b)
                         turnos[key_b] = _mark_swap(turno_a)
 
-            # 2) Ausencias + Sustituto
+            # 2) AUSENCIAS + SUSTITUTO
             sustitutos_de_la_semana = set()
             for (emp, fecha), valor in list(turnos.items()):
                 if emp in excluir:
@@ -181,12 +183,12 @@ def main():
                     turnos[(emp, fecha)] = {
                         "TurnoOriginal": valor,
                         "Sustituto": s.get("Sustituto",""),
-                        "TipoInterpretado": s.get("TipoAusencia",""),
+                        "TipoInterpretado": s.get("TipoAusencia",""),  # texto EXACTO
                     }
                     if s.get("Sustituto"):
                         sustitutos_de_la_semana.add(s["Sustituto"])
 
-            # 3) Orden final
+            # 3) orden final
             orden = [e for e in data["orden_empleados"] if e not in excluir]
             for s in sustitutos_de_la_semana:
                 if s and s not in orden:
@@ -209,11 +211,12 @@ def main():
         "generated_at": datetime.now().isoformat(timespec="seconds"),
     }
 
-    OUTPUT_DATA_JS.write_text(
-        "window.FULL_DATA = " + json.dumps(payload, ensure_ascii=False) + ";",
-        encoding="utf-8"
-    )
-    print(f"[OK] {OUTPUT_DATA_JS.name} generado con éxito.")
+    js = "window.FULL_DATA = " + json.dumps(payload, ensure_ascii=False) + ";"
+    html = TEMPLATE_PATH.read_text(encoding="utf-8")
+    if PLACEHOLDER not in html:
+        raise SystemExit("No se encontró __DATA_PLACEHOLDER__ en turnos_final.html")
+    OUTPUT_PATH.write_text(html.replace(PLACEHOLDER, js), encoding="utf-8")
+    print(f"[OK] {OUTPUT_PATH.name} generado con éxito.")
 
 if __name__ == "__main__":
     main()
