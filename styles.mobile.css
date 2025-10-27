@@ -37,3 +37,14 @@ select option{ color:#111!important; background:#fff!important; }
 #employeeSelectIcs, #btnICS, #exportField { display:none !important; }
 
 .doc-end-space{ height:56px }
+@media (max-width: 640px){
+  #employeeSelectIcs,
+  #btnICS,
+  label[for="employeeSelectIcs"],
+  #employeeSelectIcs + label,
+  #employeeSelectIcs ~ .help,
+  #btnICS ~ .help{
+    display:none !important;
+  }
+}
+

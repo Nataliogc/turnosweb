@@ -14,6 +14,14 @@
 
   <!-- Estilos móviles -->
   <link rel="stylesheet" href="styles.mobile.css">
+<!-- Móvil/PWA -->
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
+<link rel="manifest" href="/turnosweb/manifest.json">
+<meta name="theme-color" content="#0b2d6b">
+<link rel="apple-touch-icon" href="/turnosweb/icons/icon-192.png">
+<link rel="stylesheet" href="styles.mobile.css">
+
 </head>
 <body>
   <header>
@@ -83,5 +91,12 @@
       navigator.serviceWorker.register("/turnosweb/service-worker.js");
     }
   </script>
+<script src="mobile.patch.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/turnosweb/service-worker.js");
+  }
+</script>
+
 </body>
 </html>
