@@ -60,3 +60,31 @@ header{
 
 /* Footer spacing */
 .doc-end-space{ height: 56px }
+/* ===== Encabezado compacto + filtros plegables ===== */
+:root{ --header-top: 46px; }         /* altura real del header en móvil */
+
+header.compact{
+  padding:6px 10px;
+  gap:8px;
+  border-bottom:1px solid var(--muted);
+}
+header.compact .header-brand img{ width:28px; height:28px; border-radius:8px }
+header.compact .title-block .title{ font-size:16px; line-height:1.1 }
+header.compact .title-block .subtitle{ font-size:11px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:62vw }
+
+/* Botón Filtros */
+.controls-toggle{
+  appearance:none; border:1px solid var(--muted); background:#fff; color:var(--text);
+  padding:8px 10px; border-radius:10px; font-weight:700; font-size:14px;
+}
+
+/* Panel de filtros plegable por defecto */
+body:not(.show-controls) .controls-container{ display:none !important; }
+body.show-controls .controls-container{ display:grid; grid-template-columns: 1fr; gap:10px; margin-top:6px }
+@media (min-width:560px){
+  body.show-controls .controls-container{ grid-template-columns: 1fr 1fr; }
+}
+
+/* Ajustar sticky de la cabecera de días a la nueva altura */
+.week-header{ top: var(--header-top); }
+

@@ -52,3 +52,53 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+// ===== Encoger encabezado y plegar filtros =====
+(function(){
+  const $ = (s, r=document)=>r.querySelector(s);
+
+  function setupCompactHeader(){
+    const header = $('header');
+    if(!header) return;
+    header.classList.add('compact');
+
+    // Crear botón "Filtros" si no existe
+    if (!$('#btnFilters')) {
+      const btn = document.createElement('button');
+      btn.id = 'btnFilters';
+      btn.className = 'controls-toggle';
+      btn.type = 'button';
+      btn.textContent = 'Filtros';
+      // Insertar al final del header (junto a los controles)
+      header.appendChild(btn);
+
+      // Restaurar estado previo (colapsado/abierto)
+      const key = 'turnos_show_filters';
+      if (localStorage.getItem(key) === '1') document.body.classList.add('show-controls');
+
+      btn.addEventListener('click', ()=>{
+        document.body.classList.toggle('show-controls');
+        localStorage.setItem(key, document.body.classList.contains('show-controls') ? '1' : '0');
+        // Recalcular sticky por si cambia la altura del header
+        fixStickyTop();
+      });
+    }
+    // Fijar altura real del header en la CSS var --header-top
+    fixStickyTop();
+  }
+
+  function fixStickyTop(){
+    const header = document.querySelector('header');
+    if(!header) return;
+    const h = Math.round(header.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--header-top', h+'px');
+  }
+
+  // Correr al cargar y cuando cambie el layout
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', setupCompactHeader);
+  } else {
+    setupCompactHeader();
+  }
+  window.addEventListener('resize', fixStickyTop);
+})();
+
