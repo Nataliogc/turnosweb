@@ -1,4 +1,3 @@
-
 /* --- Turnos Mobile v2 --- */
 :root{
   --brand:#0b2d6b;
@@ -7,8 +6,9 @@
   --bg:#ffffff;
   --pill:#f5f7fb;
   --danger:#ffe8e8;
+  --header-top: 46px;
 }
-/* Forzar modo claro en móviles con tema oscuro */
+/* Forzar modo claro */
 :root { color-scheme: only light; }
 html, body{ background:var(--bg)!important; color:var(--text); }
 
@@ -44,7 +44,7 @@ header{
 .week-header,.grid{
   min-width: calc(140px + 7 * 110px);
 }
-.week-header{ position: sticky; top: 58px; background:#fff; z-index: 4; padding:6px 0 }
+.week-header{ position: sticky; top: var(--header-top); background:#fff; z-index: 4; padding:6px 0 }
 .week-header, .grid{ gap:6px }
 .week-header{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
 .grid{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
@@ -60,31 +60,31 @@ header{
 
 /* Footer spacing */
 .doc-end-space{ height: 56px }
-/* ===== Encabezado compacto + filtros plegables ===== */
-:root{ --header-top: 46px; }         /* altura real del header en móvil */
 
-header.compact{
-  padding:6px 10px;
-  gap:8px;
-  border-bottom:1px solid var(--muted);
+/* ===== Encabezado ultra-compacto + filtros plegables ===== */
+:root{ --header-top: 40px; }
+
+header{
+  padding: 6px 10px !important;
+  gap: 6px !important;
+  background: #fff !important;
+  border-bottom: 1px solid var(--muted) !important;
 }
-header.compact .header-brand img{ width:28px; height:28px; border-radius:8px }
-header.compact .title-block .title{ font-size:16px; line-height:1.1 }
-header.compact .title-block .subtitle{ font-size:11px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:62vw }
+.header-brand img{ width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--muted); }
+.title-block .title{ font-size: 15px; line-height: 1.05; font-weight: 800; }
+.title-block .subtitle{ display: none; } /* Oculta subtítulo para ganar altura */
 
-/* Botón Filtros */
 .controls-toggle{
-  appearance:none; border:1px solid var(--muted); background:#fff; color:var(--text);
-  padding:8px 10px; border-radius:10px; font-weight:700; font-size:14px;
+  appearance: none; border: 1px solid var(--muted); background: #fff;
+  padding: 6px 10px; border-radius: 10px; font-weight: 700; font-size: 13px;
 }
 
-/* Panel de filtros plegable por defecto */
-body:not(.show-controls) .controls-container{ display:none !important; }
+/* Filtros plegados por defecto en móvil */
+body:not(.show-controls) .controls-container{ display: none !important; }
 body.show-controls .controls-container{ display:grid; grid-template-columns: 1fr; gap:10px; margin-top:6px }
 @media (min-width:560px){
   body.show-controls .controls-container{ grid-template-columns: 1fr 1fr; }
 }
 
-/* Ajustar sticky de la cabecera de días a la nueva altura */
-.week-header{ top: var(--header-top); }
-
+/* Sticky de cabecera de días recalculado */
+.week-header{ top: var(--header-top) !important; }
