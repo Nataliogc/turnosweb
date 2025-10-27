@@ -1,7 +1,7 @@
 {
   "name": "Turnos · Hoteles",
   "short_name": "Turnos",
-  "start_url": "/turnosweb/live.html",
+  "start_url": "/turnosweb/live.mobile.v2.html",
   "scope": "/turnosweb/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -6,6 +6,11 @@
   <title>Cuadrantes de turnos</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/turnosweb/manifest.json">
+  <meta name="theme-color" content="#0b2d6b">
+  <link rel="apple-touch-icon" href="/turnosweb/icons/icon-192.png">
+  
+  <!-- Mobile polish CSS -->
   <link rel="stylesheet" href="styles.mobile.css">
 </head>
 <body>
@@ -45,6 +50,11 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
   <script src="plantilla_adapter_semana.js"></script>
+  
+  <!-- Mobile patch & SW register -->
   <script src="mobile.patch.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/turnosweb/service-worker.js"); }
+  </script>
 </body>
 </html>

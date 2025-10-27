@@ -1,75 +1,62 @@
 
-/* --- Turnos mobile overrides --- */
+/* --- Turnos Mobile v2 --- */
 :root{
-  --day-col-min: 96px;   /* min width per día en móvil */
-  --name-col-min: 140px; /* primera columna */
+  --brand:#0b2d6b;
+  --muted:#d9e3f5;
+  --text:#16202a;
+  --bg:#ffffff;
+  --pill:#f5f7fb;
+  --danger:#ffe8e8;
 }
-/* Cabecera: controles en grid en pantallas pequeñas */
-@media (max-width: 840px){
-  .controls-container{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:8px;
-  }
-  .controls-container .field{ min-width: unset; }
-  .title-block .title{ font-size: 16px; }
-  .title-block .subtitle{ font-size: 11px; }
-}
-@media (max-width: 520px){
-  .controls-container{
-    grid-template-columns: 1fr;
-  }
-  header{ gap:10px; padding:10px 12px; }
-}
+/* Forzar modo claro en móviles con tema oscuro */
+:root { color-scheme: only light; }
+html, body{ background:var(--bg)!important; color:var(--text); }
 
-/* Scroll horizontal suave para semana */
-.scrollwrap{
-  overflow-x:auto;
-  -webkit-overflow-scrolling: touch;
-  border-top: 1px solid var(--muted);
+/* Header compacto */
+header{
+  padding: 10px 12px;
+  gap: 10px;
+  background: var(--bg);
   border-bottom: 1px solid var(--muted);
 }
-.scrollwrap::-webkit-scrollbar{ height:8px }
-.scrollhint{
-  font-size:12px;
-  color:#667;
-  padding:8px 12px 0 12px;
+.header-brand img{ width:40px; height:40px; border-radius:10px; border:1px solid var(--muted) }
+.title-block .title{ font-weight:800; font-size:18px; line-height:1.1 }
+.title-block .subtitle{ font-size:12px; opacity:.75 }
+
+/* Controles: 1 columna en móvil, 2 en phablet */
+.controls-container{ display:grid; grid-template-columns: 1fr; gap:10px; width:100% }
+@media (min-width: 560px){ .controls-container{ grid-template-columns: 1fr 1fr } }
+.field select, .field input{
+  width:100%;
+  padding:12px 12px;
+  border:1px solid var(--muted);
+  border-radius:12px;
+  background:#fff;
+  font-size:16px;
 }
+.btn{ width:100%; padding:12px 14px; border-radius:12px; font-weight:800 }
 
-/* Rejilla y cabecera: ancho mínimo para no apretar demasiado */
-.week-header,
-.grid{
-  min-width: calc(var(--name-col-min) + 7 * var(--day-col-min));
+/* Indicaciones */
+.scrollhint{ font-size:12px; color:#667; padding: 8px 4px 0 4px }
+
+/* Grid horizontal con sticky de 1ª columna y cabecera */
+.scrollwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.week-header,.grid{
+  min-width: calc(140px + 7 * 110px);
 }
-@media (max-width: 840px){
-  .week-header{ font-size:12px }
-  .cell{ min-height: 40px; padding: 4px 6px }
-  .pill{ padding:5px 8px }
+.week-header{ position: sticky; top: 58px; background:#fff; z-index: 4; padding:6px 0 }
+.week-header, .grid{ gap:6px }
+.week-header{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
+.grid{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
+
+.week-header .cell:first-child, .grid .cell.name{
+  position: sticky; left:0; z-index:3; background:#fff; box-shadow:1px 0 0 0 var(--muted);
 }
+.cell{ min-height:44px; padding:6px 6px; border-radius:12px; border:1px solid var(--muted); background:#fff }
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:var(--pill); border:1px solid var(--muted) }
+.pill.descanso{ background:var(--danger); border-color:#ffc7c7; color:#8b1b1b }
+.pill.noche{ background:#f1f3f5 }
+.pill .icon{ font-size:14px }
 
-/* Primera columna pegajosa */
-.week-header .cell:first-child,
-.grid .cell.name{
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  background: #fff;
-  box-shadow: 1px 0 0 0 var(--muted);
-}
-
-/* Columnas de días: tamaño mínimo */
-.week-header{ display:grid; grid-template-columns: var(--name-col-min) repeat(7, minmax(var(--day-col-min), 1fr)); gap:8px; }
-.grid{ display:grid; grid-template-columns: var(--name-col-min) repeat(7, minmax(var(--day-col-min), 1fr)); gap:8px; }
-
-/* Cabecera de días pegajosa al hacer scroll vertical */
-.week-header{ position: sticky; top: 56px; background:#fff; z-index: 4; padding: 6px 0; }
-@media (max-width: 520px){
-  .week-header{ top: 52px }
-}
-
-/* Botones y selects: área táctil mayor */
-.btn{ min-height: 40px }
-.field select, .field input{ min-height: 40px }
-
-/* Píldoras: tamaños legibles en móvil */
-.pill .icon{ font-size: 14px }
+/* Footer spacing */
+.doc-end-space{ height: 56px }
