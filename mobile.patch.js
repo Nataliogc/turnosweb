@@ -1,10 +1,21 @@
-// APP (móvil) – Controles desplegables + refresco fiable
+// APP (móvil) – Botón Filtros, Aplicar, refresh fiable y flatpickr garantizado
 (function () {
   const $  = (s, r=document) => r.querySelector(s);
-  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+  function ensureFlatpickr(){
+    const opts = {
+      locale: 'es',
+      dateFormat: 'd/M/Y',
+      allowInput: true,
+      weekNumbers: true
+    };
+    if (window.flatpickr){
+      if (!$('#dateFrom')?._flatpickr) window.flatpickr('#dateFrom', opts);
+      if (!$('#dateTo')?._flatpickr)   window.flatpickr('#dateTo',   opts);
+    }
+  }
 
   function triggerRefresh(){
-    // Dispara los listeners que ya pone plantilla_adapter_semana.js
     ['hotelSelect','employeeFilter','dateFrom','dateTo'].forEach(id=>{
       const el = document.getElementById(id);
       if(!el) return;
@@ -12,85 +23,46 @@
     });
   }
 
-  function ensureApplyButton(){
-    // Crea/inyecta un botón "Aplicar" dentro de la barra de controles
+  function initUI(){
     const bar = $('.controls-container');
-    if (!bar || $('#btnApply')) return;
-    const box = document.createElement('div');
-    box.className = 'field';
-    box.innerHTML = `<button class="btn" id="btnApply" type="button">Aplicar</button>`;
-    bar.appendChild(box);
-    $('#btnApply').addEventListener('click', triggerRefresh);
-  }
+    const btn = $('#btnFilters');
+    const apply = $('#btnApply');
+    if (!bar || !btn || !apply) return;
 
-  function addHeaderFiltersButton(){
-    const header = $('header');
-    if (!header || $('#btnFilters')) return;
+    // toggle filtros
+    btn.addEventListener('click', ()=>{
+      const visible = getComputedStyle(bar).display !== 'none';
+      if (visible){ bar.style.opacity='0'; setTimeout(()=>{ bar.style.display='none'; }, 200); }
+      else { bar.style.display='flex'; bar.style.opacity='1'; ensureFlatpickr(); }
+    });
 
-    const btn = document.createElement('button');
-    btn.id = 'btnFilters';
-    btn.className = 'btn';
-    btn.type = 'button';
-    btn.textContent = 'Filtros';
-    // Lo metemos al final del header, antes de la barra
-    header.insertBefore(btn, $('.controls-container')?.nextSibling || null);
+    // aplicar => refrescar pintado
+    apply.addEventListener('click', ()=>{ ensureFlatpickr(); triggerRefresh(); });
 
-    let autoHide;
-    const show = () => {
-      const bar = $('.controls-container');
-      if(!bar) return;
-      bar.style.display = 'flex';
-      bar.style.opacity = '1';
-      clearTimeout(autoHide);
-      autoHide = setTimeout(hide, 8000); // se oculta solo tras 8s sin tocar
-    };
-    const hide = () => {
-      const bar = $('.controls-container');
-      if(!bar) return;
-      bar.style.opacity = '0';
-      setTimeout(()=>{ bar.style.display='none'; }, 300);
-    };
+    // refrescar al cambiar fechas manualmente
+    ['dateFrom','dateTo'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el){ el.addEventListener('change', triggerRefresh); el.addEventListener('input', triggerRefresh); }
+    });
 
-    btn.addEventListener('click', show);
-    // Si tocas algo dentro de los controles, prolonga la visibilidad y refresca
-    $('.controls-container')?.addEventListener('change', ()=>{ show(); triggerRefresh(); });
-    $('.controls-container')?.addEventListener('input',  ()=>{ show(); });
-
-    // Primera carga: se muestra y luego se auto-oculta
-    show();
-  }
-
-  function hideIcsForever(){
-    // Oculta exportación ICS SIEMPRE en APP
+    // ocultar ICS por si se inyecta dinámicamente
     ['#employeeSelectIcs','#btnICS'].forEach(sel=>{
       const el=$(sel); if(el){ el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none'; }
     });
-    $$('label').forEach(el=>{
-      const t=(el.textContent||'').toLowerCase();
-      if (t.includes('exportar horario')) el.style.display='none';
-    });
+
+    // mostrar controles la primera vez (para que el usuario los localice)
+    bar.style.display='flex';
+    bar.style.opacity='1';
+    ensureFlatpickr();
   }
 
   function init(){
-    const appReady = !!document.getElementById('app');
-    if (!appReady) return;
-    hideIcsForever();
-    addHeaderFiltersButton();
-    ensureApplyButton();
-
-    // Parche extra: cuando flatpickr cambie, forzamos refresh
-    ['dateFrom','dateTo'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(!el) return;
-      el.addEventListener('change', triggerRefresh);
-      el.addEventListener('input',  triggerRefresh);
-    });
-
-    // Si el DOM cambia (tras pintar semanas), reocultar ICS y mantener botón
-    const mo = new MutationObserver(()=>{ hideIcsForever(); ensureApplyButton(); });
-    mo.observe(document.body, {childList:true, subtree:true});
+    if (!document.getElementById('app')) return;
+    initUI();
+    // Reaplicar si la UI se re-renderiza
+    new MutationObserver(()=>initUI()).observe(document.body,{childList:true,subtree:true});
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();

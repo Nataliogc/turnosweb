@@ -5,56 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Cuadrantes de turnos · APP</title>
 
-  <meta name="color-scheme" content="light only">
-  <meta name="supported-color-schemes" content="light">
-  <link rel="manifest" href="/turnosweb/manifest.json?v=12">
-  <meta name="theme-color" content="#0b2d6b">
-  <link rel="apple-touch-icon" href="/turnosweb/icons/icon-192.png">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" sizes="192x192" href="icons/icon-192.png">
+  <meta name="theme-color" content="#1b1b1b"/>
 
+  <!-- Estilos -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="styles.mobile.css">
+  <link rel="stylesheet" href="styles.css?v=app">
+  <link rel="stylesheet" href="styles.mobile.css?v=app">
+
+  <style>
+    /* APP: oculta controles por defecto; se muestran al pulsar Filtros */
+    .controls-container{ display:none; }
+  </style>
 </head>
 <body>
-  <header class="app-header">
+  <header>
     <div class="header-brand">
-      <img src="icons/icon-192.png" alt="Turnos Recepción">
+      <img src="Logo.png" alt="Logo" />
       <div class="title-block">
         <div class="title">Cuadrantes de turnos</div>
+        <div class="subtitle">APP · L→D</div>
       </div>
     </div>
 
-    <div class="controls-container">
-      <div class="field"><select id="hotelSelect" aria-label="Hotel"><option value="">— Hotel —</option></select></div>
-      <div class="field"><select id="employeeFilter" aria-label="Empleado"><option value="">— Empleado —</option></select></div>
-      <div class="field"><input type="text" id="dateFrom" placeholder="Desde..." aria-label="Desde"></div>
-      <div class="field"><input type="text" id="dateTo" placeholder="Hasta..." aria-label="Hasta"></div>
+    <!-- Botón Filtros (APP) -->
+    <button id="btnFilters" class="btn" type="button" style="margin-left:.25rem;">Filtros</button>
 
-      <!-- Ocultos por CSS en móvil (dejamos nodos para no romper el JS) -->
-      <div class="field">
-        <label for="employeeSelectIcs">Exportar horario de</label>
-        <select id="employeeSelectIcs"><option value="">— Selecciona —</option></select>
+    <div class="controls-container">
+      <div class="field"><select id="hotelSelect"><option value="">— Hotel —</option></select></div>
+      <div class="field"><select id="employeeFilter"><option value="">— Empleado —</option></select></div>
+      <div class="field"><input id="dateFrom" type="text" placeholder="Desde…"></div>
+      <div class="field"><input id="dateTo" type="text" placeholder="Hasta…"></div>
+      <div class="field" style="display:none">
+        <select id="employeeSelectIcs"><option value="">— Exportar —</option></select>
       </div>
-      <button class="btn" id="btnICS">Descargar ICS</button>
+      <button class="btn" id="btnICS" style="display:none">Descargar ICS</button>
+      <div class="field"><button class="btn" id="btnApply" type="button">Aplicar</button></div>
     </div>
   </header>
 
-  <main>
-    <div id="app"></div>
-    <div id="monthly-summary-container"></div>
-  </main>
+  <div id="app"></div>
+  <div id="monthly-summary-container"></div>
 
   <!-- SI GENERAS DATOS INLINE, PÉGALOS AQUÍ -->
- <script src="data.js?v=1"></script>
+  <script src="data.js?v=app"></script>
 
+  <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
-  <script src="plantilla_adapter_semana.js"></script>
 
-  <script src="mobile.patch.js"></script>
+  <!-- Lógica de pintado -->
+  <script src="plantilla_adapter_semana.js?v=app"></script>
+
+  <!-- Parche APP: Filtros desplegables + refresh + flatpickr seguro -->
+  <script src="mobile.patch.js?v=app"></script>
+
+  <!-- Registrar SW -->
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/turnosweb/service-worker.js");
+      navigator.serviceWorker.register("service-worker.js").catch(()=>{});
     }
   </script>
 </body>
