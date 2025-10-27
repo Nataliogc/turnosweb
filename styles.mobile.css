@@ -1,0 +1,75 @@
+
+/* --- Turnos mobile overrides --- */
+:root{
+  --day-col-min: 96px;   /* min width per día en móvil */
+  --name-col-min: 140px; /* primera columna */
+}
+/* Cabecera: controles en grid en pantallas pequeñas */
+@media (max-width: 840px){
+  .controls-container{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:8px;
+  }
+  .controls-container .field{ min-width: unset; }
+  .title-block .title{ font-size: 16px; }
+  .title-block .subtitle{ font-size: 11px; }
+}
+@media (max-width: 520px){
+  .controls-container{
+    grid-template-columns: 1fr;
+  }
+  header{ gap:10px; padding:10px 12px; }
+}
+
+/* Scroll horizontal suave para semana */
+.scrollwrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling: touch;
+  border-top: 1px solid var(--muted);
+  border-bottom: 1px solid var(--muted);
+}
+.scrollwrap::-webkit-scrollbar{ height:8px }
+.scrollhint{
+  font-size:12px;
+  color:#667;
+  padding:8px 12px 0 12px;
+}
+
+/* Rejilla y cabecera: ancho mínimo para no apretar demasiado */
+.week-header,
+.grid{
+  min-width: calc(var(--name-col-min) + 7 * var(--day-col-min));
+}
+@media (max-width: 840px){
+  .week-header{ font-size:12px }
+  .cell{ min-height: 40px; padding: 4px 6px }
+  .pill{ padding:5px 8px }
+}
+
+/* Primera columna pegajosa */
+.week-header .cell:first-child,
+.grid .cell.name{
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+  box-shadow: 1px 0 0 0 var(--muted);
+}
+
+/* Columnas de días: tamaño mínimo */
+.week-header{ display:grid; grid-template-columns: var(--name-col-min) repeat(7, minmax(var(--day-col-min), 1fr)); gap:8px; }
+.grid{ display:grid; grid-template-columns: var(--name-col-min) repeat(7, minmax(var(--day-col-min), 1fr)); gap:8px; }
+
+/* Cabecera de días pegajosa al hacer scroll vertical */
+.week-header{ position: sticky; top: 56px; background:#fff; z-index: 4; padding: 6px 0; }
+@media (max-width: 520px){
+  .week-header{ top: 52px }
+}
+
+/* Botones y selects: área táctil mayor */
+.btn{ min-height: 40px }
+.field select, .field input{ min-height: 40px }
+
+/* Píldoras: tamaños legibles en móvil */
+.pill .icon{ font-size: 14px }
