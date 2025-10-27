@@ -1,97 +1,39 @@
-/* === Turnos Mobile v5 (compacto + legible + solo filtros clave en móvil) === */
+/* === Turnos Mobile (página móvil dedicada) === */
 :root{
-  --brand:#0b2d6b;
-  --muted:#d9e3f5;
-  --text:#16202a;
-  --bg:#ffffff;
-  --pill:#f5f7fb;
-  --danger:#ffe8e8;
-  --header-top: 40px;
+  --brand:#0b2d6b; --muted:#d9e3f5; --text:#16202a; --bg:#ffffff;
+  --pill:#f5f7fb; --danger:#ffe8e8; --header-top:40px;
 }
+:root { color-scheme: only light; }
+html,body{ background:var(--bg)!important; color:var(--text); }
 
-/* Forzar modo claro, evitar inversiones automáticas */
-:root { color-scheme: only light; }            /* sin modo oscuro automático */
-.controls-container, .field, select, input { color:#111 !important; }
+/* Header compacto */
+header{ padding:6px 10px; gap:6px; background:#fff; border-bottom:1px solid var(--muted); }
+.header-brand img{ width:26px; height:26px; border-radius:8px; border:1px solid var(--muted); }
+.title-block .title{ font: 800 15px/1.05 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+/* Controles legibles */
+.controls-container{ display:grid; grid-template-columns:1fr; gap:10px; margin:10px; }
+@media (min-width:560px){ .controls-container{ grid-template-columns:1fr 1fr; } }
 .field select, .field input, select, input{
-  background:#fff !important;
-  border:2px solid #e2e8f0 !important;
-  color:#111 !important;
-  -webkit-text-fill-color:#111 !important;
-  font-weight:600;
+  width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:12px;
+  background:#fff!important; color:#111!important; -webkit-text-fill-color:#111!important; font-size:16px; font-weight:600;
 }
-::placeholder{ color:#64748b !important; opacity:1 !important; }
-.flatpickr-input{ color:#111 !important; -webkit-text-fill-color:#111 !important; }
-select option{ color:#111 !important; background:#fff !important; }html, body{ background:var(--bg)!important; color:var(--text); }
-
-/* ===== Header ultra-compacto ===== */
-header{
-  padding: 6px 10px !important;
-  gap: 6px !important;
-  background: #fff !important;
-  border-bottom: 1px solid var(--muted) !important;
-}
-.header-brand img{ width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--muted); }
-.title-block .title{ font-size: 15px; line-height: 1.05; font-weight: 800; color:#16202a !important; }
-.title-block .subtitle{ display:none; } /* ganamos altura */
-
-/* ===== Controles y legibilidad ===== */
-.controls-container{ display:grid; grid-template-columns: 1fr; gap:10px; width:100% }
-@media (min-width:560px){ .controls-container{ grid-template-columns: 1fr 1fr; } }
-
-.field select, .field input, select, input{
-  width:100%;
-  padding:12px 12px;
-  border:2px solid #e2e8f0 !important;   /* más contraste */
-  border-radius:12px;
-  background:#fff !important;
-  color:#111 !important;
-  -webkit-text-fill-color:#111 !important;
-  font-size:16px;
-  font-weight:600;
-}
-::placeholder{ color:#64748b !important; opacity:1 !important; }
-.flatpickr-input{ color:#111 !important; -webkit-text-fill-color:#111 !important; }
-select option{ color:#111 !important; background:#fff !important; }
-option[value=""]{ color:#94a3b8 !important; } /* “— Hotel —”, etc. */
-select:disabled, input:disabled{ opacity:1 !important; color:#111 !important; }
-
+::placeholder{ color:#64748b!important; opacity:1!important; }
+select option{ color:#111!important; background:#fff!important; }
+.flatpickr-input{ color:#111!important; -webkit-text-fill-color:#111!important; }
 .btn{ width:100%; padding:12px 14px; border-radius:12px; font-weight:800 }
 
-/* ===== Rejilla con scroll horizontal y sticky ===== */
-.scrollwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.week-header,.grid{ min-width: calc(140px + 7 * 110px); }
-.week-header{ position: sticky; top: var(--header-top); background:#fff; z-index: 4; padding:6px 0 }
-.week-header, .grid{ gap:6px }
-.week-header{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
-.grid{ display:grid; grid-template-columns: 140px repeat(7, minmax(110px,1fr)) }
-
-/* 1ª columna sticky */
-.week-header .cell:first-child, .grid .cell.name{
-  position: sticky; left:0; z-index:3; background:#fff; box-shadow:1px 0 0 0 var(--muted);
-}
-.cell{ min-height:44px; padding:6px 6px; border-radius:12px; border:1px solid var(--muted); background:#fff }
+/* Cuadrante: scroll horizontal + sticky */
+.scrollwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:10px; }
+.week-header, .grid{ min-width: calc(140px + 7*110px); display:grid; gap:6px; }
+.week-header{ grid-template-columns:140px repeat(7, minmax(110px,1fr)); position:sticky; top:var(--header-top); background:#fff; z-index:4; padding:6px 0; }
+.grid{ grid-template-columns:140px repeat(7, minmax(110px,1fr)); }
+.week-header .cell:first-child, .grid .cell.name{ position:sticky; left:0; z-index:3; background:#fff; box-shadow:1px 0 0 0 var(--muted); }
+.cell{ min-height:44px; padding:6px; border-radius:12px; border:1px solid var(--muted); background:#fff; }
 .pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:var(--pill); border:1px solid var(--muted) }
 .pill.descanso{ background:var(--danger); border-color:#ffc7c7; color:#8b1b1b }
-.pill.noche{ background:#f1f3f5 }
-.pill .icon{ font-size:14px }
+
+/* Ocultar Exportar/ICS en móvil (y en esta página en general) */
+#employeeSelectIcs, #btnICS, #exportField { display:none !important; }
+
 .doc-end-space{ height:56px }
-
-/* ===== Botón Filtros y plegado ===== */
-.controls-toggle{
-  appearance:none; border:1px solid var(--muted); background:#fff;
-  padding:6px 10px; border-radius:10px; font-weight:700; font-size:13px;
-}
-body:not(.show-controls) .controls-container{ display:none !important; }
-body.show-controls .controls-container{ display:grid; }
-
-/* ===== SOLO EN MÓVIL: ocultar Exportar e ICS ===== */
-@media (max-width: 640px){
-  #employeeSelectIcs,
-  #btnICS{
-    display:none !important;
-  }
-  .controls-container{ gap:8px; }
-}
-
-/* Ajuste sticky a la altura real del header */
-.week-header{ top: var(--header-top) !important; }

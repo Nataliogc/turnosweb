@@ -1,7 +1,7 @@
 {
   "name": "Turnos · Recepción",
   "short_name": "Turnos",
-  "start_url": "/turnosweb/live.html",
+  "start_url": "/turnosweb/live.mobile.html",
   "scope": "/turnosweb/",
   "display": "standalone",
   "background_color": "#ffffff",

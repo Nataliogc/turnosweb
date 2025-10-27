@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Turnos Recepción (móvil)</title>
+
+  <!-- Forzar modo claro + PWA -->
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <link rel="manifest" href="/turnosweb/manifest.json">
+  <meta name="theme-color" content="#0b2d6b">
+  <link rel="apple-touch-icon" href="/turnosweb/icons/icon-192.png">
+
+  <!-- Estilos móviles -->
+  <link rel="stylesheet" href="styles.mobile.css">
+</head>
+<body>
+  <header>
+    <div class="header-brand">
+      <img src="icons/icon-192.png" alt="Turnos Recepción">
+    </div>
+    <div class="title-block">
+      <div class="title">Cuadrantes de turnos</div>
+    </div>
+  </header>
+
+  <main id="app">
+    <div class="controls-container">
+      <!-- Hotel -->
+      <div class="field">
+        <label for="hotelSelect">Hotel</label>
+        <select id="hotelSelect" required>
+          <option value="">— Hotel —</option>
+          <option value="guadiana">Sercotel Guadiana</option>
+          <option value="cumbria">Cumbria Spa&Hotel</option>
+        </select>
+      </div>
+
+      <!-- Empleado -->
+      <div class="field">
+        <label for="employeeSelect">Empleado</label>
+        <select id="employeeSelect" required>
+          <option value="">— Empleado —</option>
+        </select>
+      </div>
+
+      <!-- Fechas -->
+      <div class="field">
+        <label for="fromDate">Desde</label>
+        <input id="fromDate" class="flatpickr-input" placeholder="dd/mm/aa">
+      </div>
+      <div class="field">
+        <label for="toDate">Hasta</label>
+        <input id="toDate" class="flatpickr-input" placeholder="dd/mm/aa">
+      </div>
+
+      <!-- Estos se ocultan en móvil por CSS/JS, pero si alguien abre esta página en desktop también quedan escondidos -->
+      <div class="field" id="exportField">
+        <label>Exportar horario de</label>
+        <select id="employeeSelectIcs"><option value="">— Selecciona —</option></select>
+      </div>
+      <button id="btnICS" class="btn">Descargar ICS</button>
+    </div>
+
+    <!-- Cuadrante -->
+    <section class="scrollwrap">
+      <div class="week-header"></div>
+      <div class="grid" id="turnosGrid"></div>
+    </section>
+    <div class="doc-end-space"></div>
+  </main>
+
+  <!-- JS de tu app si lo necesitas (flatpickr/l10n/app.js, etc.) -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script> -->
+  <!-- <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script> -->
+  <!-- <script src="app.js"></script> -->
+
+  <!-- Parche móvil + registro PWA -->
+  <script src="mobile.patch.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/turnosweb/service-worker.js");
+    }
+  </script>
+</body>
+</html>
