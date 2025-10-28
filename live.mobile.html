@@ -11,18 +11,30 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="styles.css?v=app">
-  <link rel="stylesheet" href="styles.mobile.css?v=app">
+  <link rel="stylesheet" href="styles.css?v=app2">
+  <link rel="stylesheet" href="styles.mobile.css?v=app2">
 
   <style>
     .app-bar{display:flex;align-items:center;gap:.75rem;background:#11171d;color:#e8eef6;padding:.8rem 1rem;border-bottom:1px solid #202a33}
     .app-logo{width:34px;height:34px;border-radius:8px;background:#0e1116}
     .app-title{font-weight:700;font-size:1.05rem;margin:0}
     .app-sub{font-size:.8rem;color:#9cb3c9;margin-top:-.2rem}
-    .app-bar-right{margin-left:auto}
-    .btn{background:#2a2f37;color:#e8eef6;padding:.55rem .8rem;border-radius:.6rem;border:0}
+    .app-bar-right{margin-left:auto;display:flex;gap:.5rem}
+    .btn{background:#2a2f37;color:#e8eef6;padding:.55rem .8rem;border-radius:.6rem;border:0;cursor:pointer}
     .btn-primary{background:#1f6fff;color:#fff}
+    .btn-ghost{background:#232a33}
     main{padding:1rem}
+    /* tabla fallback */
+    .grid-week{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .grid-week th,.grid-week td{padding:.5rem .65rem}
+    .grid-week thead th{font-weight:600;color:#a9bed4;font-size:.9rem}
+    .row-card{background:#12171d;border:1px solid #24303a;border-radius:12px}
+    .pill{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;font-size:.85rem}
+    .pill-m{background:#d5f2dd;color:#194d2a}
+    .pill-t{background:#fff3c3;color:#7a5500}
+    .pill-n{background:#dfe8ff;color:#1d3e9e}
+    .pill-x{background:#ffd4d7;color:#7c1b23}
+    .meta{font-size:.8rem;color:#9cb3c9}
   </style>
 </head>
 <body>
@@ -32,12 +44,17 @@
       <h1 class="app-title">Cuadrantes de turnos</h1>
       <div class="app-sub">Sercotel Guadiana / Cumbria Spa&Hotel</div>
     </div>
+
+    <!-- Controles arriba -->
     <div class="app-bar-right">
+      <button id="btnPrevTop" class="btn btn-ghost">← Semana</button>
+      <button id="btnTodayTop" class="btn btn-ghost">Hoy</button>
+      <button id="btnNextTop" class="btn btn-ghost">Semana →</button>
       <button id="btnFilters" class="btn btn-primary">Filtros</button>
     </div>
   </header>
 
-  <!-- Drawer de filtros -->
+  <!-- Drawer de filtros (sin los botones de semana) -->
   <section id="filtersDrawer" class="filters-drawer hidden" aria-hidden="true">
     <div class="filters-card">
       <header class="filters-head">
@@ -52,22 +69,19 @@
         <label><span>Hasta</span><input id="dateTo"   type="text" inputmode="none" autocomplete="off"></label>
       </div>
 
-      <footer class="filters-actions">
-        <button id="btnPrevW"  class="btn">← Semana</button>
-        <button id="btnTodayW" class="btn">Hoy</button>
-        <button id="btnNextW"  class="btn">Semana →</button>
+      <footer class="filters-actions" style="justify-content:flex-end">
         <button id="btnApply"  class="btn btn-primary">Aplicar</button>
       </footer>
     </div>
     <div class="backdrop" tabindex="-1"></div>
   </section>
 
-  <main><div id="app"></div></main>
+  <main><div id="app" class="meta">Cargando…</div></main>
 
-  <!-- 1) DATOS: imprescindible para que haya FULL_DATA -->
-  <script src="data.js?v=app"></script>
+  <!-- 1) Datos -->
+  <script src="data.js?v=app2"></script>
 
-  <!-- 2) Bandera APP (lo usa el patch) -->
+  <!-- 2) Bandera APP -->
   <script>window.IS_APP = true;</script>
 
   <!-- 3) Flatpickr -->
@@ -75,13 +89,13 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
-  <!-- 4) Adaptador de cuadrante -->
-  <script src="plantilla_adapter_semana.js?v=app"></script>
+  <!-- 4) Adaptador (si define renderContent, se usará) -->
+  <script src="plantilla_adapter_semana.js?v=app2"></script>
 
-  <!-- 5) Lógica móvil (abre filtros, fechas y llama a renderContent) -->
-  <script src="mobile.patch.js?v=app"></script>
+  <!-- 5) Lógica APP (incluye fallback de render mejorado) -->
+  <script src="mobile.patch.js?v=app2"></script>
 
-  <!-- 6) Service Worker (ahora sí, dentro de <script>) -->
+  <!-- 6) Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })

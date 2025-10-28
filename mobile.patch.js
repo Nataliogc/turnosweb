@@ -1,72 +1,131 @@
-// mobile.patch.js — init robusto para APP
+// mobile.patch.js — APP con navegación arriba y fallback de render semanal
 (function () {
   const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
   const unique = a => [...new Set(a.filter(Boolean))];
 
-  // Detecta hoteles y empleados desde FULL_DATA
+  // ====== helpers de datos ======
+  const getData = () => window.FULL_DATA || {};
+  const getRows = D => Array.isArray(D.schedule) ? D.schedule
+                     : Array.isArray(D.data)     ? D.data
+                     : [];
+  const hotelOf = r => r.hotel || r.Hotel || r.establecimiento || r?.meta?.hotel || "";
+  const nameOf  = r => r.empleado || r.employee || r.nombre || r.name || r.persona || "";
+  const dateOf  = r => r.fecha || r.date || r.dia || r.day || r?.meta?.fecha || "";
+  const turnoOf = r => r.turno || r.shift || r.tramo || r?.meta?.turno || "";
+
   const hotelsFrom = D => {
     if (Array.isArray(D.hotels) && D.hotels.length) return unique(D.hotels);
-    const S = D.schedule || D.data || [];
-    const H = unique(S.map(x => x.hotel || x.Hotel || x.establecimiento || x?.meta?.hotel));
-    return H.length ? H : ["Sercotel Guadiana","Cumbria Spa&Hotel"];
+    return unique(getRows(D).map(hotelOf));
   };
-  const employeesFrom = (D, hotel) => {
-    const S = D.schedule || D.data || [];
-    return unique(
-      S.filter(x => !hotel || (x.hotel||x.Hotel||x.establecimiento||x?.meta?.hotel) === hotel)
-       .map(x => x.empleado || x.employee || x.nombre || x.name || x.persona)
-    );
-  };
+  const employeesFrom = (D, hotel) =>
+    unique(getRows(D)
+      .filter(x => !hotel || hotelOf(x) === hotel)
+      .map(nameOf));
 
-  // Espera DOM + datos
+  // ====== espera a datos + DOM ======
   function whenReady(maxMs = 8000){
     return new Promise((resolve, reject) => {
       const t0 = performance.now();
       const iv = setInterval(() => {
         const domOK = document.readyState === 'complete' || document.readyState === 'interactive';
-        const D = window.FULL_DATA;
-        const dataOK = D && ((D.schedule?.length ?? 0) > 0 || (D.data?.length ?? 0) > 0);
+        const D = getData();
+        const dataOK = (getRows(D).length > 0) || (Array.isArray(D.hotels) && D.hotels.length);
         if (domOK && dataOK) { clearInterval(iv); resolve(); }
-        else if (performance.now() - t0 > maxMs) { clearInterval(iv); reject(new Error('timeout: FULL_DATA o DOM no disponibles')); }
+        else if (performance.now() - t0 > maxMs) { clearInterval(iv); reject(new Error('timeout FULL_DATA/DOM')); }
       }, 100);
     });
   }
 
-  // Fallback muy simple para ver contenido si el adaptador no define renderContent
+  // ====== fallback de render semanal (si adapter no define renderContent) ======
   function ensureRender(){
     if (typeof window.renderContent === 'function') return;
-    window.renderContent = ({dateFrom, dateTo, hotel, employee} = {}) => {
-      const D = window.FULL_DATA || {};
-      const S = (D.schedule || D.data || []).filter(r => {
-        const hOK = !hotel || (r.hotel||r.Hotel||r.establecimiento||r?.meta?.hotel) === hotel;
-        const eOK = !employee || (r.empleado||r.employee||r.nombre||r.name||r.persona) === employee;
-        return hOK && eOK;
+
+    const diaNombre = d => {
+      try { return new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit'}); }
+      catch { return d || ''; }
+    };
+    const pill = t => {
+      const s = String(t||'').toLowerCase();
+      if (s.includes('mañana') || s.includes('manana')) return `<span class="pill pill-m">Mañana</span>`;
+      if (s.includes('tarde'))  return `<span class="pill pill-t">Tarde</span>`;
+      if (s.includes('noche'))  return `<span class="pill pill-n">Noche 🌙</span>`;
+      if (s.includes('descanso')) return `<span class="pill pill-x">Descanso</span>`;
+      return t ? `<span class="pill pill-ghost">${t}</span>` : '—';
+    };
+
+    window.renderContent = function renderContent({dateFrom, dateTo, hotel, employee} = {}){
+      const D = getData();
+      const rows = getRows(D).filter(r => {
+        if (hotel && hotelOf(r) !== hotel) return false;
+        if (employee && nameOf(r) !== employee) return false;
+        const d = dateOf(r);
+        if (dateFrom && d && new Date(d) < new Date(dateFrom)) return false;
+        if (dateTo   && d && new Date(d) > new Date(dateTo))   return false;
+        return true;
       });
-      const el = $('#app');
-      if (!S.length) { el.innerHTML = '<p>No hay datos para mostrar.</p>'; return; }
-      // Render mínimo (lista plana)
-      el.innerHTML = `
-        <div class="mini-list">
-          ${S.map(it => `
-            <div class="mini-row">
-              <strong>${it.empleado||it.nombre||it.name||'—'}</strong>
-              <span> · ${it.dia || it.fecha || it.date || ''}</span>
-              <span> · ${it.turno || it.shift || ''}</span>
-              <span> · ${it.hotel||it.Hotel||it.establecimiento||''}</span>
-            </div>`).join('')}
-        </div>`;
+
+      const app = $('#app');
+      if (!rows.length){
+        app.innerHTML = `<p class="meta">No hay datos para mostrar con los filtros seleccionados.</p>`;
+        return;
+      }
+
+      // Agrupar por hotel → fecha → empleado (para una vista semanal compacta)
+      const byHotel = {};
+      for (const r of rows){
+        const h = hotelOf(r) || '—';
+        const d = dateOf(r)  || '—';
+        const n = nameOf(r)  || '—';
+        const t = turnoOf(r) || '';
+        (byHotel[h] ??= {});
+        (byHotel[h][d] ??= []);
+        byHotel[h][d].push({ n, t });
+      }
+
+      const fechasOrden = unique(rows.map(dateOf)).sort((a,b)=>new Date(a)-new Date(b));
+
+      let html = '';
+      for (const [h, fechas] of Object.entries(byHotel)){
+        html += `
+          <div class="row-card">
+            <table class="grid-week">
+              <thead>
+                <tr>
+                  <th style="min-width:180px">${h}</th>
+                  ${fechasOrden.map(f=>`<th>${diaNombre(f)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${employeesFrom(D, h).map(emp => `
+                  <tr>
+                    <td><strong>${emp || '—'}</strong></td>
+                    ${fechasOrden.map(f => {
+                      const cel = (fechas[f] || []).find(x => x.n === emp);
+                      return `<td>${cel ? pill(cel.t) : ''}</td>`;
+                    }).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      app.innerHTML = html;
     };
   }
 
+  // ====== INIT ======
   async function init(){
     await whenReady();
     ensureRender();
 
-    // Controles del drawer
-    const sh = $('#filtersDrawer #hotelSelect');
-    const se = $('#filtersDrawer #employeeFilter');
-    const df = $('#filtersDrawer #dateFrom');
-    const dt = $('#filtersDrawer #dateTo');
+    // Controles
+    const sh = $('#hotelSelect');
+    const se = $('#employeeFilter');
+    const df = $('#dateFrom');
+    const dt = $('#dateTo');
 
     // Flatpickr
     try { if (window.flatpickr?.l10ns?.es) flatpickr.localize(flatpickr.l10ns.es); } catch {}
@@ -74,7 +133,7 @@
     const fpTo   = flatpickr(dt, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: dt.value || undefined });
 
     // Poblar selects
-    const D = window.FULL_DATA || {};
+    const D = getData();
     const H = hotelsFrom(D);
     sh.innerHTML = '<option value="">— Hotel —</option>' + H.map(h=>`<option value="${h}">${h}</option>`).join('');
     const fillEmp = () => {
@@ -83,12 +142,12 @@
     };
     sh.addEventListener('change', fillEmp); fillEmp();
 
-    // Abrir / cerrar drawer
+    // Drawer
     $('#btnFilters')?.addEventListener('click', () => $('#filtersDrawer')?.classList.remove('hidden'));
     $('#btnCloseFilters')?.addEventListener('click', () => $('#filtersDrawer')?.classList.add('hidden'));
     $('.backdrop')?.addEventListener('click', () => $('#filtersDrawer')?.classList.add('hidden'));
 
-    // Aplicar + navegación de semana
+    // Aplicar
     const apply = () => {
       const from = fpFrom.selectedDates?.[0] || null;
       const to   = fpTo.selectedDates?.[0]   || null;
@@ -97,13 +156,25 @@
       window.renderContent({ dateFrom: from, dateTo: to, hotel, employee: emp });
     };
     $('#btnApply')?.addEventListener('click', () => { apply(); $('#filtersDrawer')?.classList.add('hidden'); });
-    $('#btnPrevW')?.addEventListener('click', () => { if(!fpFrom||!fpTo) return; const f=fpFrom.selectedDates?.[0]||new Date(); const t=fpTo.selectedDates?.[0]||new Date(f.getTime()+30*864e5); fpFrom.setDate(new Date(f.getTime()-7*864e5), true); fpTo.setDate(new Date(t.getTime()-7*864e5), true); apply(); });
-    $('#btnTodayW')?.addEventListener('click', () => { if(!fpFrom||!fpTo) return; const n=new Date(); fpFrom.setDate(n,true); fpTo.setDate(new Date(n.getTime()+30*864e5), true); apply(); });
-    $('#btnNextW')?.addEventListener('click', () => { if(!fpFrom||!fpTo) return; const f=fpFrom.selectedDates?.[0]||new Date(); const t=fpTo.selectedDates?.[0]||new Date(f.getTime()+30*864e5); fpFrom.setDate(new Date(f.getTime()+7*864e5), true); fpTo.setDate(new Date(t.getTime()+7*864e5), true); apply(); });
+
+    // Navegación arriba
+    const shiftDays = (days) => {
+      const f = fpFrom.selectedDates?.[0] || new Date();
+      const t = fpTo.selectedDates?.[0]   || new Date(f.getTime()+6*864e5);
+      fpFrom.setDate(new Date(f.getTime()+days*864e5), true);
+      fpTo.setDate(  new Date(t.getTime()+days*864e5), true);
+      apply();
+    };
+    $('#btnPrevTop') ?.addEventListener('click', () => shiftDays(-7));
+    $('#btnTodayTop')?.addEventListener('click', () => { const n=new Date(); fpFrom.setDate(n,true); fpTo.setDate(new Date(n.getTime()+6*864e5), true); apply(); });
+    $('#btnNextTop') ?.addEventListener('click', () => shiftDays(+7));
 
     // Primer render
     apply();
   }
 
-  init().catch(e => console.warn('[APP] No se pudo iniciar la vista móvil:', e));
+  init().catch(e => {
+    console.warn('[APP] No se pudo iniciar la vista móvil:', e);
+    $('#app').innerHTML = `<p class="meta">No se pudo iniciar la APP: ${e.message}</p>`;
+  });
 })();
