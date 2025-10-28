@@ -1,26 +1,44 @@
-// mobile.patch.js — APP con navegación arriba y fallback que entiende FULL_DATA.schedule[].turnos
+/* mobile.patch.js — APP móvil con:
+   - Aplanado de FULL_DATA.schedule[].turnos → filas planas (hotel, empleado, fecha, turno)
+   - Filtros robustos (si no hay fechas, no se filtra por fecha; si solo hay "desde", asume 7 días)
+   - Navegación arriba (← Semana · Hoy · Semana →)
+   - Fallback garantizado (si el adaptador no define window.renderContent, la app no se cae)
+*/
 (function () {
   const $ = s => document.querySelector(s);
   const unique = a => [...new Set(a.filter(Boolean))];
   const MS = 864e5;
 
-  // ====== Lectura de datos ======
+  // ------------------------------------------------------------
+  // Fallback mínimo (garantiza que siempre existe renderContent)
+  // ------------------------------------------------------------
+  function minimalFallback(msg) {
+    const el = document.getElementById('app');
+    if (!el) return;
+    el.innerHTML = `<p class="meta">${msg || 'Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.'}</p>`;
+  }
+  if (typeof window.renderContent !== 'function') {
+    window.renderContent = function () { minimalFallback(); };
+  }
+
+  // ---------------------
+  // Lectura / normalizado
+  // ---------------------
   const getData = () => window.FULL_DATA || {};
 
-  // Convierte tu estructura semanal (obj.turnos[]) en filas planas
+  // Convierte la estructura semanal en filas planas
   function flattenRows(D) {
     const S = Array.isArray(D.schedule) ? D.schedule : [];
     if (!S.length) return Array.isArray(D.data) ? D.data : [];
 
-    // ¿Es semanal? (primer elemento tiene array 'turnos')
+    // Si es semanal (tiene "turnos")
     if (S[0] && Array.isArray(S[0].turnos)) {
       const out = [];
       for (const w of S) {
         const hotel = w.hotel || w.Hotel || w.establecimiento || w?.meta?.hotel || "";
-        const base = { hotel };
         for (const t of (w.turnos || [])) {
           out.push({
-            ...base,
+            hotel,
             empleado: t.empleado || t.employee || t.nombre || t.name || t.persona || "",
             fecha:    t.fecha    || t.date    || t.dia   || t.day   || t?.meta?.fecha || "",
             turno:    t.turno    || t.shift   || t.tramo || t?.meta?.turno || ""
@@ -30,7 +48,7 @@
       return out;
     }
 
-    // Si ya es plano, lo devolvemos tal cual
+    // Ya plano
     return S;
   }
 
@@ -45,17 +63,21 @@
   };
 
   const employeesFrom = (D, hotel) => {
-    // si hay lista global de empleados, úsala; si no, dedúcela del hotel
+    // Si el objeto trae employees estructurados, preferirlos
     if (Array.isArray(D.employees) && D.employees.length) {
-      return hotel ? D.employees.filter(e => e.hotel === hotel).map(e => e.name || e.empleado || e)
-                   : D.employees.map(e => e.name || e.empleado || e);
+      return hotel
+        ? D.employees.filter(e => (e.hotel || e.Hotel) === hotel).map(e => e.name || e.empleado || e)
+        : D.employees.map(e => e.name || e.empleado || e);
     }
+    // Deducción de datos
     return unique(flattenRows(D)
       .filter(x => !hotel || hotelOf(x) === hotel)
       .map(nameOf));
   };
 
-  // ====== Espera a DOM + datos ======
+  // ---------------------------
+  // Espera a DOM + datos reales
+  // ---------------------------
   function whenReady(maxMs = 8000){
     return new Promise((resolve, reject) => {
       const t0 = performance.now();
@@ -68,32 +90,54 @@
     });
   }
 
-  // ====== Fallback de render semanal ======
+  // -----------------------------------------
+  // Fallback de render (tabla semanal compacta)
+  // -----------------------------------------
   function ensureRender(){
-    if (typeof window.renderContent === 'function') return;
+    if (typeof window.renderContent === 'function'
+        && window.renderContent !== minimalFallback /* por si quedó el mínimo */) return;
 
-    renderContent
+    const diaNombre = d => {
+      try { return new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit'}); }
+      catch { return d || ''; }
+    };
+    const pill = t => {
+      const s = String(t||'').toLowerCase();
+      if (s.includes('mañana') || s.includes('manana')) return `<span class="pill pill-m">Mañana</span>`;
+      if (s.includes('tarde'))  return `<span class="pill pill-t">Tarde</span>`;
+      if (s.includes('noche'))  return `<span class="pill pill-n">Noche 🌙</span>`;
+      if (s.includes('descanso')) return `<span class="pill pill-x">Descanso</span>`;
+      return t ? `<span class="pill pill-ghost">${t}</span>` : '—';
+    };
 
     window.renderContent = function renderContent({dateFrom, dateTo, hotel, employee} = {}){
       const rowsAll = flattenRows(getData());
 
-      // Filtro de rango
+      // Normalización fechas
+      let from = dateFrom ? new Date(dateFrom) : null;
+      let to   = dateTo   ? new Date(dateTo)   : null;
+      if (from && !to) to = new Date(from.getTime() + 6 * MS); // si sólo hay "desde": 7 días
+
+      // Filtro robusto
       const rows = rowsAll.filter(r => {
         if (hotel && hotelOf(r) !== hotel) return false;
         if (employee && nameOf(r) !== employee) return false;
-        const d = dateOf(r);
-        if (dateFrom && d && new Date(d) < new Date(dateFrom)) return false;
-        if (dateTo   && d && new Date(d) > new Date(dateTo))   return false;
+
+        if (from || to) {
+          const dStr = dateOf(r);
+          const dObj = dStr ? new Date(dStr) : null; // ISO → Date OK
+          if (dObj && from && dObj < from) return false;
+          if (dObj && to   && dObj > to  ) return false;
+        }
         return true;
       });
 
-      const app = document.getElementById('app');
+      const app = $('#app');
       if (!rows.length){
         app.innerHTML = `<p class="meta">No hay datos para mostrar con los filtros seleccionados.</p>`;
         return;
       }
 
-      // Fechas (ordenadas) presentes en el rango
       const fechasOrden = unique(rows.map(dateOf)).sort((a,b)=>new Date(a)-new Date(b));
 
       // Agrupar por hotel y por empleado -> fecha
@@ -105,7 +149,7 @@
         const t = turnoOf(r) || '';
         (byHotel[h] ??= {});
         (byHotel[h][n] ??= {});
-        byHotel[h][n][f] = t; // 1 turno por día por persona
+        byHotel[h][n][f] = t;
       }
 
       let html = '';
@@ -135,9 +179,13 @@
     };
   }
 
-  // ====== INIT ======
+  // ------------
+  // Inicialización
+  // ------------
   async function init(){
-    await whenReady();
+    try { await whenReady(); } catch(e) { /* seguimos con fallback */ }
+
+    // Aseguramos fallback si el adaptador no definió nada
     ensureRender();
 
     // Controles
@@ -146,54 +194,58 @@
     const df = $('#dateFrom');
     const dt = $('#dateTo');
 
-    // Flatpickr
+    // Flatpickr (si está cargado en HTML)
     try { if (window.flatpickr?.l10ns?.es) flatpickr.localize(flatpickr.l10ns.es); } catch {}
-    const fpFrom = flatpickr(df, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: df.value || undefined });
-    const fpTo   = flatpickr(dt, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: dt.value || undefined });
+    const fpFrom = window.flatpickr ? flatpickr(df, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: df?.value || undefined }) : null;
+    const fpTo   = window.flatpickr ? flatpickr(dt, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: dt?.value || undefined }) : null;
 
     // Poblar selects
     const D = getData();
     const H = hotelsFrom(D);
-    sh.innerHTML = '<option value="">— Hotel —</option>' + H.map(h=>`<option value="${h}">${h}</option>`).join('');
+    if (sh) sh.innerHTML = '<option value="">— Hotel —</option>' + H.map(h=>`<option value="${h}">${h}</option>`).join('');
     const fillEmp = () => {
-      const list = employeesFrom(D, sh.value || '');
-      se.innerHTML = '<option value="">— Empleado —</option>' + list.map(n=>`<option value="${n}">${n}</option>`).join('');
+      const list = employeesFrom(D, sh?.value || '');
+      if (se) se.innerHTML = '<option value="">— Empleado —</option>' + list.map(n=>`<option value="${n}">${n}</option>`).join('');
     };
-    sh.addEventListener('change', fillEmp); fillEmp();
+    sh?.addEventListener('change', fillEmp);
+    fillEmp();
 
     // Drawer
-    $('#btnFilters')?.addEventListener('click', () => $('#filtersDrawer')?.classList.remove('hidden'));
-    $('#btnCloseFilters')?.addEventListener('click', () => $('#filtersDrawer')?.classList.add('hidden'));
-    $('.backdrop')?.addEventListener('click', () => $('#filtersDrawer')?.classList.add('hidden'));
+    $('#btnFilters') ?.addEventListener('click', () => $('#filtersDrawer') ?.classList.remove('hidden'));
+    $('#btnCloseFilters')?.addEventListener('click', () => $('#filtersDrawer') ?.classList.add('hidden'));
+    $('.backdrop')     ?.addEventListener('click', () => $('#filtersDrawer') ?.classList.add('hidden'));
 
     // Aplicar
     const apply = () => {
-      const from = fpFrom.selectedDates?.[0] || null;
-      const to   = fpTo.selectedDates?.[0]   || null;
-      const hotel = sh.value || '';
-      const emp   = se.value || '';
-      window.renderContent({ dateFrom: from, dateTo: to, hotel, employee: emp });
+      const from = fpFrom?.selectedDates?.[0] || null;
+      const to   = fpTo  ?.selectedDates?.[0] || null;
+      const hotel = sh?.value || '';
+      const emp   = se?.value || '';
+      try { window.renderContent({ dateFrom: from, dateTo: to, hotel, employee: emp }); }
+      catch { minimalFallback('No se pudo pintar la vista.'); }
     };
     $('#btnApply')?.addEventListener('click', () => { apply(); $('#filtersDrawer')?.classList.add('hidden'); });
 
     // Navegación arriba
     const shiftDays = (days) => {
-      const f = fpFrom.selectedDates?.[0] || new Date();
-      const t = fpTo.selectedDates?.[0]   || new Date(f.getTime()+6*MS);
-      fpFrom.setDate(new Date(f.getTime()+days*MS), true);
-      fpTo.setDate(  new Date(t.getTime()+days*MS), true);
+      const f = fpFrom?.selectedDates?.[0] || new Date();
+      const t = fpTo  ?.selectedDates?.[0] || new Date(f.getTime()+6*MS);
+      fpFrom?.setDate(new Date(f.getTime()+days*MS), true);
+      fpTo  ?.setDate(new Date(t.getTime()+days*MS), true);
       apply();
     };
     $('#btnPrevTop') ?.addEventListener('click', () => shiftDays(-7));
-    $('#btnTodayTop')?.addEventListener('click', () => { const n=new Date(); fpFrom.setDate(n,true); fpTo.setDate(new Date(n.getTime()+6*MS), true); apply(); });
+    $('#btnTodayTop')?.addEventListener('click', () => {
+      const n=new Date();
+      fpFrom?.setDate(n,true);
+      fpTo  ?.setDate(new Date(n.getTime()+6*MS), true);
+      apply();
+    });
     $('#btnNextTop') ?.addEventListener('click', () => shiftDays(+7));
 
-    // Primer render
-    apply();
+    // Primer render inofensivo
+    try { window.renderContent({}); } catch (e) { minimalFallback('No se pudo iniciar la APP: ' + e.message); }
   }
 
-  init().catch(e => {
-    console.warn('[APP] No se pudo iniciar la vista móvil:', e);
-    $('#app').innerHTML = `<p class="meta">No se pudo iniciar la APP: ${e.message}</p>`;
-  });
+  init().catch(e => minimalFallback('No se pudo iniciar la APP: ' + e.message));
 })();

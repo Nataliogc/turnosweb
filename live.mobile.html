@@ -1,93 +1,149 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
   <title>Cuadrantes de turnos · APP</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-  <!-- PWA -->
+  <!-- Manifest + PWA Icons -->
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" sizes="192x192" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
 
-  <!-- Estilos -->
-  <link rel="stylesheet" href="styles.css?v=app2">
-  <link rel="stylesheet" href="styles.mobile.css?v=app2">
+  <!-- Estilos (tu hoja general + móvil) -->
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.mobile.css">
+
+  <!-- Flatpickr (calendarios) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
   <style>
-    .app-bar{display:flex;align-items:center;gap:.75rem;background:#11171d;color:#e8eef6;padding:.8rem 1rem;border-bottom:1px solid #202a33}
-    .app-logo{width:34px;height:34px;border-radius:8px;background:#0e1116}
-    .app-title{font-weight:700;font-size:1.05rem;margin:0}
-    .app-sub{font-size:.8rem;color:#9cb3c9;margin-top:-.2rem}
-    .app-bar-right{margin-left:auto;display:flex;gap:.5rem}
-    .btn{background:#2a2f37;color:#e8eef6;padding:.55rem .8rem;border-radius:.6rem;border:0;cursor:pointer}
-    .btn-primary{background:#1f6fff;color:#fff}
-    .btn-ghost{background:#232a33}
-    main{padding:1rem}
-    /* tabla fallback */
-    .grid-week{width:100%;border-collapse:separate;border-spacing:0 8px}
-    .grid-week th,.grid-week td{padding:.5rem .65rem}
-    .grid-week thead th{font-weight:600;color:#a9bed4;font-size:.9rem}
-    .row-card{background:#12171d;border:1px solid #24303a;border-radius:12px}
-    .pill{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;font-size:.85rem}
-    .pill-m{background:#d5f2dd;color:#194d2a}
-    .pill-t{background:#fff3c3;color:#7a5500}
-    .pill-n{background:#dfe8ff;color:#1d3e9e}
-    .pill-x{background:#ffd4d7;color:#7c1b23}
-    .meta{font-size:.8rem;color:#9cb3c9}
+    /* Ajustes mínimos por si la hoja mobile no trae estas clases */
+    .topbar {
+      display:flex; align-items:center; justify-content:space-between;
+      background:#12171d; color:#e6eefc; padding:.6rem .8rem; gap:.6rem;
+      position:sticky; top:0; z-index:50;
+    }
+    .brand { display:flex; align-items:center; gap:.6rem; }
+    .brand img { width:28px; height:28px; border-radius:.4rem; }
+    .toolbar { display:flex; gap:.5rem; }
+    .btn {
+      background:#2563eb; color:#fff; border:none; border-radius:.5rem;
+      padding:.5rem .8rem; cursor:pointer; font-weight:600;
+    }
+    .btn.muted { background:#2b3340; }
+    .btn:disabled { opacity:.5; cursor:default; }
+
+    /* Drawer de filtros */
+    .drawer.hidden { display:none; }
+    .drawer { position:fixed; inset:0; z-index:60; }
+    .drawer .backdrop { position:absolute; inset:0; background:rgba(0,0,0,.4); }
+    .drawer .panel {
+      position:absolute; right:0; top:0; bottom:0; width:min(560px, 92vw);
+      background:#151b22; color:#e6eefc; padding:16px; overflow:auto;
+      box-shadow: -8px 0 24px rgba(0,0,0,.35);
+    }
+    .panel h3 { margin:8px 0 16px; font-size:1.15rem; }
+    .field { margin:10px 0; display:flex; flex-direction:column; gap:.35rem; }
+    .field label { font-size:.9rem; opacity:.85; }
+    .field select, .field input {
+      background:#0f141a; color:#e6eefc; border:1px solid #2b3340; border-radius:.5rem;
+      padding:.55rem .6rem; outline:none;
+    }
+
+    /* Tarjetas / tabla semanal (para el fallback) */
+    .row-card{ background:#10161d; border:1px solid #2b3340; border-radius:.8rem; margin:14px 10px; padding:12px; }
+    .grid-week{ width:100%; border-collapse:separate; border-spacing:0; }
+    .grid-week th, .grid-week td{ padding:.5rem .6rem; border-bottom:1px solid #263041; text-align:center; }
+    .grid-week thead th:first-child, .grid-week tbody td:first-child{ text-align:left; }
+    .pill{ display:inline-block; padding:.25rem .55rem; border-radius:999px; font-weight:600; font-size:.85rem; }
+    .pill-m{ background:#d1fae5; color:#065f46; }
+    .pill-t{ background:#fef3c7; color:#92400e; }
+    .pill-n{ background:#e5e7eb; color:#374151; }
+    .pill-x{ background:#fee2e2; color:#991b1b; }
+    .pill-ghost{ background:transparent; color:#a7b0be; border:1px dashed #334155; }
+
+    .meta{ color:#a7b0be; padding:20px 14px; }
   </style>
 </head>
 <body>
-  <header class="app-bar">
-    <img src="icons/icon-192.png" alt="Turnos Recepción" class="app-logo">
-    <div>
-      <h1 class="app-title">Cuadrantes de turnos</h1>
-      <div class="app-sub">Sercotel Guadiana / Cumbria Spa&Hotel</div>
-    </div>
 
-    <!-- Controles arriba -->
-    <div class="app-bar-right">
-      <button id="btnPrevTop" class="btn btn-ghost">← Semana</button>
-      <button id="btnTodayTop" class="btn btn-ghost">Hoy</button>
-      <button id="btnNextTop" class="btn btn-ghost">Semana →</button>
-      <button id="btnFilters" class="btn btn-primary">Filtros</button>
+  <!-- Barra superior -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="Turnos">
+      <div>
+        <div style="font-weight:700">Cuadrantes de turnos</div>
+        <div style="font-size:.8rem; opacity:.75">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button id="btnPrevTop"  class="btn muted">← Semana</button>
+      <button id="btnTodayTop" class="btn muted">Hoy</button>
+      <button id="btnNextTop"  class="btn muted">Semana →</button>
+      <button id="btnFilters"  class="btn">Filtros</button>
     </div>
   </header>
 
-  <!-- Drawer de filtros (sin los botones de semana) -->
-  <section id="filtersDrawer" class="filters-drawer hidden" aria-hidden="true">
-    <div class="filters-card">
-      <header class="filters-head">
-        <h2>Filtros</h2>
-        <button id="btnCloseFilters" class="btn" aria-label="Cerrar">✕</button>
-      </header>
+  <!-- Contenedor de contenido -->
+  <main id="app" class="app" aria-live="polite">
+    <!-- El contenido se inyecta aquí -->
+  </main>
 
-      <div class="filters-grid">
-        <label><span>Hotel</span><select id="hotelSelect"></select></label>
-        <label><span>Empleado</span><select id="employeeFilter"></select></label>
-        <label><span>Desde</span><input id="dateFrom" type="text" inputmode="none" autocomplete="off"></label>
-        <label><span>Hasta</span><input id="dateTo"   type="text" inputmode="none" autocomplete="off"></label>
+  <!-- Drawer de Filtros -->
+  <div id="filtersDrawer" class="drawer hidden" role="dialog" aria-modal="true" aria-labelledby="filtersTitle">
+    <div class="backdrop"></div>
+    <section class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
+        <h3 id="filtersTitle">Filtros</h3>
+        <button id="btnCloseFilters" class="btn muted" aria-label="Cerrar">✕</button>
       </div>
 
-      <footer class="filters-actions" style="justify-content:flex-end">
-        <button id="btnApply"  class="btn btn-primary">Aplicar</button>
-      </footer>
-    </div>
-    <div class="backdrop" tabindex="-1"></div>
-  </section>
+      <div class="field">
+        <label for="hotelSelect">Hotel</label>
+        <select id="hotelSelect">
+          <option value="">— Hotel —</option>
+        </select>
+      </div>
 
-  <main><div id="app" class="meta">Cargando…</div></main>
+      <div class="field">
+        <label for="employeeFilter">Empleado</label>
+        <select id="employeeFilter">
+          <option value="">— Empleado —</option>
+        </select>
+      </div>
 
-  // Defiende la app aunque el adaptador no cargue:
-window.renderContent = window.renderContent || function () {
-  const el = document.getElementById('app');
-  el.innerHTML = '<p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>';
-};
-// Fuerza un primer render “inofensivo”
-window.renderContent({});
+      <div class="field">
+        <label for="dateFrom">Desde</label>
+        <input id="dateFrom" type="text" placeholder="dd/mmm/aaaa" inputmode="none" />
+      </div>
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+      <div class="field">
+        <label for="dateTo">Hasta</label>
+        <input id="dateTo" type="text" placeholder="dd/mmm/aaaa" inputmode="none" />
+      </div>
+
+      <div style="display:flex; gap:.5rem; margin-top:10px;">
+        <button id="btnApply" class="btn">Aplicar</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Datos siempre antes que la lógica -->
+  <script src="data.js?v=ts"></script>
+
+  <!-- Adaptador (si existe) -->
+  <script src="plantilla_adapter_semana.js?v=ts"></script>
+
+  <!-- Lógica de APP (con fallback): versión que te acabo de pasar -->
+  <script src="mobile.patch.js?v=ts"></script>
+
+  <!-- Service Worker (evitar cachear viejo) -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" })
         .then(reg => reg.update())
         .catch(() => {});
     }
