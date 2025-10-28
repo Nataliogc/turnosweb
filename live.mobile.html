@@ -1,69 +1,102 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Cuadrantes de turnos Â· APP</title>
-
+  <meta charset="utf-8">
+  <title>Cuadrantes de turnos · APP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
-  <meta name="theme-color" content="#1b1b1b"/>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <link rel="stylesheet" href="styles.css?v=20251028_0156">
-  <link rel="stylesheet" href="styles.mobile.css?v=20251028_0156">
-
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css?v=20251028_0237">
+  <link rel="stylesheet" href="styles.mobile.css?v=20251028_0237">
   <style>
-    .controls-container{ display:none; } /* APP: oculto por defecto, aparece al pulsar Filtros */
+    /* Cabecera compacta */
+    .app-bar{display:flex;align-items:center;gap:.75rem;background:#11171d;color:#e8eef6;padding:.8rem 1rem;border-bottom:1px solid #202a33}
+    .app-logo{width:34px;height:34px;border-radius:8px;background:#0e1116}
+    .app-title{font-weight:700;font-size:1.05rem;margin:0}
+    .app-sub{font-size:.8rem;color:#9cb3c9;margin-top:-.2rem}
+    .app-bar-right{margin-left:auto}
+    .btn{background:#2a2f37;color:#e8eef6;padding:.55rem .8rem;border-radius:.6rem;border:0}
+    .btn-primary{background:#1f6fff;color:#fff}
+    main{padding:1rem}
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-brand">
-     <img src="icons/icon-192.png" alt="Turnos Recepción" class="app-logo">
-
-      <div class="title-block">
-        <div class="title">Cuadrantes de turnos</div>
-        <div class="subtitle">APP Â· Lâ†’D</div>
-      </div>
+  <header class="app-bar">
+    <img src="icons/icon-192.png" alt="Turnos Recepción" class="app-logo">
+    <div>
+      <h1 class="app-title">Cuadrantes de turnos</h1>
+      <div class="app-sub">Sercotel Guadiana / Cumbria Spa&Hotel</div>
     </div>
-
-    <button id="btnFilters" class="btn" type="button" style="margin-left:.25rem;">Filtros</button>
-
-    <div class="controls-container">
-      <div class="field"><select id="hotelSelect"><option value="">â€” Hotel â€”</option></select></div>
-      <div class="field"><select id="employeeFilter"><option value="">â€” Empleado â€”</option></select></div>
-      <div class="field"><input id="dateFrom" type="text" placeholder="Desdeâ€¦"></div>
-      <div class="field"><input id="dateTo" type="text" placeholder="Hastaâ€¦"></div>
-      <div class="field" style="display:none"><select id="employeeSelectIcs"><option>â€” Exportar â€”</option></select></div>
-      <button class="btn" id="btnICS" style="display:none">Descargar ICS</button>
-      <div class="field"><button class="btn" id="btnApply" type="button">Aplicar</button></div>
+    <div class="app-bar-right">
+      <button id="btnFilters" class="btn btn-primary">Filtros</button>
     </div>
   </header>
 
-  <div id="app"></div>
-  <div id="monthly-summary-container"></div>
+  <!-- Drawer de filtros (APP) -->
+  <section id="filtersDrawer" class="filters-drawer hidden" aria-hidden="true">
+    <div class="filters-card">
+      <header class="filters-head">
+        <h2>Filtros</h2>
+        <button id="btnCloseFilters" class="btn" aria-label="Cerrar">✕</button>
+      </header>
 
-  <!-- SI GENERAS DATOS INLINE, PÉGALOS AQUÍ -->
-<script src="data.js?v=APP_20251028_0215"></script>
+      <div class="filters-grid">
+        <label>
+          <span>Hotel</span>
+          <select id="hotelSelect"></select>
+        </label>
 
-<!-- Flatpickr (JS + CSS) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+        <label>
+          <span>Empleado</span>
+          <select id="employeeFilter"></select>
+        </label>
 
-<!-- Código de la APP -->
-<script src="plantilla_adapter_semana.js?v=APP_20251028_0215"></script>
-<script src="mobile.patch.js?v=APP_20251028_0215"></script>
+        <label>
+          <span>Desde</span>
+          <input id="dateFrom" type="text" inputmode="none" autocomplete="off">
+        </label>
 
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" })
-      .then(reg => reg.update())
-      .catch(()=>{});
-  }
-</script>
+        <label>
+          <span>Hasta</span>
+          <input id="dateTo" type="text" inputmode="none" autocomplete="off">
+        </label>
+      </div>
+
+      <footer class="filters-actions">
+        <button id="btnPrevW"  class="btn">← Semana</button>
+        <button id="btnTodayW" class="btn">Hoy</button>
+        <button id="btnNextW"  class="btn">Semana →</button>
+        <button id="btnApply"  class="btn btn-primary">Aplicar</button>
+      </footer>
+    </div>
+    <div class="backdrop" tabindex="-1"></div>
+  </section>
+
+  <main>
+    <!-- Aquí se pinta el cuadrante -->
+    <div id="app"></div>
+  </main>
+
+  <!-- === Datos primero === -->
+  
+
+  <!-- Flatpickr (CSS + JS) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+  <!-- Lógica de app -->
+  <script src="plantilla_adapter_semana.js?v=20251028_0237"></script>
+  <script src="mobile.patch.js?v=20251028_0237"></script>
+
+  <script>
+    // PWA SW
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" })
+        .then(r => r.update()).catch(()=>{});
+    }
+  </script>
 </body>
 </html>
-
 

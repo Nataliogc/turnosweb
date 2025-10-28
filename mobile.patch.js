@@ -1,76 +1,77 @@
-// mobile.patch.js — Patch de APP móvil: filtros, fechas y render estable
-// Requiere que existan estos IDs en el HTML:
-// #dateFrom, #dateTo, #btnApply, #btnPrevW, #btnTodayW, #btnNextW, #hotelSelect, #employeeFilter
-// Necesita flatpickr + l10n ES cargados antes.
-
+// mobile.patch.js — Vista APP: drawer de filtros, fechas estables y render
 (function () {
   const $ = s => document.querySelector(s);
 
-  // Estado del filtro
-  const state = { from: null, to: null };
+  // ==== Drawer Filtros ====
+  const drawer = $('#filtersDrawer');
+  const btnOpen = $('#btnFilters');
+  const btnClose = $('#btnCloseFilters');
+  const backdrop = drawer?.querySelector('.backdrop');
 
-  // Asegurar locale ES
-  try { if (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.es) {
-    flatpickr.localize(flatpickr.l10ns.es);
-  }} catch(e){}
+  function openDrawer() {
+    drawer?.classList.remove('hidden');
+    drawer?.setAttribute('aria-hidden', 'false');
+    document.documentElement.style.overflow = 'hidden';
+  }
+  function closeDrawer() {
+    drawer?.classList.add('hidden');
+    drawer?.setAttribute('aria-hidden', 'true');
+    document.documentElement.style.overflow = '';
+  }
+  btnOpen?.addEventListener('click', openDrawer);
+  btnClose?.addEventListener('click', closeDrawer);
+  backdrop?.addEventListener('click', closeDrawer);
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
-  // Init pickers (lunes como primero, formato d/M/Y)
-  const fpFrom = flatpickr('#dateFrom', {
-    locale: 'es',
-    dateFormat: 'd/M/Y',
-    weekNumbers: true,
-    defaultDate: $('#dateFrom')?.value || undefined
-  });
-  const fpTo = flatpickr('#dateTo', {
-    locale: 'es',
-    dateFormat: 'd/M/Y',
-    weekNumbers: true,
-    defaultDate: $('#dateTo')?.value || undefined
-  });
+  // ==== Flatpickr (ES, formato d/M/Y) ====
+  try { if (window.flatpickr?.l10ns?.es) flatpickr.localize(flatpickr.l10ns.es); } catch {}
+  const fpFrom = flatpickr('#dateFrom', { dateFormat: 'd/M/Y', weekNumbers: true, defaultDate: $('#dateFrom')?.value || undefined });
+  const fpTo   = flatpickr('#dateTo',   { dateFormat: 'd/M/Y', weekNumbers: true, defaultDate: $('#dateTo')?.value   || undefined });
 
+  // ==== Render con filtros ====
   function applyFilters() {
-    state.from = fpFrom.selectedDates?.[0] || null;
-    state.to   = fpTo.selectedDates?.[0]   || null;
+    const from = fpFrom.selectedDates?.[0] || null;
+    const to   = fpTo.selectedDates?.[0]   || null;
 
-    // Ventana segura si falta un extremo
-    if (state.from && !state.to)   state.to   = new Date(state.from.getTime() + 31*864e5);
-    if (!state.from && state.to)   state.from = new Date(state.to.getTime()   - 31*864e5);
+    // Rango seguro si falta uno
+    let dFrom = from, dTo = to;
+    if (dFrom && !dTo) dTo = new Date(dFrom.getTime() + 31*864e5);
+    if (!dFrom && dTo) dFrom = new Date(dTo.getTime()   - 31*864e5);
 
-    // Reflejar en inputs (formato visible)
-    if (state.from) $('#dateFrom').value = fpFrom.formatDate(state.from, 'd/M/Y');
-    if (state.to)   $('#dateTo').value   = fpTo.formatDate(state.to,   'd/M/Y');
+    if (dFrom) $('#dateFrom').value = fpFrom.formatDate(dFrom, 'd/M/Y');
+    if (dTo)   $('#dateTo').value   = fpTo.formatDate(dTo,   'd/M/Y');
 
-    // Render (usa el adaptador ya existente)
+    const hotel = $('#hotelSelect')?.value || '';
+    const emp   = $('#employeeFilter')?.value || '';
+
     if (typeof window.renderContent === 'function') {
-      window.renderContent({
-        dateFrom: state.from,
-        dateTo: state.to,
-        hotel: $('#hotelSelect')?.value || '',
-        employee: $('#employeeFilter')?.value || ''
-      });
+      window.renderContent({ dateFrom: dFrom, dateTo: dTo, hotel, employee: emp });
     }
   }
 
-  // Botón "Aplicar"
-  $('#btnApply')?.addEventListener('click', applyFilters);
-
-  // Navegación: semana anterior / hoy / siguiente
-  function shift(days) {
-    const from = fpFrom.selectedDates?.[0] || new Date();
-    const to   = fpTo.selectedDates?.[0]   || new Date(from.getTime() + 30*864e5);
-    fpFrom.setDate(new Date(from.getTime() + days*864e5), true);
-    fpTo.setDate(  new Date(to.getTime()   + days*864e5), true);
+  // Botones
+  $('#btnApply')?.addEventListener('click', () => { applyFilters(); closeDrawer(); });
+  $('#btnPrevW')?.addEventListener('click', () => {
+    const f = fpFrom.selectedDates?.[0] || new Date();
+    const t = fpTo.selectedDates?.[0]   || new Date(f.getTime() + 30*864e5);
+    fpFrom.setDate(new Date(f.getTime() - 7*864e5), true);
+    fpTo.setDate(  new Date(t.getTime() - 7*864e5), true);
     applyFilters();
-  }
-  $('#btnPrevW')?.addEventListener('click', () => shift(-7));
+  });
   $('#btnTodayW')?.addEventListener('click', () => {
     const now = new Date();
     fpFrom.setDate(now, true);
     fpTo.setDate(new Date(now.getTime() + 30*864e5), true);
     applyFilters();
   });
-  $('#btnNextW')?.addEventListener('click', () => shift(+7));
+  $('#btnNextW')?.addEventListener('click', () => {
+    const f = fpFrom.selectedDates?.[0] || new Date();
+    const t = fpTo.selectedDates?.[0]   || new Date(f.getTime() + 30*864e5);
+    fpFrom.setDate(new Date(f.getTime() + 7*864e5), true);
+    fpTo.setDate(  new Date(t.getTime() + 7*864e5), true);
+    applyFilters();
+  });
 
-  // Primer render con lo que haya
+  // Al arrancar: primer render
   applyFilters();
 })();
