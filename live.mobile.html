@@ -1,17 +1,17 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Cuadrantes de turnos · APP</title>
+  <title>Cuadrantes de turnos Â· APP</title>
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
   <meta name="theme-color" content="#1b1b1b"/>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="styles.mobile.css">
+  <link rel="stylesheet" href="styles.css?v=20251028_0156">
+  <link rel="stylesheet" href="styles.mobile.css?v=20251028_0156">
 
   <style>
     .controls-container{ display:none; } /* APP: oculto por defecto, aparece al pulsar Filtros */
@@ -23,18 +23,18 @@
       <img src="Logo.png" alt="Logo" />
       <div class="title-block">
         <div class="title">Cuadrantes de turnos</div>
-        <div class="subtitle">APP · L→D</div>
+        <div class="subtitle">APP Â· Lâ†’D</div>
       </div>
     </div>
 
     <button id="btnFilters" class="btn" type="button" style="margin-left:.25rem;">Filtros</button>
 
     <div class="controls-container">
-      <div class="field"><select id="hotelSelect"><option value="">— Hotel —</option></select></div>
-      <div class="field"><select id="employeeFilter"><option value="">— Empleado —</option></select></div>
-      <div class="field"><input id="dateFrom" type="text" placeholder="Desde…"></div>
-      <div class="field"><input id="dateTo" type="text" placeholder="Hasta…"></div>
-      <div class="field" style="display:none"><select id="employeeSelectIcs"><option>— Exportar —</option></select></div>
+      <div class="field"><select id="hotelSelect"><option value="">â€” Hotel â€”</option></select></div>
+      <div class="field"><select id="employeeFilter"><option value="">â€” Empleado â€”</option></select></div>
+      <div class="field"><input id="dateFrom" type="text" placeholder="Desdeâ€¦"></div>
+      <div class="field"><input id="dateTo" type="text" placeholder="Hastaâ€¦"></div>
+      <div class="field" style="display:none"><select id="employeeSelectIcs"><option>â€” Exportar â€”</option></select></div>
       <button class="btn" id="btnICS" style="display:none">Descargar ICS</button>
       <div class="field"><button class="btn" id="btnApply" type="button">Aplicar</button></div>
     </div>
@@ -44,19 +44,26 @@
   <div id="monthly-summary-container"></div>
 
   <!-- SI GENERAS DATOS INLINE, PÉGALOS AQUÍ -->
-  <script src="data.js"></script>
+<script src="data.js?v=APP_20251028_0205"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
-  <script src="plantilla_adapter_semana.js"></script>
-  <script src="mobile.patch.js"></script>
+<!-- Flatpickr (opcional: añade el CSS si no lo tienes en tu CSS) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js", {updateViaCache:"none"})
-        .then(reg => reg.update())
-        .catch(()=>{});
-    }
-  </script>
+<!-- Tu código -->
+<script src="plantilla_adapter_semana.js?v=20251028_0205"></script>
+<script src="mobile.patch.js?v=20251028_0205"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" })
+      .then(reg => reg.update())
+      .catch(()=>{});
+  }
+</script>
+
 </body>
 </html>
+
+

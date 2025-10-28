@@ -116,13 +116,22 @@ self.addEventListener("fetch", e => {
 "@ | Set-Content -LiteralPath "service-worker.js" -Encoding UTF8
 Write-OK "Service Worker listo (CACHE_NAME=turnosweb-app-v$TS)"
 
-# 7) Logos APP en .\img\
+# 7) Logos APP en .\img\ (sin operador ternario)
 Write-Step "8/10" "Verificando logos en .\img\"
 if (!(Test-Path "img")) { New-Item -ItemType Directory -Path "img" | Out-Null }
 if (Test-Path "guadiana logo.jpg") { Copy-Item "guadiana logo.jpg" "img\guadiana.jpg" -Force }
 if (Test-Path "cumbria logo.jpg")  { Copy-Item "cumbria logo.jpg"  "img\cumbria.jpg"  -Force }
-(Test-Path "img\guadiana.jpg") ? (Write-OK "img\guadiana.jpg") : (Write-Warn "falta img\guadiana.jpg")
-(Test-Path "img\cumbria.jpg")  ? (Write-OK "img\cumbria.jpg")  : (Write-Warn "falta img\cumbria.jpg")
+
+if (Test-Path "img\guadiana.jpg") {
+  Write-OK "img\guadiana.jpg"
+} else {
+  Write-Warn "falta img\guadiana.jpg"
+}
+if (Test-Path "img\cumbria.jpg") {
+  Write-OK "img\cumbria.jpg"
+} else {
+  Write-Warn "falta img\cumbria.jpg"
+}
 
 # 8) VERIFICACIÓN FINAL
 Write-Step "9/10" "Verificación final de ficheros"
