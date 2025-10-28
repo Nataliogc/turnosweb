@@ -20,7 +20,8 @@
 <body>
   <header>
     <div class="header-brand">
-      <img src="Logo.png" alt="Logo" />
+     <img src="icons/icon-192.png" alt="Turnos Recepción" class="app-logo">
+
       <div class="title-block">
         <div class="title">Cuadrantes de turnos</div>
         <div class="subtitle">APP Â· Lâ†’D</div>
@@ -44,16 +45,16 @@
   <div id="monthly-summary-container"></div>
 
   <!-- SI GENERAS DATOS INLINE, PÉGALOS AQUÍ -->
-<script src="data.js?v=APP_20251028_0205"></script>
+<script src="data.js?v=APP_20251028_0215"></script>
 
-<!-- Flatpickr (opcional: añade el CSS si no lo tienes en tu CSS) -->
+<!-- Flatpickr (JS + CSS) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
-<!-- Tu código -->
-<script src="plantilla_adapter_semana.js?v=20251028_0205"></script>
-<script src="mobile.patch.js?v=20251028_0205"></script>
+<!-- Código de la APP -->
+<script src="plantilla_adapter_semana.js?v=APP_20251028_0215"></script>
+<script src="mobile.patch.js?v=APP_20251028_0215"></script>
 
 <script>
   if ("serviceWorker" in navigator) {
@@ -62,7 +63,6 @@
       .catch(()=>{});
   }
 </script>
-
 </body>
 </html>
 

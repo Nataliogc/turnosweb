@@ -1,74 +1,20 @@
-// APP – Botón Filtros, botón Aplicar, refresh fiable y flatpickr garantizado
-(function () {
-  const $  = (s, r=document) => r.querySelector(s);
+// mobile.patch.js — Patch de APP móvil: filtros, fechas y render estable
+// Requiere que existan estos IDs en el HTML:
+// #dateFrom, #dateTo, #btnApply, #btnPrevW, #btnTodayW, #btnNextW, #hotelSelect, #employeeFilter
+// Necesita flatpickr + l10n ES cargados antes.
 
-  function ensureFlatpickr(){
-    const opts = { locale: 'es', dateFormat: 'Y-m-d', allowInput: true, weekNumbers: true };
-    if (window.flatpickr){
-      if (!$('#dateFrom')?._flatpickr) window.flatpickr('#dateFrom', opts);
-      if (!$('#dateTo')?._flatpickr)   window.flatpickr('#dateTo',   opts);
-    }
-  }
-
-  function triggerRefresh(){
-    ['hotelSelect','employeeFilter','dateFrom','dateTo'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(!el) return;
-      ['input','change'].forEach(ev=> el.dispatchEvent(new Event(ev, {bubbles:true})));
-    });
-  }
-
-  function initUI(){
-    const bar = $('.controls-container');
-    const btn = $('#btnFilters');
-    const apply = $('#btnApply');
-    if (!bar || !btn || !apply) return;
-
-    btn.addEventListener('click', ()=>{
-      const visible = getComputedStyle(bar).display !== 'none';
-      if (visible){ bar.style.opacity='0'; setTimeout(()=>{ bar.style.display='none'; }, 200); }
-      else { bar.style.display='flex'; bar.style.opacity='1'; ensureFlatpickr(); }
-    });
-
-    apply.addEventListener('click', ()=>{ ensureFlatpickr(); triggerRefresh(); });
-
-    // refresco al cambiar fechas manualmente
-    ['dateFrom','dateTo'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el){ el.addEventListener('change', triggerRefresh); el.addEventListener('input', triggerRefresh); }
-    });
-
-    // ocultar ICS siempre en APP
-    ['#employeeSelectIcs','#btnICS'].forEach(sel=>{
-      const el=$(sel); if(el){ el.style.display='none'; const p=el.closest('.field'); if(p)p.style.display='none'; }
-    });
-
-    // primera carga: mostrar controles
-    bar.style.display='flex';
-    bar.style.opacity='1';
-    ensureFlatpickr();
-  }
-
-  function init(){
-    if (!document.getElementById('app')) return;
-    initUI();
-    new MutationObserver(()=>initUI()).observe(document.body,{childList:true,subtree:true});
-  }
-
-  if (document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
-  else init();
-})();
-// === Mobile PATCH: filtros y fechas ===
 (function () {
   const $ = s => document.querySelector(s);
 
-  // Estado simple
-  const state = {
-    from: null,
-    to: null
-  };
+  // Estado del filtro
+  const state = { from: null, to: null };
 
-  // Inicializar flatpickr (ES, lunes como primero)
+  // Asegurar locale ES
+  try { if (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.es) {
+    flatpickr.localize(flatpickr.l10ns.es);
+  }} catch(e){}
+
+  // Init pickers (lunes como primero, formato d/M/Y)
   const fpFrom = flatpickr('#dateFrom', {
     locale: 'es',
     dateFormat: 'd/M/Y',
@@ -82,20 +28,19 @@
     defaultDate: $('#dateTo')?.value || undefined
   });
 
-  // Botón “Aplicar”: lee fechas y renderiza
   function applyFilters() {
     state.from = fpFrom.selectedDates?.[0] || null;
     state.to   = fpTo.selectedDates?.[0]   || null;
 
-    // Si falta alguna, usa la otra como referencia (+/- 31d)
+    // Ventana segura si falta un extremo
     if (state.from && !state.to)   state.to   = new Date(state.from.getTime() + 31*864e5);
     if (!state.from && state.to)   state.from = new Date(state.to.getTime()   - 31*864e5);
 
-    // Vuelca a inputs con el formato visible
+    // Reflejar en inputs (formato visible)
     if (state.from) $('#dateFrom').value = fpFrom.formatDate(state.from, 'd/M/Y');
     if (state.to)   $('#dateTo').value   = fpTo.formatDate(state.to,   'd/M/Y');
 
-    // NOTA: la función de render viene del adaptador
+    // Render (usa el adaptador ya existente)
     if (typeof window.renderContent === 'function') {
       window.renderContent({
         dateFrom: state.from,
@@ -106,28 +51,26 @@
     }
   }
 
-  // Enlaza botón “Aplicar”
+  // Botón "Aplicar"
   $('#btnApply')?.addEventListener('click', applyFilters);
 
-  // Prev/Hoy/Next semana
-  $('#btnPrevW')?.addEventListener('click', () => {
-    fpFrom.setDate(new Date(fpFrom.selectedDates[0].getTime() - 7*864e5), true);
-    fpTo.setDate(  new Date(fpTo.selectedDates[0].getTime()   - 7*864e5), true);
+  // Navegación: semana anterior / hoy / siguiente
+  function shift(days) {
+    const from = fpFrom.selectedDates?.[0] || new Date();
+    const to   = fpTo.selectedDates?.[0]   || new Date(from.getTime() + 30*864e5);
+    fpFrom.setDate(new Date(from.getTime() + days*864e5), true);
+    fpTo.setDate(  new Date(to.getTime()   + days*864e5), true);
     applyFilters();
-  });
+  }
+  $('#btnPrevW')?.addEventListener('click', () => shift(-7));
   $('#btnTodayW')?.addEventListener('click', () => {
     const now = new Date();
     fpFrom.setDate(now, true);
     fpTo.setDate(new Date(now.getTime() + 30*864e5), true);
     applyFilters();
   });
-  $('#btnNextW')?.addEventListener('click', () => {
-    fpFrom.setDate(new Date(fpFrom.selectedDates[0].getTime() + 7*864e5), true);
-    fpTo.setDate(  new Date(fpTo.selectedDates[0].getTime()   + 7*864e5), true);
-    applyFilters();
-  });
+  $('#btnNextW')?.addEventListener('click', () => shift(+7));
 
-  // Al abrir: primer render con lo que haya en los inputs
+  // Primer render con lo que haya
   applyFilters();
 })();
-
