@@ -78,25 +78,14 @@
 
   <main><div id="app" class="meta">Cargando…</div></main>
 
-  <!-- 1) Datos -->
-  <script src="data.js?v=app2"></script>
+  // Defiende la app aunque el adaptador no cargue:
+window.renderContent = window.renderContent || function () {
+  const el = document.getElementById('app');
+  el.innerHTML = '<p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>';
+};
+// Fuerza un primer render “inofensivo”
+window.renderContent({});
 
-  <!-- 2) Bandera APP -->
-  <script>window.IS_APP = true;</script>
-
-  <!-- 3) Flatpickr -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
-
-  <!-- 4) Adaptador (si define renderContent, se usará) -->
-  <script src="plantilla_adapter_semana.js?v=app2"></script>
-
-  <!-- 5) Lógica APP (incluye fallback de render mejorado) -->
-  <script src="mobile.patch.js?v=app2"></script>
-
-  <!-- 6) Service Worker -->
-  <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
         .then(reg => reg.update())

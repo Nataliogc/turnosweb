@@ -72,18 +72,7 @@
   function ensureRender(){
     if (typeof window.renderContent === 'function') return;
 
-    const diaNombre = d => {
-      try { return new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit'}); }
-      catch { return d || ''; }
-    };
-    const pill = t => {
-      const s = String(t||'').toLowerCase();
-      if (s.includes('mañana') || s.includes('manana')) return `<span class="pill pill-m">Mañana</span>`;
-      if (s.includes('tarde'))  return `<span class="pill pill-t">Tarde</span>`;
-      if (s.includes('noche'))  return `<span class="pill pill-n">Noche 🌙</span>`;
-      if (s.includes('descanso')) return `<span class="pill pill-x">Descanso</span>`;
-      return t ? `<span class="pill pill-ghost">${t}</span>` : '—';
-    };
+    renderContent
 
     window.renderContent = function renderContent({dateFrom, dateTo, hotel, employee} = {}){
       const rowsAll = flattenRows(getData());
