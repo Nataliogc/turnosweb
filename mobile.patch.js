@@ -1,17 +1,13 @@
-/* mobile.patch.js — APP móvil con:
-   - Aplanado de FULL_DATA.schedule[].turnos → filas planas (hotel, empleado, fecha, turno)
-   - Filtros robustos (si no hay fechas, no se filtra por fecha; si solo hay "desde", asume 7 días)
-   - Navegación arriba (← Semana · Hoy · Semana →)
-   - Fallback garantizado (si el adaptador no define window.renderContent, la app no se cae)
+/* mobile.patch.js — APP móvil
+   - Carga por defecto: semana actual + 3 siguientes (4 semanas)
+   - Filtros robustos y fallback si el adaptador no define renderContent
 */
 (function () {
   const $ = s => document.querySelector(s);
   const unique = a => [...new Set(a.filter(Boolean))];
   const MS = 864e5;
 
-  // ------------------------------------------------------------
-  // Fallback mínimo (garantiza que siempre existe renderContent)
-  // ------------------------------------------------------------
+  // ---------- Fallback mínimo (para evitar caídas) ----------
   function minimalFallback(msg) {
     const el = document.getElementById('app');
     if (!el) return;
@@ -21,17 +17,13 @@
     window.renderContent = function () { minimalFallback(); };
   }
 
-  // ---------------------
-  // Lectura / normalizado
-  // ---------------------
+  // ---------- Datos y helpers ----------
   const getData = () => window.FULL_DATA || {};
 
-  // Convierte la estructura semanal en filas planas
   function flattenRows(D) {
     const S = Array.isArray(D.schedule) ? D.schedule : [];
     if (!S.length) return Array.isArray(D.data) ? D.data : [];
 
-    // Si es semanal (tiene "turnos")
     if (S[0] && Array.isArray(S[0].turnos)) {
       const out = [];
       for (const w of S) {
@@ -47,8 +39,6 @@
       }
       return out;
     }
-
-    // Ya plano
     return S;
   }
 
@@ -61,23 +51,17 @@
     if (Array.isArray(D.hotels) && D.hotels.length) return unique(D.hotels);
     return unique(flattenRows(D).map(hotelOf));
   };
-
   const employeesFrom = (D, hotel) => {
-    // Si el objeto trae employees estructurados, preferirlos
     if (Array.isArray(D.employees) && D.employees.length) {
       return hotel
         ? D.employees.filter(e => (e.hotel || e.Hotel) === hotel).map(e => e.name || e.empleado || e)
         : D.employees.map(e => e.name || e.empleado || e);
     }
-    // Deducción de datos
     return unique(flattenRows(D)
       .filter(x => !hotel || hotelOf(x) === hotel)
       .map(nameOf));
   };
 
-  // ---------------------------
-  // Espera a DOM + datos reales
-  // ---------------------------
   function whenReady(maxMs = 8000){
     return new Promise((resolve, reject) => {
       const t0 = performance.now();
@@ -90,12 +74,10 @@
     });
   }
 
-  // -----------------------------------------
-  // Fallback de render (tabla semanal compacta)
-  // -----------------------------------------
+  // ---------- Render de respaldo (tabla compacta) ----------
   function ensureRender(){
     if (typeof window.renderContent === 'function'
-        && window.renderContent !== minimalFallback /* por si quedó el mínimo */) return;
+        && window.renderContent !== minimalFallback) return;
 
     const diaNombre = d => {
       try { return new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit'}); }
@@ -113,10 +95,10 @@
     window.renderContent = function renderContent({dateFrom, dateTo, hotel, employee} = {}){
       const rowsAll = flattenRows(getData());
 
-      // Normalización fechas
+      // Normalización de fechas
       let from = dateFrom ? new Date(dateFrom) : null;
       let to   = dateTo   ? new Date(dateTo)   : null;
-      if (from && !to) to = new Date(from.getTime() + 6 * MS); // si sólo hay "desde": 7 días
+      if (from && !to) to = new Date(from.getTime() + 6 * MS); // rango 7 días
 
       // Filtro robusto
       const rows = rowsAll.filter(r => {
@@ -125,7 +107,7 @@
 
         if (from || to) {
           const dStr = dateOf(r);
-          const dObj = dStr ? new Date(dStr) : null; // ISO → Date OK
+          const dObj = dStr ? new Date(dStr) : null;
           if (dObj && from && dObj < from) return false;
           if (dObj && to   && dObj > to  ) return false;
         }
@@ -140,7 +122,7 @@
 
       const fechasOrden = unique(rows.map(dateOf)).sort((a,b)=>new Date(a)-new Date(b));
 
-      // Agrupar por hotel y por empleado -> fecha
+      // Agrupar por hotel y empleado
       const byHotel = {};
       for (const r of rows){
         const h = hotelOf(r) || '—';
@@ -179,25 +161,33 @@
     };
   }
 
-  // ------------
-  // Inicialización
-  // ------------
+  // ---------- Fechas por defecto: lunes actual + 27 días ----------
+  function monday(d){
+    const x = new Date(d);
+    const day = (x.getDay() + 6) % 7; // 0 = lunes
+    x.setHours(0,0,0,0);
+    return new Date(x.getTime() - day*MS);
+  }
+  function defaultRange4Weeks(){
+    const from = monday(new Date());           // lunes de esta semana
+    const to   = new Date(from.getTime()+27*MS); // 4 semanas (28 días)
+    return { from, to };
+  }
+
+  // ---------- Init ----------
   async function init(){
     try { await whenReady(); } catch(e) { /* seguimos con fallback */ }
-
-    // Aseguramos fallback si el adaptador no definió nada
     ensureRender();
 
-    // Controles
     const sh = $('#hotelSelect');
     const se = $('#employeeFilter');
     const df = $('#dateFrom');
     const dt = $('#dateTo');
 
-    // Flatpickr (si está cargado en HTML)
+    // Calendarios
     try { if (window.flatpickr?.l10ns?.es) flatpickr.localize(flatpickr.l10ns.es); } catch {}
-    const fpFrom = window.flatpickr ? flatpickr(df, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: df?.value || undefined }) : null;
-    const fpTo   = window.flatpickr ? flatpickr(dt, { dateFormat:'d/M/Y', weekNumbers:true, defaultDate: dt?.value || undefined }) : null;
+    const fpFrom = window.flatpickr ? flatpickr(df, { dateFormat:'d/M/Y', weekNumbers:true }) : null;
+    const fpTo   = window.flatpickr ? flatpickr(dt, { dateFormat:'d/M/Y', weekNumbers:true }) : null;
 
     // Poblar selects
     const D = getData();
@@ -210,12 +200,12 @@
     sh?.addEventListener('change', fillEmp);
     fillEmp();
 
-    // Drawer
-    $('#btnFilters') ?.addEventListener('click', () => $('#filtersDrawer') ?.classList.remove('hidden'));
+    // Eventos del drawer
+    $('#btnFilters')   ?.addEventListener('click', () => $('#filtersDrawer') ?.classList.remove('hidden'));
     $('#btnCloseFilters')?.addEventListener('click', () => $('#filtersDrawer') ?.classList.add('hidden'));
     $('.backdrop')     ?.addEventListener('click', () => $('#filtersDrawer') ?.classList.add('hidden'));
 
-    // Aplicar
+    // Aplicar filtros
     const apply = () => {
       const from = fpFrom?.selectedDates?.[0] || null;
       const to   = fpTo  ?.selectedDates?.[0] || null;
@@ -226,7 +216,7 @@
     };
     $('#btnApply')?.addEventListener('click', () => { apply(); $('#filtersDrawer')?.classList.add('hidden'); });
 
-    // Navegación arriba
+    // Navegación superior
     const shiftDays = (days) => {
       const f = fpFrom?.selectedDates?.[0] || new Date();
       const t = fpTo  ?.selectedDates?.[0] || new Date(f.getTime()+6*MS);
@@ -236,15 +226,22 @@
     };
     $('#btnPrevTop') ?.addEventListener('click', () => shiftDays(-7));
     $('#btnTodayTop')?.addEventListener('click', () => {
-      const n=new Date();
-      fpFrom?.setDate(n,true);
-      fpTo  ?.setDate(new Date(n.getTime()+6*MS), true);
+      const {from,to} = defaultRange4Weeks();
+      fpFrom?.setDate(from,true);
+      fpTo  ?.setDate(to,true);
       apply();
     });
     $('#btnNextTop') ?.addEventListener('click', () => shiftDays(+7));
 
-    // Primer render inofensivo
-    try { window.renderContent({}); } catch (e) { minimalFallback('No se pudo iniciar la APP: ' + e.message); }
+    // --------- Render por defecto: 4 semanas desde hoy ---------
+    const {from: defFrom, to: defTo} = defaultRange4Weeks();
+    // Pre-cargar las fechas en los pickers
+    fpFrom?.setDate(defFrom, true);
+    fpTo  ?.setDate(defTo,   true);
+
+    // Primer pintado automático (sin filtros de hotel/empleado)
+    try { window.renderContent({ dateFrom: defFrom, dateTo: defTo }); }
+    catch (e) { minimalFallback('No se pudo iniciar la APP: ' + e.message); }
   }
 
   init().catch(e => minimalFallback('No se pudo iniciar la APP: ' + e.message));
