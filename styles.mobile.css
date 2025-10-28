@@ -1,16 +1,9 @@
 :root { color-scheme: only light; }
-.app-header .title{ font:800 16px/1.05 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-
-/* APP: animación de la barra al mostrarse */
 .controls-container { transition: opacity .3s ease; }
 
-/* APP: ocultar ICS SIEMPRE */
 #employeeSelectIcs, #btnICS, label[for="employeeSelectIcs"] { display:none !important; }
 
-/* Botón Filtros en cabecera */
 #btnFilters { margin-left:.25rem; }
-
-/* Inputs visibles y legibles en móvil */
 .field select, .field input{
   background:#fff !important; color:#111 !important; -webkit-text-fill-color:#111 !important; font-weight:600;
 }

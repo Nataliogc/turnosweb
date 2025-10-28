@@ -5,19 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Cuadrantes de turnos · APP</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
   <meta name="theme-color" content="#1b1b1b"/>
 
-  <!-- Estilos -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <link rel="stylesheet" href="styles.css?v=app">
-  <link rel="stylesheet" href="styles.mobile.css?v=app">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.mobile.css">
 
   <style>
-    /* APP: oculta controles por defecto; se muestran al pulsar Filtros */
-    .controls-container{ display:none; }
+    .controls-container{ display:none; } /* APP: oculto por defecto, aparece al pulsar Filtros */
   </style>
 </head>
 <body>
@@ -30,7 +27,6 @@
       </div>
     </div>
 
-    <!-- Botón Filtros (APP) -->
     <button id="btnFilters" class="btn" type="button" style="margin-left:.25rem;">Filtros</button>
 
     <div class="controls-container">
@@ -38,9 +34,7 @@
       <div class="field"><select id="employeeFilter"><option value="">— Empleado —</option></select></div>
       <div class="field"><input id="dateFrom" type="text" placeholder="Desde…"></div>
       <div class="field"><input id="dateTo" type="text" placeholder="Hasta…"></div>
-      <div class="field" style="display:none">
-        <select id="employeeSelectIcs"><option value="">— Exportar —</option></select>
-      </div>
+      <div class="field" style="display:none"><select id="employeeSelectIcs"><option>— Exportar —</option></select></div>
       <button class="btn" id="btnICS" style="display:none">Descargar ICS</button>
       <div class="field"><button class="btn" id="btnApply" type="button">Aplicar</button></div>
     </div>
@@ -50,22 +44,18 @@
   <div id="monthly-summary-container"></div>
 
   <!-- SI GENERAS DATOS INLINE, PÉGALOS AQUÍ -->
-  <script src="data.js?v=app"></script>
+  <script src="data.js"></script>
 
-  <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+  <script src="plantilla_adapter_semana.js"></script>
+  <script src="mobile.patch.js"></script>
 
-  <!-- Lógica de pintado -->
-  <script src="plantilla_adapter_semana.js?v=app"></script>
-
-  <!-- Parche APP: Filtros desplegables + refresh + flatpickr seguro -->
-  <script src="mobile.patch.js?v=app"></script>
-
-  <!-- Registrar SW -->
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+      navigator.serviceWorker.register("service-worker.js", {updateViaCache:"none"})
+        .then(reg => reg.update())
+        .catch(()=>{});
     }
   </script>
 </body>
