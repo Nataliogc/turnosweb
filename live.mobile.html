@@ -7,8 +7,8 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=20251028_0237">
-  <link rel="stylesheet" href="styles.mobile.css?v=20251028_0237">
+  <link rel="stylesheet" href="styles.css?v=20251028_1125">
+  <link rel="stylesheet" href="styles.mobile.css?v=20251028_1125">
   <style>
     /* Cabecera compacta */
     .app-bar{display:flex;align-items:center;gap:.75rem;background:#11171d;color:#e8eef6;padding:.8rem 1rem;border-bottom:1px solid #202a33}
@@ -43,22 +43,22 @@
 
       <div class="filters-grid">
         <label>
-          <span>Hotel</span>
+          <span>Hotel</span>        <!-- para #hotelSelect -->
           <select id="hotelSelect"></select>
         </label>
 
         <label>
-          <span>Empleado</span>
+          <span>Empleado</span>     <!-- para #employeeFilter -->
           <select id="employeeFilter"></select>
         </label>
 
         <label>
-          <span>Desde</span>
+          <span>Desde</span>        <!-- para #dateFrom -->
           <input id="dateFrom" type="text" inputmode="none" autocomplete="off">
         </label>
 
         <label>
-          <span>Hasta</span>
+          <span>Hasta</span>        <!-- para #dateTo -->
           <input id="dateTo" type="text" inputmode="none" autocomplete="off">
         </label>
       </div>
@@ -87,8 +87,8 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
   <!-- Lógica de app -->
-  <script src="plantilla_adapter_semana.js?v=20251028_0237"></script>
-  <script src="mobile.patch.js?v=20251028_0237"></script>
+  <script src="plantilla_adapter_semana.js?v=20251028_1125"></script>
+  <script src="mobile.patch.js?v=20251028_1125"></script>
 
   <script>
     // PWA SW
@@ -99,4 +99,6 @@
   </script>
 </body>
 </html>
+
+
 
