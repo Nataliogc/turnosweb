@@ -1,310 +1,310 @@
 /* ===========================================================================
- *  APP MÓVIL · Turnos Recepción
- *  - Semana por bloques (lunes→domingo), una debajo de otra
- *  - Fechas con día + mes abreviado (lun 27/oct)
- *  - Orden de hoteles/empleados estable y filtrable
- *  - Limpieza de valores (evita [object Object], normaliza vacaciones)
- *  - Arranque por defecto: semana actual + 3
+ * APP MÓVIL · Turnos Recepción (España)
+ * - Semana L→D, una debajo de otra
+ * - Estética y colores como "live"
+ * - Sin contadores junto al nombre
+ * - Fechas robustas (sin toISOString, sin desfases)
  * ==========================================================================*/
 (function () {
   "use strict";
 
-  // -------------------- Utilidades básicas --------------------
-  const MS = 864e5;
-  const WEEKS_DEFAULT = 4;
+  // ---------- Utilidades ----------
+  const MS = 86400000;
 
-  const $   = (s) => document.querySelector(s);
-  const $id = (s) => document.getElementById(s);
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const byId = (id) => document.getElementById(id);
+
+  const pad = (n) => (n < 10 ? "0" + n : "" + n);
 
   const monday = (d) => {
     const x = new Date(d);
-    const day = (x.getDay() + 6) % 7; // 0 => lunes
     x.setHours(0, 0, 0, 0);
-    return new Date(x.getTime() - day * MS);
+    const wd = (x.getDay() + 6) % 7; // 0=>lunes
+    return new Date(x.getTime() - wd * MS);
   };
   const addDays = (d, n) => new Date(new Date(d).getTime() + n * MS);
-  const uniq = (a) => [...new Set(a.filter(Boolean))];
 
-  // -------------------- Normalización de datos --------------------
-  function normalize(D) {
-    // Acepta FULL_DATA.schedule (preferente) o FULL_DATA.data
-    const S = Array.isArray(D?.schedule) ? D.schedule : [];
-    if (!S.length) return Array.isArray(D?.data) ? D.data : [];
+  const fmtYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const fmtDateCell = (d) => {
+    // ej. "27/oct/25"
+    const dd = pad(d.getDate());
+    const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+    return `${dd}/${meses[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`;
+  };
+  const DOW = ["LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO","DOMINGO"];
 
-    // Si schedule viene en formato {hotel, turnos:[{empleado, fecha, turno}]}
+  const normalize = (s) =>
+    s == null ? "" : (typeof s === "object" ? "" : String(s));
+
+  const cleanTurno = (t) => {
+    let s = normalize(t);
+    if (!s) return "";
+    const base = s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+    if (base.includes("vacacion"))  return "VACACIONES";
+    if (base.includes("descanso"))  return "DESCANSO";
+    if (base.includes("noche"))     return "NOCHE";
+    if (base.includes("tarde"))     return "TARDE";
+    if (base.includes("manana") || base.includes("mañana")) return "MAÑANA";
+    return s;
+  };
+
+  // ---------- Datos & Estado ----------
+  function normalizeRows(FD) {
+    // Acepta FULL_DATA.schedule (preferente) o FULL_DATA.data ya aplanados
+    const S = Array.isArray(FD?.schedule) ? FD.schedule : FD?.data || [];
+    if (!S.length) return [];
+
+    // Caso 1: schedule = [{hotel, turnos:[{empleado, fecha, turno}]}]
     if (S[0] && Array.isArray(S[0].turnos)) {
       const out = [];
       for (const w of S) {
-        const hotel =
-          w.hotel || w.Hotel || w.establecimiento || w?.meta?.hotel || "";
+        const hotel = w.hotel || w.Hotel || w.establecimiento || w?.meta?.hotel || "";
         for (const t of w.turnos || []) {
           out.push({
             hotel,
             empleado: t.empleado || t.employee || t.nombre || t.name || t.persona || "",
-            fecha: t.fecha || t.date || t.dia || t.day || t?.meta?.fecha || "",
-            turno: t.turno || t.shift || t.tramo || t?.meta?.turno || "",
+            fecha:    t.fecha    || t.date     || t.dia    || t.day   || "",
+            turno:    t.turno    || t.shift    || t.tramo  || ""
           });
         }
       }
       return out;
     }
-    // Si ya viene “aplanado”
-    return S;
+    // Caso 2: ya aplanado
+    return S.map(r => ({
+      hotel:    r.hotel    || r.Hotel || r.establecimiento || r?.meta?.hotel || "",
+      empleado: r.empleado || r.employee || r.nombre || r.name || r.persona || "",
+      fecha:    r.fecha    || r.date || r.dia || r.day || "",
+      turno:    r.turno    || r.shift || r.tramo || ""
+    }));
   }
 
-  // Helpers para campos variables
-  const hotelOf = (r) =>
-    r.hotel || r.Hotel || r.establecimiento || r?.meta?.hotel || "";
-  const nameOf = (r) =>
-    r.empleado || r.employee || r.nombre || r.name || r.persona || "";
-
-  // -------------------- Estado --------------------
   const STATE = {
     rows: [],
     from: monday(new Date()),
-    to: addDays(monday(new Date()), 7 * WEEKS_DEFAULT - 1),
+    to:   addDays(monday(new Date()), 7*4 - 1), // semana actual + 3 (4 semanas visibles)
     hotel: "",
-    empleado: "",
+    empleado: ""
   };
 
-  // -------------------- Render --------------------
+  // ---------- Render ----------
   function render() {
-    const app = $id("app");
+    const app = byId("app");
     if (!app) return;
 
+    // Filtro por rango / hotel / empleado
     const inRange = (r) => {
-      const ds =
-        r.fecha || r.date || r.dia || r.day || r?.meta?.fecha || "";
-      const d = ds ? new Date(ds) : null;
-      return (!d || (d >= STATE.from && d <= STATE.to)) &&
-        (!STATE.hotel || hotelOf(r) === STATE.hotel) &&
-        (!STATE.empleado || nameOf(r) === STATE.empleado);
+      const ds = r.fecha;
+      if (!ds) return false;
+      const d = new Date(ds);
+      return d >= STATE.from && d <= STATE.to &&
+             (!STATE.hotel    || r.hotel    === STATE.hotel) &&
+             (!STATE.empleado || r.empleado === STATE.empleado);
     };
 
     const rows = STATE.rows.filter(inRange);
 
-    // --- Agrupar por hotel y semana (claves: "Hotel__YYYY-MM-DD(lunes)") ---
-    const byHotelWeek = {};
+    // Agrupar por hotel y semana (clave por ms para evitar desfases)
+    const groups = new Map(); // key: `${hotel}__${msMonday}`, value: {ms, hotel, items:[]}
     for (const r of rows) {
-      const hotel = hotelOf(r) || "—";
-      const d = new Date(r.fecha || r.date || r.dia || r.day);
-      if (isNaN(d)) continue;
-      const mon = monday(d);
-      const weekKey = `${hotel}__${mon.toISOString().slice(0, 10)}`;
-      (byHotelWeek[weekKey] ??= []).push(r);
+      const d = new Date(r.fecha);
+      const mon = monday(d).getTime();
+      const key = `${r.hotel}__${mon}`;
+      if (!groups.has(key)) groups.set(key, { ms: mon, hotel: r.hotel, items: [] });
+      groups.get(key).items.push(r);
     }
 
-    // Orden por fecha de semana
-    const weekKeys = Object.keys(byHotelWeek).sort((a, b) => {
-      const da = new Date(a.split("__")[1]);
-      const db = new Date(b.split("__")[1]);
-      return da - db;
+    // Orden de hoteles (Cumbria primero)
+    const hotelOrder = (h) => {
+      const low = String(h).toLowerCase();
+      if (low.includes("cumbria"))  return 0;
+      if (low.includes("guadiana")) return 1;
+      return 2;
+    };
+
+    const weekKeys = [...groups.keys()].sort((a,b) => {
+      const [ha, ma] = a.split("__"); const [hb, mb] = b.split("__");
+      if (Number(ma) !== Number(mb)) return Number(ma) - Number(mb);
+      return hotelOrder(ha) - hotelOrder(hb);
     });
 
-    // Pintado de “píldoras”
-    const pill = (s) => {
-      if (s == null) return "—";
-      // Evitar objetos serializados
-      if (typeof s === "object") return "—";
-      s = String(s);
-      if (s.includes("[")) return "—"; // p.e. "[object object]"
-      const low = s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
-      if (low.includes("manana") || low.includes("mañana"))
-        return `<span class="pill pill-m">Mañana</span>`;
-      if (low.includes("tarde")) return `<span class="pill pill-t">Tarde</span>`;
-      if (low.includes("noche")) return `<span class="pill pill-n">Noche 🌙</span>`;
-      if (low.includes("descanso")) return `<span class="pill pill-x">Descanso</span>`;
-      if (low.includes("vacacion")) return `<span class="pill pill-m">Vacaciones 🎉</span>`;
-      return s || "—";
+    // Píldoras como "live"
+    const pill = (turno) => {
+      const t = cleanTurno(turno);
+      if (t === "MAÑANA")   return `<span class="pill pill-m">Mañana</span>`;
+      if (t === "TARDE")    return `<span class="pill pill-t">Tarde</span>`;
+      if (t === "NOCHE")    return `<span class="pill pill-n">Noche 🌙</span>`;
+      if (t === "DESCANSO") return `<span class="pill pill-x">Descanso</span>`;
+      if (t === "VACACIONES") return `<span class="pill pill-m">Vacaciones 🎉</span>`;
+      return t || "—";
     };
 
-    // Día con mes abreviado
-    const dayLbl = (d) => {
-      try {
-        const date = new Date(d);
-        const opts = { weekday: "short", day: "2-digit", month: "short" };
-        return date.toLocaleDateString("es-ES", opts).replace(/\./g, "");
-      } catch {
-        return d || "";
-      }
-    };
+    const logoFor = (hotel) =>
+      String(hotel).toLowerCase().includes("guadiana") ? "img/guadiana.jpg" : "img/cumbria.jpg";
 
-    // Semana (número)
-    const weekNumber = (d) => {
-      // ISO week number
-      const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-      const dayNum = (tmp.getUTCDay() + 6) % 7;
-      tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
-      const firstThursday = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 4));
-      const diff = (tmp - firstThursday) / 86400000;
-      return 1 + Math.floor(diff / 7);
-    };
-
+    // Contenido
     let html = "";
+    for (const key of weekKeys) {
+      const { ms, hotel, items } = groups.get(key);
+      const weekStart = new Date(ms);
 
-    for (const wk of weekKeys) {
-      const [hotel, weekStartStr] = wk.split("__");
-      const weekStart = new Date(weekStartStr);
+      // Fechas L→D
+      const days = Array.from({length:7}, (_,i) => addDays(weekStart, i));
+      const ymd  = days.map(fmtYMD);
 
-      // Fechas lunes→domingo
-      const fechas = Array.from({ length: 7 }, (_, i) =>
-        new Date(weekStart.getTime() + i * MS)
-      );
-      const fechasStr = fechas.map((f) => f.toISOString().slice(0, 10));
+      // Orden estable de empleados (según primera aparición en la semana)
+      const seen = new Map();
+      items.forEach((r, idx) => {
+        if (!seen.has(r.empleado)) seen.set(r.empleado, idx);
+      });
+      const empleados = [...seen.keys()].sort((a,b) => seen.get(a) - seen.get(b));
 
-      // Empleados ordenados alfabéticamente (o por el orden natural que venga si quieres cambiar aquí)
-      const empRows = byHotelWeek[wk];
-      const emps = uniq(empRows.map(nameOf)).sort((a, b) =>
-        String(a).localeCompare(String(b), "es")
-      );
-
-      // Mapa empleado → {fecha: turno}
-      const empMap = {};
-      for (const r of empRows) {
-        const n = nameOf(r);
-        const d = (r.fecha || r.date || r.dia || r.day || "").slice(0, 10);
-        const t = r.turno || r.shift || r.tramo || r?.meta?.turno || "";
-        (empMap[n] ??= {})[d] = t;
+      // Mapa emp -> fecha -> turno
+      const mp = new Map();
+      for (const r of items) {
+        const e = r.empleado;
+        const f = fmtYMD(new Date(r.fecha)); // local
+        const t = r.turno;
+        if (!mp.has(e)) mp.set(e, {});
+        mp.get(e)[f] = t;
       }
 
-      const sem = weekNumber(weekStart);
-      const title =
-        `${hotel} – Semana ${String(sem).padStart(2, "0")}` +
-        `/${weekStart.getMonth() + 1}/${weekStart.getFullYear()}`;
+      // Cabecera (Semana NN/mm/aaaa)
+      const isoWeek = (d) => {
+        // ISO week number
+        const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = (tmp.getUTCDay() + 6) % 7;
+        tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
+        const firstThu = new Date(Date.UTC(tmp.getUTCFullYear(),0,4));
+        const diff = (tmp - firstThu)/86400000;
+        return 1 + Math.floor(diff/7);
+      };
+      const sem = String(isoWeek(weekStart)).padStart(2,"0");
+      const title = `${hotel} – Semana ${sem}/${weekStart.getMonth()+1}/${weekStart.getFullYear()}`;
 
-      const logo =
-        hotel.toLowerCase().includes("guadiana")
-          ? "img/guadiana.jpg"
-          : "img/cumbria.jpg";
+      const headCols = days.map((d,i) =>
+        `<th>
+            <div class="dow">${DOW[i]}</div>
+            <div class="dmy">${fmtDateCell(d)}</div>
+         </th>`
+      ).join("");
+
+      const bodyRows = empleados.map(emp => {
+        const byDate = mp.get(emp) || {};
+        return `<tr>
+          <td class="emp"><strong>${emp}</strong></td>
+          ${ymd.map((d) => `<td>${pill(byDate[d])}</td>`).join("")}
+        </tr>`;
+      }).join("");
 
       html += `
         <div class="row-card">
           <table class="grid-week">
             <thead>
               <tr>
-                <th colspan="8" style="text-align:left;font-size:14px;background:#fafafa">
-                  <img src="${logo}" alt="${hotel}" style="height:24px;vertical-align:middle;margin-right:6px;border-radius:4px">
+                <th colspan="8" class="week-title">
+                  <img src="${logoFor(hotel)}" alt="${hotel}" class="hotel-logo">
                   ${title}
                 </th>
               </tr>
               <tr>
-                <th style="min-width:160px">Empleado</th>
-                ${fechas.map((f) => `<th>${dayLbl(f)}</th>`).join("")}
+                <th class="col-emp">Empleado</th>
+                ${headCols}
               </tr>
             </thead>
             <tbody>
-              ${emps
-                .map(
-                  (n) => `
-                <tr>
-                  <td style="text-align:left"><strong>${n}</strong></td>
-                  ${fechasStr
-                    .map((f) => `<td>${pill(empMap[n]?.[f])}</td>`)
-                    .join("")}
-                </tr>`
-                )
-                .join("")}
+              ${bodyRows || `<tr><td colspan="8" class="nodata">—</td></tr>`}
             </tbody>
           </table>
         </div>`;
     }
 
-    app.innerHTML =
-      html ||
-      `<p class="meta">No hay datos para mostrar con los filtros seleccionados.</p>`;
+    app.innerHTML = html || `<p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>`;
   }
 
-  // -------------------- Filtros (panel) --------------------
+  // ---------- Filtros ----------
   function populateFilters() {
-    const hotelSel = $id("hotelSelect");
-    const empSel = $id("employeeFilter");
+    const hotelSel = byId("hotelSelect");
+    const empSel   = byId("employeeFilter");
     if (!hotelSel || !empSel) return;
 
-    const hotels = uniq(STATE.rows.map(hotelOf)).sort((a, b) =>
-      String(a).localeCompare(String(b), "es")
-    );
-    hotelSel.innerHTML =
-      '<option value="">— Hotel —</option>' +
-      hotels.map((h) => `<option>${h}</option>`).join("");
+    const hotels = [...new Set(STATE.rows.map(r => r.hotel))];
+    hotels.sort((a,b)=>{
+      const order = (h)=>/cumbria/i.test(h)?0:/guadiana/i.test(h)?1:2;
+      const sa = order(a), sb = order(b);
+      return sa===sb ? String(a).localeCompare(String(b),"es") : sa - sb;
+    });
 
-    const refreshEmp = () => {
-      const list = uniq(
-        STATE.rows
-          .filter((r) => !hotelSel.value || hotelOf(r) === hotelSel.value)
-          .map(nameOf)
-      ).sort((a, b) => String(a).localeCompare(String(b), "es"));
-      empSel.innerHTML =
-        '<option value="">— Empleado —</option>' +
-        list.map((n) => `<option>${n}</option>`).join("");
+    hotelSel.innerHTML = `<option value="">— Hotel —</option>` +
+      hotels.map(h=>`<option>${h}</option>`).join("");
+
+    const refreshEmp = ()=>{
+      const list = [...new Set(
+        STATE.rows.filter(r => !hotelSel.value || r.hotel === hotelSel.value)
+                  .map(r => r.empleado)
+      )].sort((a,b)=>String(a).localeCompare(String(b),"es"));
+      empSel.innerHTML = `<option value="">— Empleado —</option>` +
+        list.map(n=>`<option>${n}</option>`).join("");
     };
     refreshEmp();
     hotelSel.onchange = refreshEmp;
 
-    // Fechas iniciales en el panel
-    const toISO = (d) => new Date(d).toISOString().slice(0, 10);
-    $id("dateFrom").value = toISO(STATE.from);
-    $id("dateTo").value = toISO(STATE.to);
+    // Fechas por defecto en el panel
+    const toISO = (d)=>fmtYMD(d);
+    byId("dateFrom").value = toISO(STATE.from);
+    byId("dateTo").value   = toISO(STATE.to);
   }
 
   function attachUI() {
-    // Botones superiores
-    $id("btnPrev")?.addEventListener("click", () => {
+    byId("btnPrev")?.addEventListener("click", ()=>{
       STATE.from = addDays(STATE.from, -7);
-      STATE.to = addDays(STATE.to, -7);
+      STATE.to   = addDays(STATE.to,   -7);
       render();
     });
-    $id("btnNext")?.addEventListener("click", () => {
+    byId("btnNext")?.addEventListener("click", ()=>{
       STATE.from = addDays(STATE.from, 7);
-      STATE.to = addDays(STATE.to, 7);
+      STATE.to   = addDays(STATE.to,   7);
       render();
     });
-    $id("btnToday")?.addEventListener("click", () => {
+    byId("btnToday")?.addEventListener("click", ()=>{
       STATE.from = monday(new Date());
-      STATE.to = addDays(STATE.from, 7 * WEEKS_DEFAULT - 1);
+      STATE.to   = addDays(STATE.from, 7*4 - 1);
       render();
     });
 
-    // Filtros / dialog
-    const dlg = $id("dlg");
-    $id("btnFilters")?.addEventListener("click", () => {
-      dlg?.showModal();
-    });
-    $id("btnApply")?.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      STATE.hotel = $id("hotelSelect")?.value || "";
-      STATE.empleado = $id("employeeFilter")?.value || "";
-      const df = $id("dateFrom")?.value;
-      const dt = $id("dateTo")?.value;
-      STATE.from = df ? monday(new Date(df)) : STATE.from;
-      STATE.to = dt ? addDays(monday(new Date(dt)), 6) : STATE.to;
+    const dlg = byId("dlg");
+    byId("btnFilters")?.addEventListener("click", ()=> dlg?.showModal());
+    byId("btnApply")?.addEventListener("click", (e)=>{
+      e.preventDefault();
+      STATE.hotel    = byId("hotelSelect")?.value || "";
+      STATE.empleado = byId("employeeFilter")?.value || "";
+      const f = byId("dateFrom")?.value;
+      const t = byId("dateTo")?.value;
+      if (f) STATE.from = monday(new Date(f));
+      if (t) STATE.to   = addDays(monday(new Date(t)), 6);
       dlg?.close();
       render();
     });
   }
 
-  // -------------------- Arranque --------------------
-  window.addEventListener("DOMContentLoaded", () => {
+  // ---------- Boot ----------
+  window.addEventListener("DOMContentLoaded", ()=>{
     try {
-      STATE.rows = normalize(window.FULL_DATA || {});
-      // Default: semana actual + 3
+      STATE.rows = normalizeRows(window.FULL_DATA || {});
       STATE.from = monday(new Date());
-      STATE.to = addDays(STATE.from, 7 * WEEKS_DEFAULT - 1);
+      STATE.to   = addDays(STATE.from, 7*4 - 1);
 
       populateFilters();
       attachUI();
       render();
     } catch (e) {
-      const app = $id("app");
-      if (app)
-        app.innerHTML = `<p class="meta">No se pudo iniciar la APP: ${
-          e?.message || e
-        }</p>`;
-      console.error("[APP] boot error", e);
+      const app = byId("app");
+      if (app) app.innerHTML = `<p class="meta">No se pudo iniciar la APP: ${e?.message || e}</p>`;
+      console.error(e);
     }
   });
 
-  // Compatibilidad externa (si alguien invoca renderContent)
-  window.renderContent = function () {
-    render();
-  };
+  // API compatible
+  window.renderContent = () => render();
 })();
