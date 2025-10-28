@@ -4,13 +4,17 @@
   <meta charset="utf-8">
   <title>Cuadrantes de turnos · APP</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="icon" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=20251028_1125">
-  <link rel="stylesheet" href="styles.mobile.css?v=20251028_1125">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="styles.css?v=app">
+  <link rel="stylesheet" href="styles.mobile.css?v=app">
+
   <style>
-    /* Cabecera compacta */
     .app-bar{display:flex;align-items:center;gap:.75rem;background:#11171d;color:#e8eef6;padding:.8rem 1rem;border-bottom:1px solid #202a33}
     .app-logo{width:34px;height:34px;border-radius:8px;background:#0e1116}
     .app-title{font-weight:700;font-size:1.05rem;margin:0}
@@ -33,7 +37,7 @@
     </div>
   </header>
 
-  <!-- Drawer de filtros (APP) -->
+  <!-- Drawer de filtros -->
   <section id="filtersDrawer" class="filters-drawer hidden" aria-hidden="true">
     <div class="filters-card">
       <header class="filters-head">
@@ -42,25 +46,10 @@
       </header>
 
       <div class="filters-grid">
-        <label>
-          <span>Hotel</span>        <!-- para #hotelSelect -->
-          <select id="hotelSelect"></select>
-        </label>
-
-        <label>
-          <span>Empleado</span>     <!-- para #employeeFilter -->
-          <select id="employeeFilter"></select>
-        </label>
-
-        <label>
-          <span>Desde</span>        <!-- para #dateFrom -->
-          <input id="dateFrom" type="text" inputmode="none" autocomplete="off">
-        </label>
-
-        <label>
-          <span>Hasta</span>        <!-- para #dateTo -->
-          <input id="dateTo" type="text" inputmode="none" autocomplete="off">
-        </label>
+        <label><span>Hotel</span><select id="hotelSelect"></select></label>
+        <label><span>Empleado</span><select id="employeeFilter"></select></label>
+        <label><span>Desde</span><input id="dateFrom" type="text" inputmode="none" autocomplete="off"></label>
+        <label><span>Hasta</span><input id="dateTo"   type="text" inputmode="none" autocomplete="off"></label>
       </div>
 
       <footer class="filters-actions">
@@ -73,32 +62,32 @@
     <div class="backdrop" tabindex="-1"></div>
   </section>
 
-  <main>
-    <!-- Aquí se pinta el cuadrante -->
-    <div id="app"></div>
-  </main>
+  <main><div id="app"></div></main>
 
-  <!-- === Datos primero === -->
-  
+  <!-- 1) DATOS: imprescindible para que haya FULL_DATA -->
+  <script src="data.js?v=app"></script>
 
-  <!-- Flatpickr (CSS + JS) -->
+  <!-- 2) Bandera APP (lo usa el patch) -->
+  <script>window.IS_APP = true;</script>
+
+  <!-- 3) Flatpickr -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
-  <!-- Lógica de app -->
-  <script src="plantilla_adapter_semana.js?v=20251028_1125"></script>
-  <script src="mobile.patch.js?v=20251028_1125"></script>
+  <!-- 4) Adaptador de cuadrante -->
+  <script src="plantilla_adapter_semana.js?v=app"></script>
 
+  <!-- 5) Lógica móvil (abre filtros, fechas y llama a renderContent) -->
+  <script src="mobile.patch.js?v=app"></script>
+
+  <!-- 6) Service Worker (ahora sí, dentro de <script>) -->
   <script>
-    // PWA SW
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" })
-        .then(r => r.update()).catch(()=>{});
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+        .then(reg => reg.update())
+        .catch(() => {});
     }
   </script>
 </body>
 </html>
-
-
-
