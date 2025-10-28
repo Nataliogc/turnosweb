@@ -116,7 +116,7 @@ def leer_y_procesar_sustituciones():
             elif sustit or tipo:
                 subs[(hotel, fecha, emp)] = {
                     "Sustituto": sustit,
-                    "TipoAusencia": tipo
+                    "TipoAusencia": tipo  # ⟵ nombre exacto que espera el front
                 }
 
     return subs, swaps
@@ -157,7 +157,35 @@ def main():
         for lunes, data in semanas.items():
             turnos = data["turnos"]
 
-            # 1) SWAPS (cambios de turno)
+            # =======================
+            # 1) AUSENCIAS + SUSTITUTO (PRIMERO)
+            # =======================
+            sustitutos_de_la_semana = set()
+            # Snapshot para iterar con seguridad mientras modificamos turnos
+            for (emp, fecha), valor in list(turnos.items()):
+                if emp in excluir:
+                    del turnos[(emp, fecha)]
+                    continue
+
+                key_s = (hotel, fecha, emp)
+                if key_s in sustituciones:
+                    s = sustituciones[key_s]
+                    # Ausencia al titular
+                    turnos[(emp, fecha)] = {
+                        "TurnoOriginal": valor,                     # turno que tenía el titular
+                        "Sustituto": s.get("Sustituto",""),
+                        "TipoAusencia": s.get("TipoAusencia",""),  # ⟵ nombre exacto
+                    }
+                    # Dar turno efectivo al sustituto si aún no lo tenía
+                    sust = s.get("Sustituto","")
+                    if sust:
+                        sustitutos_de_la_semana.add(sust)
+                        if (sust, fecha) not in turnos or not isinstance(turnos[(sust, fecha)], str) or not turnos[(sust, fecha)]:
+                            turnos[(sust, fecha)] = valor  # el sustituto trabaja el TurnoOriginal del titular
+
+            # =======================
+            # 2) SWAPS (cambios de turno) — ya con sustitutos activos
+            # =======================
             base = datetime.strptime(lunes, "%Y-%m-%d")
             fechas_semana = [(base + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
             for fecha in fechas_semana:
@@ -168,29 +196,14 @@ def main():
                     if key_a in turnos and key_b in turnos:
                         turno_a = turnos[key_a]
                         turno_b = turnos[key_b]
-                        turnos[key_a] = _mark_swap(turno_b)
-                        turnos[key_b] = _mark_swap(turno_a)
-
-            # 2) AUSENCIAS + SUSTITUTO
-            sustitutos_de_la_semana = set()
-            for (emp, fecha), valor in list(turnos.items()):
-                if emp in excluir:
-                    del turnos[(emp, fecha)]
-                    continue
-                key_s = (hotel, fecha, emp)
-                if key_s in sustituciones:
-                    s = sustituciones[key_s]
-                    turnos[(emp, fecha)] = {
-                        "TurnoOriginal": valor,
-                        "Sustituto": s.get("Sustituto",""),
-                        "TipoInterpretado": s.get("TipoAusencia",""),  # texto EXACTO
-                    }
-                    if s.get("Sustituto"):
-                        sustitutos_de_la_semana.add(s["Sustituto"])
+                        # Solo intercambiamos strings (si hay dicts de ausencia, el sustituto ya tiene string arriba)
+                        if isinstance(turno_a, str) and isinstance(turno_b, str):
+                            turnos[key_a] = _mark_swap(turno_b)
+                            turnos[key_b] = _mark_swap(turno_a)
 
             # 3) orden final
             orden = [e for e in data["orden_empleados"] if e not in excluir]
-            for s in sustitutos_de_la_semana:
+            for s in sorted(sustitutos_de_la_semana):
                 if s and s not in orden:
                     orden.append(s)
 
