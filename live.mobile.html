@@ -1,40 +1,53 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cuadrantes de turnos · APP</title>
-<link rel="icon" href="icons/icon-192.png">
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles.mobile.css">
-<style>
-  body{background:#f6f7fb}
-  .topbar{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:10px}
-  .btn{background:#111827;color:#fff;border-radius:10px;padding:8px 12px;border:0}
-  .btn:hover{opacity:.92}
-  .row-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin:12px 0;overflow:auto}
-  .grid-week{border-collapse:collapse;width:100%}
-  .grid-week th,.grid-week td{border:1px solid #e5e7eb;padding:8px;text-align:center;white-space:nowrap}
-  .grid-week th{background:#f9fafb}
-  .pill{padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-block}
-  .pill-m{background:#e7f8ee;border:1px solid #bbf7d0}
-  .pill-t{background:#fff7d6;border:1px solid #fde68a}
-  .pill-n{background:#eef2ff;border:1px solid #c7d2fe}
-  .pill-x{background:#fee2e2;border:1px solid #fecaca}
-  .meta{color:#6b7280}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cuadrantes de turnos · Vista móvil</title>
+
+  <!-- Usa el mismo CSS de la app -->
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Ajustes mínimos específicos de la vista móvil */
+    body{background:#f6f8fb;}
+    .topbar{position:sticky;top:0;z-index:50;background:#0f172a;color:#fff;padding:.8rem 1rem;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+    .topbar .title{font-weight:700}
+    .toolbar{display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap}
+    .btn{background:#111827;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:.45rem .85rem;font-size:.95rem;cursor:pointer}
+    .btn:hover{background:#0b1220}
+    .card{background:#fff;border-radius:16px;box-shadow:0 6px 24px rgba(15,23,42,.06);padding:1rem;margin:1rem}
+    .hotel-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
+    .hotel-header img{width:48px;height:auto;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.12))}
+    .hotel-name{font-weight:700}
+    .week-title{font-weight:600;color:#64748b}
+    .grid{width:100%;border-collapse:separate;border-spacing:0 .75rem}
+    .grid th{font-weight:600;color:#475569;text-transform:uppercase;font-size:.85rem}
+    .grid td,.grid th{padding:.5rem .4rem}
+    .employee-cell{white-space:nowrap;font-weight:600;color:#0f172a}
+    .dash{opacity:.5}
+    .pill{display:inline-block;padding:.35rem .75rem;border-radius:999px;background:#eef2ff;color:#1f2937;font-weight:600}
+    .pill-descanso{background:#ffd7d7;color:#7a0a0a}
+    .pill-noche{background:#eaf1ff}
+    .moon{margin-left:.35rem}
+    .section-gap{height:.25rem}
+    .footer-gap{height:2rem}
+    /* Panel filtros */
+    .filters{position:fixed;inset:auto 0 0 0;background:#0f172a;color:#fff;transform:translateY(100%);transition:transform .25s ease;padding:1rem;border-top-left-radius:14px;border-top-right-radius:14px;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+    .filters.open{transform:translateY(0)}
+    .filters label{display:block;font-size:.85rem;opacity:.85;margin:.5rem 0 .25rem}
+    .filters input,.filters select{width:100%;padding:.6rem .75rem;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#fff}
+    .filters .row{display:flex;gap:.75rem}
+    .filters .row > div{flex:1}
+    .filters .actions{display:flex;gap:.5rem;margin-top:.8rem}
+    .btn-light{background:#1f2937;border-color:#334155}
+    .btn-ghost{background:transparent;border-color:#334155}
+    .hidden{display:none}
+  </style>
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <img src="icons/icon-192.png" alt="logo" style="width:28px;height:28px;border-radius:6px;margin-right:8px;">
-      <div>
-        <div class="title">Cuadrantes de turnos</div>
-        <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
-      </div>
-    </div>
-    <div class="topbar">
+  <header class="topbar" role="banner">
+    <div class="title">Cuadrantes de turnos</div>
+    <div class="toolbar" role="toolbar" aria-label="Controles de navegación">
       <button id="btnPrev" class="btn">← Semana</button>
       <button id="btnToday" class="btn">Hoy</button>
       <button id="btnNext" class="btn">Semana →</button>
@@ -42,55 +55,200 @@
     </div>
   </header>
 
-  <!-- contenedor de la app -->
-  <main id="app" class="container" style="padding:10px 14px;">
-    <p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>
-  </main>
+  <main id="root" aria-live="polite"></main>
+  <div class="footer-gap"></div>
 
-  <!-- panel de filtros (simple) -->
-  <dialog id="dlg" style="max-width:880px;width:95%;border:1px solid #d1d5db;border-radius:12px">
-    <form method="dialog" style="padding:12px 14px">
-      <h3 style="margin:0 0 8px 0">Filtros</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div>
-          <label>Hotel</label>
-          <select id="hotelSelect" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
-            <option value="">— Hotel —</option>
-          </select>
-        </div>
-        <div>
-          <label>Empleado</label>
-          <select id="employeeFilter" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
-            <option value="">— Empleado —</option>
-          </select>
-        </div>
-        <div>
-          <label>Desde</label>
-          <input id="dateFrom" type="date" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
-        </div>
-        <div>
-          <label>Hasta</label>
-          <input id="dateTo" type="date" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
-        </div>
+  <!-- Panel de filtros -->
+  <aside id="filters" class="filters" aria-hidden="true" aria-label="Panel de filtros">
+    <div class="row">
+      <div>
+        <label for="selHotel">Hotel</label>
+        <select id="selHotel">
+          <option value="">Todos</option>
+          <option value="Cumbria Spa&Hotel">Cumbria Spa&Hotel</option>
+          <option value="Sercotel Guadiana">Sercotel Guadiana</option>
+        </select>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-        <button id="btnApply" class="btn">Aplicar</button>
-        <button class="btn" value="cancel">Cerrar</button>
+      <div>
+        <label for="txtEmpleado">Empleado</label>
+        <input id="txtEmpleado" type="text" placeholder="Buscar nombre…">
       </div>
-    </form>
-  </dialog>
+    </div>
+    <div class="actions">
+      <button id="btnApply" class="btn">Aplicar</button>
+      <button id="btnClear" class="btn btn-light">Limpiar</button>
+      <button id="btnClose" class="btn btn-ghost">Cerrar</button>
+    </div>
+  </aside>
 
-  <!-- Carga SIEMPRE en este orden -->
-  <script src="data.js?v=APP" defer></script>
-  <script src="plantilla_adapter_semana.js?v=APP" defer></script>
-  <script src="mobile.patch.js?v=APP" defer></script>
+  <!-- Marcador para inyección de datos por 2_GenerarCuadranteHTML.py -->
+  <script>
+  /* __DATA_PLACEHOLDER__  — El generador sustituye esta línea por window.FULL_DATA = {...} */
+  </script>
 
   <script>
-    // SW network-first y sin cachear HTML/data cuando haya nuevas versiones
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js", {updateViaCache:"none"})
-        .then(r => r.update()).catch(()=>{});
+  (function(){
+    // --- Utilidades ---
+    const $ = (s,el=document)=>el.querySelector(s);
+    const $$ = (s,el=document)=>Array.from(el.querySelectorAll(s));
+    const fmtDate = d => {
+      const f = new Intl.DateTimeFormat('es-ES',{weekday:'long',day:'2-digit',month:'short'});
+      return f.format(d).replace(/\.$/,'');
+    };
+    const parseISO = s => new Date(s+"T00:00:00");
+    const addDays = (d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+
+    // --- Estado ---
+    let DATA = (window.FULL_DATA && Array.isArray(window.FULL_DATA.schedule))
+      ? window.FULL_DATA.schedule
+      : []; // siempre llega inyectado por el generador
+
+    // cursor de semana (index dentro de DATA) y filtros
+    let cursor = 0;
+    let filters = { hotel:"", empleado:"" };
+
+    // si existen semanas con lunes <= hoy, colócate en la semana actual
+    (function setWeekToToday(){
+      if(!DATA.length) return;
+      const today = new Date(); today.setHours(0,0,0,0);
+      let found = 0;
+      for (let i=0;i<DATA.length;i++){
+        const monday = parseISO(DATA[i].semana_lunes);
+        if (monday <= today) found = i;
+      }
+      cursor = found;
+    })();
+
+    // --- Render ---
+    function render(){
+      const root = $("#root");
+      root.innerHTML = "";
+      if(!DATA.length){ root.innerHTML = "<div class='card'>No hay datos.</div>"; return; }
+
+      // número de semanas a mostrar (4 como en tu app)
+      const showCount = 4;
+      for(let i=cursor; i<Math.min(cursor+showCount, DATA.length); i++){
+        const week = DATA[i];
+        // filtros de hotel
+        if(filters.hotel && week.hotel !== filters.hotel) continue;
+
+        // orden empleado
+        const order = Array.isArray(week.orden_empleados) ? week.orden_empleados.slice() : [];
+
+        // agrupa turnos por empleado y día
+        const byEmpDay = new Map();
+        for(const t of week.turnos){
+          if(filters.empleado && !t.empleado.toLowerCase().includes(filters.empleado)) continue;
+          const k = t.empleado;
+          if(!byEmpDay.has(k)) byEmpDay.set(k, []);
+          byEmpDay.get(k).push(t);
+        }
+
+        // respeta el orden_empleados (y añade cualquiera que haya filtrado fuera de orden)
+        const empleados = order.filter(e => byEmpDay.has(e))
+          .concat([...byEmpDay.keys()].filter(e => !order.includes(e)));
+
+        if(!empleados.length) continue;
+
+        // cabecera de hotel + semana
+        const card = document.createElement("section");
+        card.className = "card";
+
+        const logoSrc = week.hotel.includes("Guadiana") ? "guadiana logo.jpg" : "cumbria logo.jpg";
+        const header = document.createElement("div");
+        header.className = "hotel-header";
+        header.innerHTML = `
+          <img src="${logoSrc}" alt="${week.hotel}">
+          <div>
+            <div class="hotel-name">${week.hotel}</div>
+            <div class="week-title">Semana ${new Date(week.semana_lunes).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+          </div>
+        `;
+        card.appendChild(header);
+
+        // tabla
+        const table = document.createElement("table");
+        table.className = "grid";
+        const thead = document.createElement("thead");
+        const trh = document.createElement("tr");
+        trh.innerHTML = `<th style="width:32%;">Empleado</th>` +
+          [0,1,2,3,4,5,6].map(d=>{
+            const dt = addDays(parseISO(week.semana_lunes), d);
+            return `<th>${fmtDate(dt)}</th>`;
+          }).join("");
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        for(const emp of empleados){
+          const row = document.createElement("tr");
+          row.innerHTML = `<td class="employee-cell">${emp}</td>`;
+          const days = byEmpDay.get(emp);
+
+          for(let d=0; d<7; d++){
+            const dt = addDays(parseISO(week.semana_lunes), d);
+            const iso = dt.toISOString().slice(0,10);
+            const item = days.find(x=>x.fecha===iso);
+            let pill = `<span class="dash">—</span>`;
+            if(item){
+              const t = item.turno || "";
+              const isDesc = /descanso/i.test(t);
+              const isNoche = /noche/i.test(t);
+              const extra = isDesc ? " pill-descanso" : (isNoche ? " pill-noche" : "");
+              const moon = isNoche ? `<span class="moon">🌙</span>` : "";
+              pill = `<span class="pill${extra}">${t}${moon}</span>`;
+            }
+            row.innerHTML += `<td>${pill}</td>`;
+          }
+          tbody.appendChild(row);
+        }
+        table.appendChild(tbody);
+        card.appendChild(table);
+
+        // separación visual
+        card.appendChild(Object.assign(document.createElement('div'),{className:'section-gap'}));
+        root.appendChild(card);
+      }
     }
+
+    // --- Navegación ---
+    $("#btnPrev").addEventListener("click", ()=>{ cursor = Math.max(0, cursor-1); render(); });
+    $("#btnNext").addEventListener("click", ()=>{ cursor = Math.min(DATA.length-1, cursor+1); render(); });
+    $("#btnToday").addEventListener("click", ()=>{
+      if(!DATA.length) return;
+      const today = new Date(); today.setHours(0,0,0,0);
+      let found = 0;
+      for (let i=0;i<DATA.length;i++){
+        const monday = parseISO(DATA[i].semana_lunes);
+        if (monday <= today) found = i;
+      }
+      cursor = found; render();
+    });
+
+    // --- Filtros ---
+    const panel = $("#filters");
+    const openFilters = (open)=> {
+      panel.classList.toggle("open", open);
+      panel.setAttribute("aria-hidden", String(!open));
+    };
+    $("#btnFilters").addEventListener("click", ()=> openFilters(!panel.classList.contains("open")));
+    $("#btnClose").addEventListener("click", ()=> openFilters(false));
+    $("#btnClear").addEventListener("click", ()=>{
+      $("#selHotel").value = "";
+      $("#txtEmpleado").value = "";
+      filters = {hotel:"", empleado:""};
+      render();
+    });
+    $("#btnApply").addEventListener("click", ()=>{
+      filters.hotel = $("#selHotel").value || "";
+      filters.empleado = ($("#txtEmpleado").value || "").trim().toLowerCase();
+      openFilters(false);
+      render();
+    });
+
+    // primera carga
+    render();
+  })();
   </script>
 </body>
 </html>
