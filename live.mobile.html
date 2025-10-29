@@ -2,33 +2,77 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Cuadrantes de turnos · APP</title>
 <link rel="icon" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="styles.mobile.css">
 <style>
-  body{background:#f6f7fb}
-  .topbar{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:10px}
-  .btn{background:#111827;color:#fff;border-radius:10px;padding:8px 12px;border:0}
-  .btn:hover{opacity:.92}
-  .row-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin:12px 0;overflow:auto}
-  .grid-week{border-collapse:collapse;width:100%}
-  .grid-week th,.grid-week td{border:1px solid #e5e7eb;padding:8px;text-align:center;white-space:nowrap}
-  .grid-week th{background:#f9fafb}
-  .pill{padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-block}
-  .pill-m{background:#e7f8ee;border:1px solid #bbf7d0}
-  .pill-t{background:#fff7d6;border:1px solid #fde68a}
-  .pill-n{background:#eef2ff;border:1px solid #c7d2fe}
-  .pill-x{background:#fee2e2;border:1px solid #fecaca}
-  .meta{color:#6b7280}
+  body {
+    margin:0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background:#f6f7fb;
+    color:#111827;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 14px;
+    background:#fff;
+    border-bottom:1px solid #e5e7eb;
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  .brand {
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .brand .title {font-weight:700;font-size:15px;margin-bottom:2px}
+  .brand .subtitle {font-size:12px;color:#6b7280;line-height:1.1}
+  .topbar {
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .btn {
+    background:#111827;
+    color:#fff;
+    border-radius:999px;
+    padding:8px 14px;
+    border:0;
+    font-size:13px;
+    transition:background .2s, transform .1s;
+  }
+  .btn:hover {background:#1f2937}
+  .btn:active {transform:scale(.97)}
+  .container {padding:10px 14px;}
+  .meta {color:#6b7280;font-size:13px}
+  dialog {
+    max-width:880px;
+    width:95%;
+    border:1px solid #d1d5db;
+    border-radius:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,.1);
+  }
+  label {font-size:13px;color:#374151;margin-bottom:2px;display:block}
+  select,input[type=date] {
+    width:100%;
+    padding:8px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+  }
 </style>
 </head>
 <body>
   <header class="app-header">
     <div class="brand">
-      <img src="icons/icon-192.png" alt="logo" style="width:28px;height:28px;border-radius:6px;margin-right:8px;">
+      <img src="icons/icon-192.png" alt="logo" style="width:30px;height:30px;border-radius:8px;">
       <div>
         <div class="title">Cuadrantes de turnos</div>
         <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
@@ -42,55 +86,148 @@
     </div>
   </header>
 
-  <!-- contenedor de la app -->
-  <main id="app" class="container" style="padding:10px 14px;">
+  <main id="app" class="container">
     <p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>
   </main>
 
-  <!-- panel de filtros (simple) -->
-  <dialog id="dlg" style="max-width:880px;width:95%;border:1px solid #d1d5db;border-radius:12px">
-    <form method="dialog" style="padding:12px 14px">
-      <h3 style="margin:0 0 8px 0">Filtros</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+  <dialog id="dlg">
+    <form method="dialog" style="padding:14px 16px">
+      <h3 style="margin:0 0 10px 0;font-size:16px">Filtros</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div>
           <label>Hotel</label>
-          <select id="hotelSelect" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
-            <option value="">— Hotel —</option>
-          </select>
+          <select id="hotelSelect"><option value="">— Hotel —</option></select>
         </div>
         <div>
           <label>Empleado</label>
-          <select id="employeeFilter" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
-            <option value="">— Empleado —</option>
-          </select>
+          <select id="employeeFilter"><option value="">— Empleado —</option></select>
         </div>
         <div>
           <label>Desde</label>
-          <input id="dateFrom" type="date" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
+          <input id="dateFrom" type="date">
         </div>
         <div>
           <label>Hasta</label>
-          <input id="dateTo" type="date" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px">
+          <input id="dateTo" type="date">
         </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button id="btnApply" class="btn">Aplicar</button>
         <button class="btn" value="cancel">Cerrar</button>
       </div>
     </form>
   </dialog>
 
-  <!-- Carga SIEMPRE en este orden -->
+  <!-- Carga de scripts principal -->
   <script src="data.js?v=APP" defer></script>
   <script src="plantilla_adapter_semana.js?v=APP" defer></script>
   <script src="mobile.patch.js?v=APP" defer></script>
 
+  <!-- Service Worker -->
   <script>
-    // SW network-first y sin cachear HTML/data cuando haya nuevas versiones
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js", {updateViaCache:"none"})
-        .then(r => r.update()).catch(()=>{});
+        .then(r=>r.update())
+        .catch(()=>{});
     }
+    document.getElementById("btnApply")?.addEventListener("click",(event)=>{
+      const f=document.getElementById("dateFrom").value;
+      const t=document.getElementById("dateTo").value;
+      if(f && t && f>t){
+        alert("La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+        event.preventDefault();
+      }
+    });
   </script>
+
+  <!-- === ADAPTACIÓN MÓVIL (una semana por columna, sin tocar el adapter) === -->
+  <script>
+  window.addEventListener("load", () => {
+    const app = document.getElementById("app");
+    if (!app) return;
+
+    // Agrupar cada bloque .week en tarjetas (una por hotel/semana)
+    const weeks = [...app.querySelectorAll(".week")];
+    if (weeks.length) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "weeks-grid";
+      weeks.forEach(w => wrapper.appendChild(w));
+      app.innerHTML = "";
+      app.appendChild(wrapper);
+    }
+
+    // Insertar logo en la cabecera si falta
+    document.querySelectorAll(".week").forEach(week => {
+      if (!week.querySelector(".week-head img")) {
+        const title = week.querySelector("h3")?.textContent || "";
+        const logo = /Cumbria/i.test(title)
+          ? "img/cumbria.jpg"
+          : /Guadiana/i.test(title)
+            ? "img/guadiana.jpg"
+            : "icons/icon-192.png";
+        week.querySelector(".week-head")?.insertAdjacentHTML(
+          "afterbegin",
+          `<img src="${logo}" alt="" style="width:38px;height:38px;border-radius:8px;margin-right:8px;">`
+        );
+      }
+    });
+  });
+  </script>
+
+  <style>
+  .weeks-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .week {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,.06);
+  }
+  .week-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafafa;
+  }
+  .week table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .week th,
+  .week td {
+    border: 1px solid #e5e7eb;
+    padding: 8px;
+    text-align: center;
+  }
+  .week th {
+    background: #f9fafb;
+  }
+  .turno-pill {
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .turno-descanso,
+  .pill-x {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+  }
+  .turno-noche,
+  .pill-n {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+  }
+  .turno-noche .turno-pill::after {
+    content: " 🌙";
+  }
+  </style>
 </body>
 </html>
