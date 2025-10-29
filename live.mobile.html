@@ -9,70 +9,36 @@
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="styles.mobile.css">
 <style>
-  body {
-    margin:0;
-    font-family: "Segoe UI", system-ui, sans-serif;
-    background:#f6f7fb;
-    color:#111827;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .app-header {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:10px 14px;
-    background:#fff;
-    border-bottom:1px solid #e5e7eb;
-    position:sticky;
-    top:0;
-    z-index:10;
-  }
-  .brand {
-    display:flex;
-    align-items:center;
-    gap:8px;
-  }
-  .brand .title {font-weight:700;font-size:15px;margin-bottom:2px}
-  .brand .subtitle {font-size:12px;color:#6b7280;line-height:1.1}
-  .topbar {
-    display:flex;
-    align-items:center;
-    gap:6px;
-  }
-  .btn {
-    background:#111827;
-    color:#fff;
-    border-radius:999px;
-    padding:8px 14px;
-    border:0;
-    font-size:13px;
-    transition:background .2s, transform .1s;
-  }
-  .btn:hover {background:#1f2937}
-  .btn:active {transform:scale(.97)}
-  .container {padding:10px 14px;}
-  .meta {color:#6b7280;font-size:13px}
-  dialog {
-    max-width:880px;
-    width:95%;
-    border:1px solid #d1d5db;
-    border-radius:14px;
-    box-shadow:0 4px 12px rgba(0,0,0,.1);
-  }
-  label {font-size:13px;color:#374151;margin-bottom:2px;display:block}
-  select,input[type=date] {
-    width:100%;
-    padding:8px;
-    border:1px solid #d1d5db;
-    border-radius:8px;
-    font-size:14px;
-  }
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f6f7fb;color:#111827;-webkit-tap-highlight-color:transparent}
+  .app-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
+  .brand{display:flex;align-items:center;gap:8px}
+  .brand .title{font-weight:700;font-size:15px;margin-bottom:2px}
+  .brand .subtitle{font-size:12px;color:#6b7280;line-height:1.1}
+  .topbar{display:flex;align-items:center;gap:6px}
+  .btn{background:#111827;color:#fff;border-radius:999px;padding:8px 14px;border:0;font-size:13px}
+  .container{padding:10px 14px}
+  .meta{color:#6b7280;font-size:13px}
+  dialog{max-width:880px;width:95%;border:1px solid #d1d5db;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+  label{font-size:13px;color:#374151;margin-bottom:2px;display:block}
+  select,input[type=date]{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}
+
+  /* Layout “una semana por tarjeta” */
+  .weeks-grid{display:grid;grid-template-columns:1fr;gap:16px}
+  .week{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:auto;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+  .week-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e5e7eb;background:#fafafa}
+  .week table{width:100%;border-collapse:collapse;font-size:14px}
+  .week th,.week td{border:1px solid #e5e7eb;padding:8px;text-align:center}
+  .week th{background:#f9fafb}
+  .turno-pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
+  .turno-descanso,.pill-x{background:#fee2e2;border:1px solid #fecaca}
+  .turno-noche,.pill-n{background:#eef2ff;border:1px solid #c7d2fe}
+  .turno-noche .turno-pill::after{content:" 🌙"}
 </style>
 </head>
 <body>
   <header class="app-header">
     <div class="brand">
-      <img src="icons/icon-192.png" alt="logo" style="width:30px;height:30px;border-radius:8px;">
+      <img src="icons/icon-192.png" alt="logo" style="width:30px;height:30px;border-radius:8px">
       <div>
         <div class="title">Cuadrantes de turnos</div>
         <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
@@ -118,116 +84,92 @@
     </form>
   </dialog>
 
-  <!-- Carga de scripts principal -->
+  <!-- 1) Bridge DOM: crea los IDs que espera el adapter (ocultos) -->
+  <div id="compat-bridge" hidden aria-hidden="true" style="display:none">
+    <select id="empIcs"></select>
+    <select id="hotelIcs"></select>
+    <input id="desdeIcs" type="date">
+    <input id="hastaIcs" type="date">
+  </div>
+
+  <!-- Scripts -->
   <script src="data.js?v=APP" defer></script>
+
+  <!-- 2) Bridge de datos + 3) Normalizador de emergencia (solo móvil) -->
+  <script defer>
+  (function(){
+    function hasRecords(o){
+      if(!o||typeof o!=="object") return false;
+      if(Array.isArray(o.schedule) && o.schedule.length) return true;
+      if(Array.isArray(o.data)     && o.data.length)     return true;
+      return false;
+    }
+    function pickSource(){
+      if(hasRecords(window.FULL_DATA)) return window.FULL_DATA;
+      if(hasRecords(window.DATA))      return window.DATA;
+      // Heurística: cualquier global con schedule[] / data[]
+      for(const k in window){
+        try{const v=window[k]; if(hasRecords(v)) return v;}catch{}
+      }
+      // Extra: si hay rows[], intentamos normalizar
+      const any = window.FULL_DATA || window.DATA || window.DATA_PREVIEW || window.DATA_preview || window;
+      if (any && Array.isArray(any.rows) && any.rows.length){
+        const mapped = any.rows.map(r=>{
+          const h=r.hotel||r.Hotel||r.establecimiento||r.Establecimiento||r?.meta?.hotel||"";
+          const n=r.empleado||r.employee||r.nombre||r.name||r.persona||"";
+          const d=r.fecha||r.date||r.dia||r.day||r.Fecha||"";
+          const t=r.turno||r.shift||r.tramo||r.Turno||"";
+          return {hotel:h, empleado:n, fecha:d, turno:t};
+        }).filter(x=>x.hotel && x.empleado && x.fecha);
+        return { data: mapped };
+      }
+      return null;
+    }
+    const src = pickSource();
+    if (src){ window.FULL_DATA = src; window.DATA = src; }
+    const total = (src?.schedule?.length||0) || (src?.data?.length||0) || 0;
+    console.log("[Móvil] Fuente de datos lista · registros:", total);
+  })();
+  </script>
+
   <script src="plantilla_adapter_semana.js?v=APP" defer></script>
   <script src="mobile.patch.js?v=APP" defer></script>
 
-  <!-- Service Worker -->
+  <!-- SW + validación fechas + maquetación -->
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js", {updateViaCache:"none"})
-        .then(r=>r.update())
-        .catch(()=>{});
+      navigator.serviceWorker.register("service-worker.js",{updateViaCache:"none"})
+        .then(r=>r.update()).catch(()=>{});
     }
     document.getElementById("btnApply")?.addEventListener("click",(event)=>{
       const f=document.getElementById("dateFrom").value;
       const t=document.getElementById("dateTo").value;
-      if(f && t && f>t){
-        alert("La fecha 'Desde' no puede ser posterior a 'Hasta'.");
-        event.preventDefault();
+      if(f && t && f>t){ alert("La fecha 'Desde' no puede ser posterior a 'Hasta'."); event.preventDefault(); }
+    });
+
+    // Maquetación: una semana por tarjeta (no toca lógica de datos)
+    window.addEventListener("load", () => {
+      const app = document.getElementById("app"); if(!app) return;
+      const weeks = [...app.querySelectorAll(".week")];
+      if (weeks.length) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "weeks-grid";
+        weeks.forEach(w => wrapper.appendChild(w));
+        app.innerHTML = ""; app.appendChild(wrapper);
       }
+      document.querySelectorAll(".week").forEach(week => {
+        if (!week.querySelector(".week-head img")) {
+          const title = week.querySelector("h3")?.textContent || "";
+          const logo = /Cumbria/i.test(title) ? "img/cumbria.jpg"
+                    : /Guadiana/i.test(title) ? "img/guadiana.jpg"
+                                              : "icons/icon-192.png";
+          week.querySelector(".week-head")?.insertAdjacentHTML(
+            "afterbegin",
+            `<img src="${logo}" alt="" style="width:38px;height:38px;border-radius:8px;margin-right:8px">`
+          );
+        }
+      });
     });
   </script>
-
-  <!-- === ADAPTACIÓN MÓVIL (una semana por columna, sin tocar el adapter) === -->
-  <script>
-  window.addEventListener("load", () => {
-    const app = document.getElementById("app");
-    if (!app) return;
-
-    // Agrupar cada bloque .week en tarjetas (una por hotel/semana)
-    const weeks = [...app.querySelectorAll(".week")];
-    if (weeks.length) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "weeks-grid";
-      weeks.forEach(w => wrapper.appendChild(w));
-      app.innerHTML = "";
-      app.appendChild(wrapper);
-    }
-
-    // Insertar logo en la cabecera si falta
-    document.querySelectorAll(".week").forEach(week => {
-      if (!week.querySelector(".week-head img")) {
-        const title = week.querySelector("h3")?.textContent || "";
-        const logo = /Cumbria/i.test(title)
-          ? "img/cumbria.jpg"
-          : /Guadiana/i.test(title)
-            ? "img/guadiana.jpg"
-            : "icons/icon-192.png";
-        week.querySelector(".week-head")?.insertAdjacentHTML(
-          "afterbegin",
-          `<img src="${logo}" alt="" style="width:38px;height:38px;border-radius:8px;margin-right:8px;">`
-        );
-      }
-    });
-  });
-  </script>
-
-  <style>
-  .weeks-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .week {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    overflow: auto;
-    box-shadow: 0 2px 4px rgba(0,0,0,.06);
-  }
-  .week-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fafafa;
-  }
-  .week table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  .week th,
-  .week td {
-    border: 1px solid #e5e7eb;
-    padding: 8px;
-    text-align: center;
-  }
-  .week th {
-    background: #f9fafb;
-  }
-  .turno-pill {
-    border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .turno-descanso,
-  .pill-x {
-    background: #fee2e2;
-    border: 1px solid #fecaca;
-  }
-  .turno-noche,
-  .pill-n {
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-  }
-  .turno-noche .turno-pill::after {
-    content: " 🌙";
-  }
-  </style>
 </body>
 </html>
