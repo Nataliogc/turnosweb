@@ -84,58 +84,79 @@
     </form>
   </dialog>
 
-  <!-- 1) Bridge DOM: crea los IDs que espera el adapter (ocultos) -->
-  <div id="compat-bridge" hidden aria-hidden="true" style="display:none">
-    <select id="empIcs"></select>
-    <select id="hotelIcs"></select>
-    <input id="desdeIcs" type="date">
-    <input id="hastaIcs" type="date">
-  </div>
-
   <!-- Scripts -->
   <script src="data.js?v=APP" defer></script>
 
-  <!-- 2) Bridge de datos + 3) Normalizador de emergencia (solo móvil) -->
+  <!-- A) BRIDGE DOM: crea los IDs legacy que usa el adapter -->
   <script defer>
-  (function(){
-    function hasRecords(o){
-      if(!o||typeof o!=="object") return false;
-      if(Array.isArray(o.schedule) && o.schedule.length) return true;
-      if(Array.isArray(o.data)     && o.data.length)     return true;
-      return false;
-    }
-    function pickSource(){
-      if(hasRecords(window.FULL_DATA)) return window.FULL_DATA;
-      if(hasRecords(window.DATA))      return window.DATA;
-      // Heurística: cualquier global con schedule[] / data[]
-      for(const k in window){
-        try{const v=window[k]; if(hasRecords(v)) return v;}catch{}
+    (function(){
+      function ensure(id, tag){
+        var el = document.getElementById(id);
+        if(!el){
+          el = document.createElement(tag);
+          el.id = id;
+          el.style.display = "none";
+          document.addEventListener("DOMContentLoaded", function(){
+            (document.body || document.documentElement).appendChild(el);
+          });
+        }
       }
-      // Extra: si hay rows[], intentamos normalizar
-      const any = window.FULL_DATA || window.DATA || window.DATA_PREVIEW || window.DATA_preview || window;
-      if (any && Array.isArray(any.rows) && any.rows.length){
-        const mapped = any.rows.map(r=>{
-          const h=r.hotel||r.Hotel||r.establecimiento||r.Establecimiento||r?.meta?.hotel||"";
-          const n=r.empleado||r.employee||r.nombre||r.name||r.persona||"";
-          const d=r.fecha||r.date||r.dia||r.day||r.Fecha||"";
-          const t=r.turno||r.shift||r.tramo||r.Turno||"";
-          return {hotel:h, empleado:n, fecha:d, turno:t};
-        }).filter(x=>x.hotel && x.empleado && x.fecha);
-        return { data: mapped };
+      ensure("empIcs","select");
+      ensure("hotelIcs","select");
+      ensure("desdeIcs","input");
+      ensure("hastaIcs","input");
+    })();
+  </script>
+
+  <!-- B) BRIDGE DE DATOS + DIAGNÓSTICO -->
+  <script defer>
+    (function(){
+      function hasRecords(o){
+        if(!o||typeof o!=="object") return false;
+        if(Array.isArray(o.schedule)&&o.schedule.length) return true;
+        if(Array.isArray(o.data)&&o.data.length) return true;
+        return false;
       }
-      return null;
-    }
-    const src = pickSource();
-    if (src){ window.FULL_DATA = src; window.DATA = src; }
-    const total = (src?.schedule?.length||0) || (src?.data?.length||0) || 0;
-    console.log("[Móvil] Fuente de datos lista · registros:", total);
-  })();
+      function pickSource(){
+        if(hasRecords(window.FULL_DATA)) return window.FULL_DATA;
+        if(hasRecords(window.DATA))      return window.DATA;
+        // heurística: cualquier global con schedule[]/data[]/rows[]
+        let candidate=null;
+        const keys=[];
+        for(const k in window){
+          try{
+            const v = window[k];
+            if(v && typeof v==="object"){
+              if(Array.isArray(v.schedule)||Array.isArray(v.data)||Array.isArray(v.rows)){
+                keys.push(k);
+                if(!candidate && (Array.isArray(v.schedule)||Array.isArray(v.data))) candidate=v;
+              }
+            }
+          }catch{}
+        }
+        if(!candidate && window.DATA_preview && Array.isArray(window.DATA_preview.rows)){
+          const mapped = window.DATA_preview.rows.map(r=>({
+            hotel: r.hotel||r.Hotel||r.establecimiento||r?.meta?.hotel||"",
+            empleado: r.empleado||r.employee||r.nombre||r.name||"",
+            fecha: r.fecha||r.date||r.dia||r.day||"",
+            turno: r.turno||r.shift||r.tramo||""
+          })).filter(x=>x.hotel&&x.empleado&&x.fecha);
+          candidate = { data: mapped };
+        }
+        console.log("[Móvil] Claves candidatas:", keys.join(", ")||"(ninguna)");
+        return candidate;
+      }
+      const src = pickSource();
+      if(src){ window.FULL_DATA = src; window.DATA = src; }
+      const total = (src?.schedule?.length||0) || (src?.data?.length||0) || 0;
+      console.log("[Móvil] Fuente de datos lista · registros:", total);
+    })();
   </script>
 
   <script src="plantilla_adapter_semana.js?v=APP" defer></script>
   <script src="mobile.patch.js?v=APP" defer></script>
 
-  <!-- SW + validación fechas + maquetación -->
+  <!-- SW + validación + maquetación -->
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js",{updateViaCache:"none"})
@@ -147,7 +168,6 @@
       if(f && t && f>t){ alert("La fecha 'Desde' no puede ser posterior a 'Hasta'."); event.preventDefault(); }
     });
 
-    // Maquetación: una semana por tarjeta (no toca lógica de datos)
     window.addEventListener("load", () => {
       const app = document.getElementById("app"); if(!app) return;
       const weeks = [...app.querySelectorAll(".week")];
