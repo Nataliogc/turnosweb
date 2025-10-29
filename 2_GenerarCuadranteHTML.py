@@ -1,266 +1,222 @@
-# -*- coding: utf-8 -*-
-"""
-2_GenerarCuadranteHTML.py — v8.0 (no intrusivo)
-- Lee TODOS los .csv de la carpeta; SOLO el que TERMINA en 'Sustituciones.csv' se usa como tal.
-- El resto se consideran CSV de hotel (independiente del nombre).
-- Aplica Sustituciones (↔) primero, luego Cambios de turno (🔄), también si uno actúa como sustituto.
-- NO modifica ningún HTML. Genera un 'data.js' con window.FULL_DATA = {...};
-  para que lo carguen index.html y live.mobile.html sin perder tus controles/estilos.
-"""
-
-import csv, json, os, re, sys
+# 2_GenerarCuadranteHTML.py
+# Genera index.html embebiendo datos desde CSV (hojas semanales + sustituciones y cambios de turno)
+# y añade metadatos para el front.
+import csv, json
+from pathlib import Path
 from datetime import datetime, timedelta
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
-DEBUG = False
-def log(*a):
-    if DEBUG:
-        try: print(*a)
-        except Exception: print(" ".join(str(x) for x in a))
+HERE = Path(__file__).resolve().parent
+
+HOTEL_CSV_FILES = [
+    "Plantilla Cuadrante con Sustituciones v.6.0.xlsx - Cumbria Spa&Hotel.csv",
+    "Plantilla Cuadrante con Sustituciones v.6.0.xlsx - Sercotel Guadiana.csv",
+]
+EMPLEADOS_CSV = HERE / "Plantilla Cuadrante con Sustituciones v.6.0.xlsx - Empleados.csv"  # opcional
+SUSTITUCIONES_RAW_CSV = HERE / "Plantilla Cuadrante con Sustituciones v.6.0.xlsx - Sustituciones.csv"
+
+TEMPLATE_PATH = HERE / "turnos_final.html"
+OUTPUT_PATH   = HERE / "index.html"
+PLACEHOLDER   = "__DATA_PLACEHOLDER__"
 
 DIAS_SEMANA = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]
 
-# ------------------ helpers de fecha ------------------
-def to_iso(s):
-    if not s: return None
+def parse_date(s: str) -> str:
+    if not s: return ""
     s = str(s).strip()
     if s.endswith(".0"): s = s[:-2]
-    if re.match(r"^\d{4}-\d{2}-\d{2}$", s): return s
-    m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{2,4})$", s)
-    if m:
-        d,mn,y = m.groups(); y=int(y); y += 2000 if y<100 else 0
-        return f"{y:04d}-{int(mn):02d}-{int(d):02d}"
-    m = re.search(r"(\d{1,2})/([A-Za-zñÑáéíóúÁÉÍÓÚ]{3})/(\d{2,4})", s)
-    if m:
-        d,mon,y = m.groups(); y=int(y); y += 2000 if y<100 else 0
-        mon_map = {'ene':1,'feb':2,'mar':3,'abr':4,'may':5,'jun':6,'jul':7,'ago':8,'sep':9,'oct':10,'nov':11,'dic':12}
-        mon = mon.lower()[:3]
-        if mon in mon_map: return f"{y:04d}-{mon_map[mon]:02d}-{int(d):02d}"
-    for fmt in ("%d-%m-%Y",):
+    for fmt in ("%Y-%m-%d","%d/%m/%Y"):
         try: return datetime.strptime(s, fmt).strftime("%Y-%m-%d")
-        except Exception: pass
-    try:
-        return datetime.fromisoformat(s).strftime("%Y-%m-%d")
-    except Exception:
-        return None
+        except ValueError: pass
+    return s
 
-def monday_of(iso_date):
-    d = datetime.strptime(iso_date, "%Y-%m-%d")
-    return (d - timedelta(days=d.weekday())).strftime("%Y-%m-%d")
+def leer_empleados_a_excluir() -> set:
+    excl = set()
+    if not SUSTITUCIONES_RAW_CSV.exists(): return excl
+    with open(SUSTITUCIONES_RAW_CSV, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if "baja definitiva" in (r.get("Tipo Ausencia","") or r.get("TipoAusencia","") or "").lower():
+                emp = (r.get("Empleado") or "").strip()
+                if emp: excl.add(emp)
+    return excl
 
-# ------------------ lectura CSV ------------------
-def read_csv_rows(path):
-    rows = []
-    with open(path, "r", encoding="utf-8-sig", newline="") as f:
+def leer_empleados(excluir: set) -> dict:
+    if not EMPLEADOS_CSV.exists(): return {}
+    data = {}
+    with open(EMPLEADOS_CSV, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            emp = (r.get("Empleado") or "").strip()
+            if emp and emp not in excluir:
+                data[emp] = {k:(v or "").strip() for k,v in r.items()}
+    return data
+
+def leer_hojas_semanales() -> dict:
+    datos = defaultdict(lambda: defaultdict(lambda: {"orden_empleados": [], "turnos": {}}))
+    for filename in HOTEL_CSV_FILES:
+        path = HERE / filename
+        if not path.exists(): continue
+        hotel = filename.split(" - ")[1].replace(".csv","").replace("&amp;","&")
+        with open(path, encoding="utf-8") as f:
+            semana_actual, orden_tmp = None, []
+            for row in csv.DictReader(f):
+                semana = row.get("Semana")
+                emp = (row.get("Empleado") or "").strip()
+                if not semana or not emp: continue
+                if semana != semana_actual:
+                    semana_actual, orden_tmp = semana, []
+                if emp not in orden_tmp:
+                    orden_tmp.append(emp)
+                try:
+                    lunes = datetime.strptime(semana, "%d/%m/%Y").strftime("%Y-%m-%d")
+                except:
+                    continue
+                datos[hotel][lunes]["orden_empleados"] = list(orden_tmp)
+                base = datetime.strptime(lunes, "%Y-%m-%d")
+                for i, dia in enumerate(DIAS_SEMANA):
+                    fecha = (base + timedelta(days=i)).strftime("%Y-%m-%d")
+                    turno = (row.get(dia) or "").strip()
+                    if turno:
+                        datos[hotel][lunes]["turnos"][(emp, fecha)] = turno
+    return datos
+
+def leer_y_procesar_sustituciones():
+    """
+    Lee el CSV de 'Sustituciones' y devuelve:
+      - subs[(hotel, fecha, empleado)] = {Sustituto, TipoAusencia}
+      - swaps[(hotel, fecha)] = set( (empA, empB) )
+    """
+    if not SUSTITUCIONES_RAW_CSV.exists():
+        return {}, defaultdict(set)
+
+    def _get(row, *keys):
+        for k in keys:
+            if k in row and row[k] is not None:
+                return str(row[k]).strip()
+        return ""
+
+    subs = {}
+    swaps = defaultdict(set)
+
+    with open(SUSTITUCIONES_RAW_CSV, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            row = {}
-            for k, v in r.items():
-                kk = (k or "").strip()
-                row[kk] = (v.strip() if isinstance(v, str) else v)
-            rows.append(row)
-    return rows
+            fecha = parse_date(_get(r, "Fecha"))
+            hotel = _get(r, "Hotel")
+            emp   = _get(r, "Empleado")
+            if not (fecha and hotel and emp): 
+                continue
 
-def guess(row, options):
-    if not row: return None
-    keys = {k.lower(): k for k in row.keys() if k}
-    for opt in options:
-        if isinstance(opt,(list,tuple)):
-            for o in opt:
-                if str(o).lower() in keys: return keys[str(o).lower()]
-        else:
-            if str(opt).lower() in keys: return keys[str(opt).lower()]
-    return None
+            cambio = _get(r, "Cambio de Turno", "Cambio de turno", "CambioTurno")
+            sustit = _get(r, "Sustituto")
+            tipo   = _get(r, "Tipo Ausencia", "TipoAusencia")
 
-def load_hotel_csv(path, default_hotel=None):
-    """Lee un CSV 'base hotel' (con columnas Semana, Empleado y Lunes..Domingo)."""
-    out = []
-    rows = read_csv_rows(path)
-    if not rows: return out
-    sample = rows[0]
-    c_hotel = guess(sample, ["Hotel"])
-    c_sem   = guess(sample, ["Semana"])
-    c_emp   = guess(sample, ["Empleado","Persona","Nombre"])
+            if cambio:
+                pair = tuple(sorted([emp, cambio]))
+                swaps[(hotel, fecha)].add(pair)
+            elif sustit or tipo:
+                subs[(hotel, fecha, emp)] = {
+                    "Sustituto": sustit,
+                    "TipoAusencia": tipo
+                }
 
-    if default_hotel is None:
-        default_hotel = os.path.basename(path).replace(".csv","").replace("&amp;","&")
-        if "guadiana" in default_hotel.lower(): default_hotel = "Sercotel Guadiana"
-        if "cumbria"  in default_hotel.lower(): default_hotel = "Cumbria Spa&Hotel"
+    return subs, swaps
 
-    for r in rows:
-        emp = (r.get(c_emp) or "").strip()
-        sem = r.get(c_sem)
-        if not (sem and emp): continue
-        lunes = None
-        try:
-            lunes = datetime.strptime(sem, "%d/%m/%Y").strftime("%Y-%m-%d")
-        except Exception:
-            lunes = to_iso(sem)
-        if not lunes: continue
-        base = datetime.strptime(lunes, "%Y-%m-%d")
-        hotel = (r.get(c_hotel) or default_hotel or "").replace("&amp;","&").strip()
-        for i, dia in enumerate(DIAS_SEMANA):
-            f = (base + timedelta(days=i)).strftime("%Y-%m-%d")
-            turno = (r.get(dia) or "").strip()
-            if turno != "":
-                out.append((hotel, f, emp, turno, lunes))
-    log("BASE:", os.path.basename(path), "filas:", len(out))
-    return out
+def calcular_noches_mensuales(schedule_rows):
+    total = defaultdict(lambda: defaultdict(int))
+    by_emp = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    for group in schedule_rows:
+        hotel = group["hotel"]
+        for t in group["turnos"]:
+            fecha = t["fecha"]
+            month = fecha[:7]
+            v = t["turno"]
+            if isinstance(v, dict):
+                orig = v.get("TurnoOriginal") or ""
+                sust = (v.get("Sustituto") or "").strip()
+                if isinstance(orig, str) and orig.lower().startswith("n") and sust:
+                    total[month][hotel] += 1
+                    by_emp[month][hotel][sust] += 1
+            else:
+                if isinstance(v, str) and v.lower().startswith("n"):
+                    total[month][hotel] += 1
+                    by_emp[month][hotel][t["empleado"]] += 1
+    return total, by_emp
 
-def load_sustituciones_csv(path):
-    out = []
-    rows = read_csv_rows(path)
-    if not rows: return out
-    for r in rows:
-        hotel = (r.get(guess(r,["Hotel"])) or "").strip()
-        fecha = to_iso(r.get(guess(r,["Fecha"])))
-        emp   = (r.get(guess(r,["Empleado"])) or "").strip()
-        tipo  = (r.get(guess(r,["TipoAusencia","Tipo Ausencia","Ausencia","Tipo"])) or "").strip()
-        sust  = (r.get(guess(r,["Sustituto"])) or "").strip()
-        torig = (r.get(guess(r,["TurnoOriginal","Turno Original"])) or "").strip()
-        cambio= (r.get(guess(r,["Cambio de Turno","CambioTurno"])) or "").strip()
-        if not (hotel and fecha and emp): continue
-        out.append({
-            "hotel": hotel, "fecha": fecha, "empleado": emp,
-            "tipo_ausencia": tipo, "sustituto": sust,
-            "turno_original": torig, "cambio_con": cambio
-        })
-    log("SUSTITUCIONES filas:", len(out))
-    return out
+def _mark_swap(label: str) -> str:
+    if not label: return label
+    return label if "🔄" in label else f"{label} 🔄"
 
-# ------------------ core ------------------
-def build_schedule(base_rows, sust_rows):
-    weeks = defaultdict(lambda: {"orden": OrderedDict(), "turnos": {}})
-    swaps_by_date = defaultdict(set)  # (hotel, fecha) -> {(a,b)}
+def main():
+    excluir = leer_empleados_a_excluir()
+    empleados_master = leer_empleados(excluir)
+    datos = leer_hojas_semanales()
+    sustituciones, cambios_turno = leer_y_procesar_sustituciones()
 
-    # 1) base
-    for hotel, fecha, emp, turno, lunes in base_rows:
-        g = weeks[(hotel, lunes)]
-        if emp not in g["orden"]: g["orden"][emp] = True
-        g["turnos"][(emp, fecha)] = (turno or "").strip()
+    schedule_rows = []
+    for hotel, semanas in datos.items():
+        for lunes, data in semanas.items():
+            turnos = data["turnos"]
 
-    # 2) registrar sustituciones y swaps
-    for r in sust_rows:
-        hotel = r["hotel"]; fecha = r["fecha"]; emp = r["empleado"]
-        lunes = monday_of(fecha)
-        g = weeks[(hotel, lunes)]
-        if emp and emp not in g["orden"]: g["orden"][emp] = True
+            # 1) SWAPS (cambios de turno)
+            base = datetime.strptime(lunes, "%Y-%m-%d")
+            fechas_semana = [(base + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+            for fecha in fechas_semana:
+                pairs = cambios_turno.get((hotel, fecha), set())
+                for (a, b) in pairs:
+                    key_a = (a, fecha)
+                    key_b = (b, fecha)
+                    if key_a in turnos and key_b in turnos:
+                        turno_a = turnos[key_a]
+                        turno_b = turnos[key_b]
+                        turnos[key_a] = _mark_swap(turno_b)
+                        turnos[key_b] = _mark_swap(turno_a)
 
-        # Sustitución / ausencia
-        if r["tipo_ausencia"] or r["sustituto"] or r["turno_original"]:
-            current = g["turnos"].get((emp, fecha), "")
-            turno_orig = r["turno_original"] or (current if isinstance(current, str) else "")
-            g["turnos"][(emp, fecha)] = {
-                "TipoAusencia": r["tipo_ausencia"] or "Ausencia",
-                "Sustituto": r["sustituto"] or "",
-                "TurnoOriginal": turno_orig
-            }
-            sust = (r["sustituto"] or "").strip()
-            if sust:
-                if sust not in g["orden"]: g["orden"][sust] = True
-                if (sust, fecha) not in g["turnos"] or not isinstance(g["turnos"][(sust, fecha)], str):
-                    g["turnos"][(sust, fecha)] = turno_orig
-                log("SUST->", fecha, hotel, "Titular:", emp, "Sust:", sust, "TurnoOriginal:", turno_orig)
+            # 2) AUSENCIAS + SUSTITUTO
+            sustitutos_de_la_semana = set()
+            for (emp, fecha), valor in list(turnos.items()):
+                if emp in excluir:
+                    del turnos[(emp, fecha)]
+                    continue
+                key_s = (hotel, fecha, emp)
+                if key_s in sustituciones:
+                    s = sustituciones[key_s]
+                    turnos[(emp, fecha)] = {
+                        "TurnoOriginal": valor,
+                        "Sustituto": s.get("Sustituto",""),
+                        "TipoInterpretado": s.get("TipoAusencia",""),  # texto EXACTO
+                    }
+                    if s.get("Sustituto"):
+                        sustitutos_de_la_semana.add(s["Sustituto"])
 
-        # Cambio de turno
-        if r["cambio_con"]:
-            a, b = emp, r["cambio_con"]
-            pair = tuple(sorted([a, b]))
-            swaps_by_date[(hotel, fecha)].add(pair)
-            for n in (a, b):
-                if n and n not in g["orden"]: g["orden"][n] = True
-            log("SWAP REQ->", fecha, hotel, a, "<>", b)
+            # 3) orden final
+            orden = [e for e in data["orden_empleados"] if e not in excluir]
+            for s in sustitutos_de_la_semana:
+                if s and s not in orden:
+                    orden.append(s)
 
-    def mark_swap(val):
-        if not val: return val
-        s = str(val)
-        return s if "🔄" in s else f"{s} 🔄"
+            schedule_rows.append({
+                "hotel": hotel,
+                "semana_lunes": lunes,
+                "orden_empleados": orden,
+                "turnos": [{"empleado": k[0], "fecha": k[1], "turno": v} for k,v in turnos.items()],
+            })
 
-    # 3) aplicar swaps
-    for (hotel, lunes), data in weeks.items():
-        base = datetime.strptime(lunes, "%Y-%m-%d")
-        fechas = [(base + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
-        T = data["turnos"]
-        for fecha in fechas:
-            pairs = swaps_by_date.get((hotel, fecha), set())
-            if not pairs: continue
-            for (a, b) in pairs:
-                kA, kB = (a, fecha), (b, fecha)
-                if (kA in T and kB in T and isinstance(T[kA], str) and isinstance(T[kB], str)):
-                    tA, tB = T[kA], T[kB]
-                    T[kA] = mark_swap(tB)
-                    T[kB] = mark_swap(tA)
-                    log("SWAP->", fecha, hotel, a, "<>", b, "=>", kA, "<->", kB)
-                else:
-                    log("SWAP SKIP->", fecha, hotel, a, b, "(faltan turnos string)")
+    monthly_total, monthly_by_emp = calcular_noches_mensuales(schedule_rows)
 
-    # 4) construir estructura final
-    schedule = []
-    for (hotel, lunes), data in sorted(weeks.items(), key=lambda x: (x[0][0], x[0][1])):
-        orden = list(data["orden"].keys())
-        base = datetime.strptime(lunes, "%Y-%m-%d")
-        fechas = [(base + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
-        turnos_list = []
-        for emp in orden:
-            for f in fechas:
-                v = data["turnos"].get((emp, f), "")
-                turnos_list.append({"empleado": emp, "fecha": f, "turno": v})
-        schedule.append({
-            "semana_lunes": lunes,
-            "hotel": hotel,
-            "orden_empleados": orden,
-            "turnos": turnos_list
-        })
-    return {
-        "schedule": schedule,
-        "generated_at": datetime.now().isoformat(timespec="seconds")
+    payload = {
+        "schedule": schedule_rows,
+        "employees": empleados_master,
+        "monthly_nights": monthly_total,
+        "monthly_nights_by_employee": monthly_by_emp,
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
     }
 
-# ------------------ salida data.js ------------------
-def write_data_js(data_obj, path="data.js"):
-    payload = "window.FULL_DATA = " + json.dumps(data_obj, ensure_ascii=False) + ";"
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(payload)
-    print("[OK] Generado:", path)
-    return path
-
-# ------------------ main ------------------
-def main():
-    cwd = os.getcwd()
-    all_csvs = [os.path.join(cwd, n) for n in os.listdir(cwd) if n.lower().endswith(".csv")]
-
-    # SOLO consideramos Sustituciones si el nombre TERMINA en 'sustituciones.csv'
-    csv_sust = None
-    hotel_csvs = []
-    for p in all_csvs:
-        low = os.path.basename(p).lower()
-        if re.search(r"\s*sustituciones\.csv$", low):
-            csv_sust = p
-        else:
-            hotel_csvs.append(p)
-
-    print("[INFO] CSV SUST:", csv_sust or "no encontrado")
-    print("[INFO] CSV HOTEL(es):")
-    for p in hotel_csvs:
-        print("   -", os.path.basename(p))
-
-    if not hotel_csvs:
-        print("[ERROR] No se encontraron CSV de hoteles.")
-        sys.exit(1)
-
-    base_rows = []
-    for p in hotel_csvs:
-        base_rows += load_hotel_csv(p)
-
-    sust_rows = load_sustituciones_csv(csv_sust) if csv_sust else []
-
-    data = build_schedule(base_rows, sust_rows)
-    write_data_js(data, "data.js")
+    js = "window.FULL_DATA = " + json.dumps(payload, ensure_ascii=False) + ";"
+    html = TEMPLATE_PATH.read_text(encoding="utf-8")
+    if PLACEHOLDER not in html:
+        raise SystemExit("No se encontró __DATA_PLACEHOLDER__ en turnos_final.html")
+    OUTPUT_PATH.write_text(html.replace(PLACEHOLDER, js), encoding="utf-8")
+    print(f"[OK] {OUTPUT_PATH.name} generado con éxito.")
 
 if __name__ == "__main__":
-    try:
-        if sys.platform.startswith("win"):
-            os.environ["PYTHONUTF8"] = os.environ.get("PYTHONUTF8", "1")
-    except Exception:
-        pass
     main()
