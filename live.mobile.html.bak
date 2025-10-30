@@ -6,14 +6,96 @@
 <title>Cuadrantes de turnos · APP</title>
 <link rel="icon" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=20251030_0111">
-<link rel="stylesheet" href="styles.mobile.css?v=20251030_0111">
+<link rel="stylesheet" href="styles.css?v=20251030_2259">
+<link rel="stylesheet" href="styles.mobile.css?v=20251030_2259">
 <style>
   body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f6f7fb;color:#111827;-webkit-tap-highlight-color:transparent}
   .app-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
-  .brand{display:flex;align-items:center;gap:8px}
+  .brand{displa
+y:flex;align-items:center;gap:8px}
   .brand .title{font-weight:700;font-size:15px;margin-bottom:2px}
-  .brand .subtitle{font-size:12px;color:#6b7280;line-height:1.1}
+  .brand .subtitle{font-size:12px;color:#6b7280;line-height:1.1}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Cuadrantes de turnos · APP</title>
+
+  <!-- Ícono y manifest -->
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="styles.css?v=20251030_2259">
+  <link rel="stylesheet" href="styles.mobile.css?v=20251030_2259">
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="logo" style="width:30px;height:30px;border-radius:8px">
+      <div>
+        <div class="title">Cuadrantes de turnos</div>
+        <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+      </div>
+    </div>
+    <div class="topbar">
+      <button id="btnPrev" class="btn">← Semana</button>
+      <button id="btnToday" class="btn">Hoy</button>
+      <button id="btnNext" class="btn">Semana →</button>
+      <button id="btnFilters" class="btn">Filtros</button>
+    </div>
+  </header>
+
+  <main id="app" class="container">
+    <p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>
+  </main>
+
+  <!-- Modal de filtros -->
+  <dialog id="dlg">
+    <form method="dialog" style="padding:14px 16px">
+      <h3 style="margin:0 0 10px 0;font-size:16px">Filtros</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label>Hotel</label><select id="hotelSelect"><option value="">— Hotel —</option></select></div>
+        <div><label>Empleado</label><select id="employeeFilter"><option value="">— Empleado —</option></select></div>
+        <div><label>Desde</label><input id="dateFrom" type="date"></div>
+        <div><label>Hasta</label><input id="dateTo" type="date"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button id="btnApply" class="btn">Aplicar</button>
+        <button class="btn" value="cancel">Cerrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Scripts -->
+  <script src="data.js?v=20251030_2259" defer></script>
+  <script src="plantilla_adapter_semana.js?v=20251030_2259" defer></script>
+  <script src="mobile.patch.js?v=20251030_2259" defer></script>
+
+  <script>
+    // Registrar service worker (requerido para instalación)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+        .then(r => r.update())
+        .catch(err => console.warn('SW error:', err));
+    }
+
+    // Validar fechas
+    document.getElementById("btnApply")?.addEventListener("click", (e) => {
+      const f = dateFrom.value, t = dateTo.value;
+      if (f && t && f > t) { alert("La fecha 'Desde' no puede ser posterior a 'Hasta'."); e.preventDefault(); }
+    });
+
+    // Abrir modal
+    document.getElementById("btnFilters")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.querySelector("dialog")?.showModal?.();
+    });
+  </script>
+</body>
+</html>
+
   .topbar{display:flex;align-items:center;gap:6px}
   .btn{background:#111827;color:#fff;border-radius:999px;padding:8px 14px;border:0;font-size:13px}
   .container{padding:10px 14px}
@@ -85,7 +167,7 @@
   </dialog>
 
   <!-- Scripts -->
-  <script src="data.js?v=APP" defer></script>
+  <script src="data.js?v=20251030_2259" defer></script>
 
   <!-- A) BRIDGE DOM: crea los IDs legacy que usa el adapter -->
   <script defer>
@@ -153,8 +235,9 @@
     })();
   </script>
 
-  <script src="plantilla_adapter_semana.js?v=20251030_0111" defer></script>
-  <script src="mobile.patch.js?v=20251030_0111" defer></script>
+
+  <script src="plantilla_adapter_semana.js?v=20251030_2259" defer></script>
+  <script src="mobile.patch.js?v=20251030_2259" defer></script>
 
   <!-- SW + validación + maquetación -->
   <script>
@@ -190,9 +273,44 @@
         }
       });
     });
-  </script>
+ <script>
+  // Abrir modal de filtros aunque cambie el botón
+  (document.getElementById("btnFilters") || 
+   [...document.querySelectorAll("button,a")].find(el=>/filtros/i.test(el.textContent||"")))
+  ?.addEventListener("click", (e)=>{ e.preventDefault(); document.querySelector("dialog")?.showModal?.(); });
+</script>
+<!-- Datos para la app (el BAT actualizará ?v=...) -->
+<script src="data.js?v=20251030_2259"></script>
+
+<!-- Lógica móvil -->
+<script src="mobile.patch.js?v=20251030_2259"></script>
+
+<!-- (opcional) registrar SW si lo usas -->
+<script> if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js'); } </script>
+
+
 </body>
+<script>
+  // Abrir el modal de filtros
+  document.getElementById("btnFilters")?.addEventListener("click", () => {
+    document.querySelector("dialog")?.showModal();
+  });
+</script>
+
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
