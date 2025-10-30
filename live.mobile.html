@@ -6,8 +6,8 @@
 <title>Cuadrantes de turnos · APP</title>
 <link rel="icon" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=20251030_0135">
-<link rel="stylesheet" href="styles.mobile.css?v=20251030_0135">
+<link rel="stylesheet" href="styles.css?v=20251030_0145">
+<link rel="stylesheet" href="styles.mobile.css?v=20251030_0145">
 <style>
   body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f6f7fb;color:#111827;-webkit-tap-highlight-color:transparent}
   .app-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
@@ -154,8 +154,8 @@
   </script>
 
 
-  <script src="plantilla_adapter_semana.js?v=20251030_0135" defer></script>
-  <script src="mobile.patch.js?v=20251030_0135" defer></script>
+  <script src="plantilla_adapter_semana.js?v=20251030_0145" defer></script>
+  <script src="mobile.patch.js?v=20251030_0145" defer></script>
 
   <!-- SW + validación + maquetación -->
   <script>
@@ -192,8 +192,16 @@
       });
     });
   </script>
+<script>
+  // Abrir el modal de filtros
+  document.getElementById("btnFilters")?.addEventListener("click", () => {
+    document.querySelector("dialog")?.showModal();
+  });
+</script>
+
 </body>
 </html>
+
 
 
 
