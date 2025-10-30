@@ -1,77 +1,43 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Cuadrantes de turnos Â· APP</title>
-<link rel="icon" href="icons/icon-192.png">
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=20251031_0001"><!-- el pipeline reemplaza APP por la versiÃ³n -->
-<link rel="stylesheet" href="styles.mobile.css?v=20251031_0001">
-<style>
-  :root{--pill:999px;--gap:10px}
-  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;background:#f6f7fb;color:#111827;-webkit-tap-highlight-color:transparent}
-  .app-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
-  .brand{display:flex;align-items:center;gap:8px}
-  .brand img{width:28px;height:28px;border-radius:6px;object-fit:contain}
-  .brand .title{font-weight:700;font-size:15px;margin-bottom:2px;line-height:1}
-  .brand .subtitle{font-size:12px;color:#6b7280;line-height:1}
-  .topbar{display:flex;align-items:center;gap:6px}
-  .btn{background:#111827;color:#fff;border-radius:999px;padding:8px 14px;border:0;font-size:13px;cursor:pointer}
-  .container{padding:10px 14px}
-  .meta{color:#6b7280;font-size:13px}
-  .weeks{display:grid;gap:14px;margin-top:12px}
-  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden}
-  .card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e5e7eb}
-  .card-header img{width:36px;height:36px;border-radius:8px;object-fit:contain}
-  .card-title{font-weight:600}
-  table{width:100%;border-collapse:separate;border-spacing:0}
-  th,td{padding:10px 12px;border-bottom:1px solid #eef0f4}
-  th{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.02em}
-  .name{white-space:nowrap}
-  .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--pill);font-size:13px}
-  .p-manana{background:#E6F7EA;color:#166534}
-  .p-tarde{background:#FEF9C3;color:#854d0e}
-  .p-noche{background:#EEF2FF;color:#3730a3}
-  .p-descanso{background:#FEE2E2;color:#991b1b}
-  .p-baja{background:#ffe4f1;color:#9d174d}
-  .dash{opacity:.6}
-  .actions{display:flex;gap:6px}
-  .sr-only{position:absolute;left:-9999px}
-  .foot{height:18px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Cuadrantes de turnos · APP</title>
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css?v=APP">
+  <link rel="stylesheet" href="styles.mobile.css?v=APP">
 </head>
 <body>
-<header class="app-header">
-  <div class="brand">
-    <img src="Logo.png" alt="CG">
-    <div>
-      <div class="title">Cuadrantes de turnos</div>
-      <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+  <header class="app-header">
+    <div class="brand">
+      <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:contain">
+      <div>
+        <div class="title">Cuadrantes de turnos</div>
+        <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+      </div>
     </div>
-  </div>
-  <div class="topbar">
-    <button id="btnPrev" class="btn">â† Semana</button>
-    <button id="btnToday" class="btn">Hoy</button>
-    <button id="btnNext" class="btn">Semana â†’</button>
-    <button id="btnFilters" class="btn">Filtros</button>
-  </div>
-</header>
+    <div class="topbar">
+      <button id="btnPrev" class="btn">← Semana</button>
+      <button id="btnToday" class="btn">Hoy</button>
+      <button id="btnNext" class="btn">Semana →</button>
+      <button id="btnFilters" class="btn">Filtros</button>
+    </div>
+  </header>
 
-<main class="container">
-  <div id="meta" class="meta">Cargandoâ€¦</div>
-  <section id="weeks" class="weeks" aria-live="polite"></section>
-  <div class="foot"></div>
-</main>
+  <main class="container">
+    <p id="meta" class="meta">Cargando…</p>
+    <section id="weeks" class="weeks"></section>
+  </main>
 
-<!-- Datos generados por el pipeline -->
+  <!-- Datos -->
+  <script src="data.js?v=APP" defer></script>
 
+  <!-- Adaptador SOLO móvil (no toca desktop) -->
+  <script src="mobile.adapter.js?v=APP" defer></script>
 
-<!-- LÃ³gica de render y navegaciÃ³n -->
-<script src="plantilla_adapter_semana.js?v=20251031_0001"></script>
-
-<!-- Parches y SW -->
-<script src="mobile.patch.js?v=20251031_0001"></script>
+  <!-- Parches y SW -->
+  <script src="mobile.patch.js?v=APP" defer></script>
 </body>
 </html>
-
