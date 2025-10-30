@@ -147,7 +147,10 @@
       for (const sem of hotels){
         const {hotel, semana_lunes, orden_empleados=[], turnos=[]} = sem;
         const dias = weekDays(semana_lunes);
-        const logo = /cumbria/i.test(hotel) ? "img/cumbria logo.jpg" : /guadiana/i.test(hotel) ? "img/guadiana logo.jpg" : "icons/icon-192.png";
+       const logo = /cumbria/i.test(hotel) ? "cumbria logo.jpg"
+            : /guadiana/i.test(hotel) ? "guadiana logo.jpg"
+            : "icons/icon-192.png";
+
 
         // índice turnos
         const idx = new Map();
