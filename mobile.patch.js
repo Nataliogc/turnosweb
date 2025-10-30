@@ -1,177 +1,187 @@
-/* ===== APP MÓVIL — motor robusto ===== */
-(function(){
+/* Turnos Web · mobile.patch.js (solo móvil)
+   - Orden por plantilla (orden_empleados) por hotel y semana
+   - Sustituciones: titular ausente toda la semana -> al final; sustituto ↔ ocupa su sitio y sus turnos
+   - Colores oficiales (píldoras)
+*/
+(function () {
   "use strict";
 
-  const MS = 864e5;
-  const WEEKS_DEFAULT = 4;
-
-  const $  = sel => document.querySelector(sel);
-  const $id= id  => document.getElementById(id);
-
-  const monday = (d) => {
-    const x = new Date(d); const day = (x.getDay()+6)%7;
-    x.setHours(0,0,0,0); return new Date(x.getTime()-day*MS);
+  // ===== Utilidades =====
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const fmtISO = d => new Date(d).toISOString().slice(0, 10);
+  const isSameDay = (a, b) => fmtISO(a) === fmtISO(b);
+  const rangodias = (monISO) => {
+    const start = new Date(monISO);
+    return Array.from({ length: 7 }, (_, i) => fmtISO(start.getTime() + i * DAY_MS));
   };
-  const addDays = (d,n)=> new Date(new Date(d).getTime()+n*MS);
+  const toLowerNoAcc = s => (s || "").toString()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim();
 
-  // === Normalización ===
-  function normalize(D){
-    const S = Array.isArray(D?.schedule) ? D.schedule : [];
-    if (!S.length) return Array.isArray(D?.data) ? D.data : [];
-    if (S[0] && Array.isArray(S[0].turnos)){
-      const out = [];
-      for (const w of S){
-        const hotel = w.hotel || w.Hotel || w.establecimiento || w?.meta?.hotel || "";
-        for (const t of (w.turnos||[])){
-          out.push({
-            hotel,
-            empleado: t.empleado || t.employee || t.nombre || t.name || t.persona || "",
-            fecha:    t.fecha    || t.date    || t.dia   || t.day   || t?.meta?.fecha || "",
-            turno:    t.turno    || t.shift   || t.tramo || t?.meta?.turno || ""
-          });
+  // Normaliza texto de turno a tipo estándar y clase de píldora
+  function normalizeTurno(txt) {
+    const t = toLowerNoAcc(txt);
+    if (!t || t === "—" || t === "-" || t === "_") return { label: "—", cls: "pill-empty" };
+    if (t.includes("descanso")) return { label: "Descanso", cls: "pill-x" };
+    if (t.includes("manana") || t.includes("mañana")) return { label: "Mañana", cls: "pill-m" };
+    if (t.includes("tarde")) return { label: "Tarde", cls: "pill-t" };
+    if (t.includes("noche")) return { label: "Noche 🌙", cls: "pill-n" };
+    if (t.includes("vacac")) return { label: "Vacaciones", cls: "pill-x" };
+    if (t.includes("baja")) return { label: "Baja", cls: "pill-x" };
+    return { label: txt, cls: "pill-txt" }; // ausencias/tipos especiales con su texto tal cual
+  }
+
+  // Fuente de datos
+  const SRC = (function pick() {
+    const s = (window.FULL_DATA && Object.keys(window.FULL_DATA).length ? window.FULL_DATA :
+               window.DATA && Object.keys(window.DATA).length ? window.DATA : null) || {};
+    return s;
+  })();
+
+  const SCHEDULE = Array.isArray(SRC.schedule) ? SRC.schedule : [];
+  const RAW = Array.isArray(SRC.data) ? SRC.data : []; // plano, por si hace falta
+  const SUSTS = Array.isArray(SRC.sustituciones) ? SRC.sustituciones : []; // [{hotel,titular,sustituto,desde,hasta}]
+
+  // Mapa rápido de sustituciones por hotel+semana
+  function buildSustMap(hotel, weekMonISO) {
+    const wk = rangodias(weekMonISO);
+    const inRange = (d, desde, hasta) => {
+      const x = new Date(d).getTime();
+      const a = desde ? new Date(desde).getTime() : -Infinity;
+      const b = hasta ? new Date(hasta).getTime() : Infinity;
+      return x >= a && x <= b;
+    };
+    const relevant = SUSTS.filter(s => toLowerNoAcc(s.hotel) === toLowerNoAcc(hotel));
+    const map = new Map(); // titular -> sustituto
+    relevant.forEach(s => {
+      // Si la ventana de sustitución cubre la semana, aplicamos
+      const coversWeek = wk.every(d => inRange(d, s.desde, s.hasta));
+      if (coversWeek) map.set(s.titular, s.sustituto);
+    });
+    return map;
+  }
+
+  // Render principal (no toca adapter)
+  function renderContent(containerId) {
+    const root = document.getElementById(containerId) || document.getElementById("app");
+    if (!root) return;
+
+    root.innerHTML = "";
+
+    if (!SCHEDULE.length) {
+      const p = document.createElement("p");
+      p.className = "meta";
+      p.textContent = "No hay datos para mostrar con los filtros seleccionados.";
+      root.appendChild(p);
+      return;
+    }
+
+    // Para cada semana por hotel, construimos tabla
+    SCHEDULE.forEach(semana => {
+      const { hotel, semana_lunes, orden_empleados = [], turnos = [] } = semana;
+      const dias = rangodias(semana_lunes);
+
+      // Índice de turnos por empleado+fecha
+      const idx = new Map(); // key: emp|fecha -> texto turno
+      turnos.forEach(t => {
+        const key = `${t.empleado}__${fmtISO(t.fecha || t.date || t.dia)}`;
+        idx.set(key, t.turno || t.tipo || t.texto || "");
+      });
+
+      // Detectar ausentes toda la semana (descanso/vacaciones/baja/—)
+      const AUS = new Set();
+      const present = new Set();
+      orden_empleados.forEach(emp => {
+        const allEmptyOrAbs = dias.every(d => {
+          const raw = idx.get(`${emp}__${d}`) || "";
+          const n = normalizeTurno(raw).label;
+          return (n === "—" || n === "Descanso" || n === "Vacaciones" || n === "Baja");
+        });
+        if (allEmptyOrAbs) AUS.add(emp); else present.add(emp);
+      });
+
+      // Sustituciones: si existe mapeo y el titular está ausente toda la semana, sustituir en orden
+      const sustMap = buildSustMap(hotel, semana_lunes);
+      const ordenFinal = [];
+      orden_empleados.forEach(emp => {
+        if (AUS.has(emp) && sustMap.has(emp)) {
+          const sub = sustMap.get(emp);
+          // Inserta sustituto en la posición del titular
+          ordenFinal.push({ emp: sub, mark: `↔ ${emp}` });
+        } else if (AUS.has(emp)) {
+          // se insertará al final
+        } else {
+          ordenFinal.push({ emp, mark: "" });
         }
-      }
-      return out;
-    }
-    return S;
-  }
-  const hotelOf = r => r.hotel || r.Hotel || r.establecimiento || r?.meta?.hotel || "";
-  const nameOf  = r => r.empleado || r.employee || r.nombre || r.name || r.persona || "";
-  const uniq = a => [...new Set(a.filter(Boolean))];
+      });
+      // Ausentes toda la semana al final
+      orden_empleados.forEach(emp => { if (AUS.has(emp)) ordenFinal.push({ emp, mark: "" }); });
 
-  // === Estado ===
-  const STATE = {
-    rows: [],
-    from: monday(new Date()),
-    to:   addDays(monday(new Date()), 7*WEEKS_DEFAULT - 1),
-    hotel: "",
-    empleado: ""
-  };
+      // Card de semana
+      const card = document.createElement("section");
+      card.className = "row-card week";
 
-  // === Render ===
-  function pill(s){
-    s = String(s||'').toLowerCase();
-    if (s.includes('mañana')||s.includes('manana')) return `<span class="pill pill-m">Mañana</span>`;
-    if (s.includes('tarde'))                      return `<span class="pill pill-t">Tarde</span>`;
-    if (s.includes('noche'))                      return `<span class="pill pill-n">Noche 🌙</span>`;
-    if (s.includes('descanso'))                   return `<span class="pill pill-x">Descanso</span>`;
-    return s||'—';
-  }
-  const dayLbl = d => { try { return new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit'});} catch { return d||'' } };
-
-  function render(){
-    const app = $id('app');
-    if (!app){ return; }
-
-    const inRange = r => {
-      const ds = r.fecha || r.date || r.dia || r.day || r?.meta?.fecha || "";
-      const d  = ds ? new Date(ds) : null;
-      return (!d || (d >= STATE.from && d <= STATE.to))
-          && (!STATE.hotel    || hotelOf(r) === STATE.hotel)
-          && (!STATE.empleado || nameOf(r)  === STATE.empleado);
-    };
-
-    const rows = STATE.rows.filter(inRange);
-    const fechas = uniq(rows.map(r=>r.fecha||r.date||r.dia||r.day||r?.meta?.fecha)).sort((a,b)=>new Date(a)-new Date(b));
-
-    const byHotel = {};
-    for (const r of rows){
-      const h = hotelOf(r) || '—';
-      const n = nameOf(r)  || '—';
-      const f = r.fecha || r.date || r.dia || r.day || r?.meta?.fecha || '';
-      const t = r.turno || r.shift || r.tramo || r?.meta?.turno || '';
-      (byHotel[h]??={}); (byHotel[h][n]??={}); byHotel[h][n][f]=t;
-    }
-
-    let html = '';
-    for (const [h, emp] of Object.entries(byHotel)){
-      html += `
-        <div class="row-card">
-          <table class="grid-week">
-            <thead>
-              <tr>
-                <th style="min-width:180px">${h}</th>
-                ${fechas.map(f=>`<th>${dayLbl(f)}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${Object.keys(emp).sort().map(n=>`
-                <tr>
-                  <td style="text-align:left"><strong>${n}</strong></td>
-                  ${fechas.map(f=>`<td>${pill(emp[n][f])}</td>`).join('')}
-                </tr>`).join('')}
-            </tbody>
-          </table>
+      // Cabecera
+      const head = document.createElement("div");
+      head.className = "week-head";
+      head.innerHTML = `
+        <img src="${/cumbria/i.test(hotel) ? 'img/cumbria logo.jpg' : /guadiana/i.test(hotel) ? 'img/guadiana logo.jpg' : 'icons/icon-192.png'}"
+             alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover">
+        <div class="week-meta">
+          <div class="week-title" style="font-weight:700">${hotel} – Semana ${semana_lunes}</div>
+          <div class="week-sub" style="color:#6b7280;font-size:12px;text-transform:lowercase">
+            ${dias[0]} → ${dias[6]}
+          </div>
         </div>`;
-    }
+      card.appendChild(head);
 
-    app.innerHTML = html || `<p class="meta">No hay datos para mostrar con los filtros seleccionados.</p>`;
-  }
+      // Tabla
+      const tbl = document.createElement("table");
+      tbl.className = "grid-week";
 
-  // === Filtros UI ===
-  function populateFilters(){
-    const D = window.FULL_DATA || {};
-    const hotelSel = $id('hotelSelect');
-    const empSel   = $id('employeeFilter');
-    if (!hotelSel || !empSel) return;
+      // Cabecera días
+      const thead = document.createElement("thead");
+      const trh = document.createElement("tr");
+      trh.innerHTML = `<th style="text-align:left">Empleados</th>` + dias.map(d => `<th>${d}</th>`).join("");
+      thead.appendChild(trh);
+      tbl.appendChild(thead);
 
-    const hotels = uniq(STATE.rows.map(hotelOf));
-    hotelSel.innerHTML = '<option value="">— Hotel —</option>' + hotels.map(h=>`<option>${h}</option>`).join('');
-    const refreshEmp = () => {
-      const list = uniq(STATE.rows.filter(r => !hotelSel.value || hotelOf(r)===hotelSel.value).map(nameOf));
-      empSel.innerHTML = '<option value="">— Empleado —</option>' + list.map(n=>`<option>${n}</option>`).join('');
-    };
-    refreshEmp();
-    hotelSel.onchange = refreshEmp;
+      // Cuerpo
+      const tbody = document.createElement("tbody");
+      ordenFinal.forEach(({ emp, mark }) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        tdName.className = "emp-name";
+        tdName.style.textAlign = "left";
+        tdName.textContent = emp + (mark ? `  ${mark}` : "");
+        tr.appendChild(tdName);
 
-    // Fechas iniciales en el panel
-    const toISO = d => new Date(d).toISOString().slice(0,10);
-    $id('dateFrom').value = toISO(STATE.from);
-    $id('dateTo').value   = toISO(STATE.to);
-  }
+        dias.forEach(d => {
+          const td = document.createElement("td");
+          const raw = idx.get(`${emp}__${d}`) || "";
+          const n = normalizeTurno(raw);
+          if (n.label === "—") {
+            td.textContent = "—";
+          } else {
+            const span = document.createElement("span");
+            span.className = `pill ${n.cls}`;
+            span.textContent = n.label;
+            td.appendChild(span);
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      tbl.appendChild(tbody);
 
-  function attachUI(){
-    // Botones superiores
-    $id('btnPrev')?.addEventListener('click', ()=>{ STATE.from = addDays(STATE.from,-7); STATE.to = addDays(STATE.to,-7); render();});
-    $id('btnNext')?.addEventListener('click', ()=>{ STATE.from = addDays(STATE.from, 7); STATE.to = addDays(STATE.to, 7); render();});
-    $id('btnToday')?.addEventListener('click',()=>{ STATE.from = monday(new Date()); STATE.to = addDays(STATE.from, 7*WEEKS_DEFAULT-1); render();});
-
-    // Filtros / dialog
-    const dlg = $id('dlg');
-    $id('btnFilters')?.addEventListener('click', ()=>{ dlg?.showModal(); });
-    $id('btnApply')?.addEventListener('click', (ev)=>{
-      ev.preventDefault();
-      const hotel = $id('hotelSelect')?.value || "";
-      const emp   = $id('employeeFilter')?.value || "";
-      const df    = $id('dateFrom')?.value;
-      const dt    = $id('dateTo')?.value;
-      STATE.hotel    = hotel;
-      STATE.empleado = emp;
-      STATE.from = df ? new Date(df) : STATE.from;
-      STATE.to   = dt ? new Date(dt) : STATE.to;
-      dlg?.close();
-      render();
+      card.appendChild(tbl);
+      root.appendChild(card);
     });
   }
 
-  // === Arranque ===
-  window.addEventListener('DOMContentLoaded', ()=>{
-    try{
-      STATE.rows = normalize(window.FULL_DATA || {});
-      // default: semana actual + 3
-      STATE.from = monday(new Date());
-      STATE.to   = addDays(STATE.from, 7*WEEKS_DEFAULT - 1);
-
-      populateFilters(); // seguro si existen
-      attachUI();
-      render();
-    }catch(e){
-      const app = $id('app');
-      if (app) app.innerHTML = `<p class="meta">No se pudo iniciar la APP: ${e?.message||e}</p>`;
-      console.error('[APP] boot error', e);
-    }
+  // Hook: si el adapter no llama nada, forzamos el render móvil
+  window.addEventListener("DOMContentLoaded", () => {
+    try { renderContent("app"); } catch (e) { console.warn("Móvil: render diferido", e); }
   });
 
-  // Por compatibilidad: si alguien llama explícitamente
-  window.renderContent = function(){ render(); };
 })();
