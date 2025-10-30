@@ -1,4 +1,7 @@
-/* Turnos Web · mobile.patch.js (SOLO app móvil) */
+/* Turnos Web · mobile.patch.js (solo APP móvil)
+   Sustituciones por día con motivo + por rango; ↔ y motivo visible; fixes de "Mañana";
+   navegación de semanas y filtros robustos. NO toca index/desktop.
+*/
 (function () {
   "use strict";
 
@@ -7,7 +10,6 @@
   const toDate = v => (v instanceof Date ? v : new Date(v));
   const iso = d => new Date(d).toISOString().slice(0, 10);
   const norm = s => (s||"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
-
   const esWeekday = d => new Intl.DateTimeFormat("es-ES",{weekday:"long"}).format(toDate(d)).toUpperCase();
   const esMini = d => {
     const dt = toDate(d);
@@ -27,9 +29,15 @@
     try { return String(v); } catch { return ""; }
   }
 
-  // Píldoras oficiales
+  // Normaliza etiquetas de turno → clases
   function normalizeTurno(raw){
-    const t = norm(asText(raw));
+    let s = asText(raw);
+
+    // Fix codificación común de “Mañana”
+    const bad = ["maÃ±ana","maã±ana","maÃƒÂ±ana","maƒâ€˜ana"];
+    if (bad.some(b => s.toLowerCase().includes(b))) s = "Mañana";
+
+    const t = norm(s);
     if (!t || t==="—" || t==="-" || t==="_") return {label:"—", cls:"pill-empty"};
     if (t.includes("descanso")) return {label:"Descanso", cls:"pill-x"};
     if (t.includes("mañana")||t.includes("manana")) return {label:"Mañana", cls:"pill-m"};
@@ -37,14 +45,15 @@
     if (t.includes("noche")) return {label:"Noche 🌙", cls:"pill-n"};
     if (t.includes("vacac")) return {label:"Vacaciones", cls:"pill-x"};
     if (t.includes("baja")) return {label:"Baja", cls:"pill-x"};
-    return {label: asText(raw), cls:"pill-txt"};
+    return {label: s, cls:"pill-txt"};
   }
 
   // ---------- Datos ----------
   function pickSource(){
     const S = (window.FULL_DATA && Object.keys(window.FULL_DATA).length ? window.FULL_DATA :
                window.DATA && Object.keys(window.DATA).length ? window.DATA : {}) || {};
-    // Si no hay schedule, intentamos construirlo desde data/rows
+
+    // Si no hay schedule, intentalo desde data/rows
     if (!Array.isArray(S.schedule) || !S.schedule.length){
       const rows = Array.isArray(S.data) ? S.data : (Array.isArray(S.rows) ? S.rows : []);
       if (rows.length){
@@ -71,21 +80,82 @@
         S.schedule = [];
       }
     }
-    S.sustituciones = Array.isArray(S.sustituciones) ? S.sustituciones : [];
+
+    // Sustituciones: admitimos tres formatos:
+    //  A) rango: {hotel,titular,sustituto,desde,hasta,motivo?}
+    //  B) por día: {hotel,fecha,titular,sustituto,motivo}
+    //  C) fila genérica (de DATA.rows) con columnas variadas ('Motivo','C/T'…)
+    const sus = Array.isArray(S.sustituciones) ? S.sustituciones : [];
+    const rows = Array.isArray(S.data) ? S.data : (Array.isArray(S.rows) ? S.rows : []);
+    S.__sust_por_dia = []; // forma normalizada
+    S.__sust_por_rango = [];
+
+    // De S.sustituciones ya normalizadas
+    sus.forEach(x=>{
+      const hotel = x.hotel || x.Hotel;
+      const titular = x.titular || x.Titular || x.empleado || x.Empleado;
+      const sustituto = x.sustituto || x.Sustituto;
+      const motivo = x.motivo || x.Motivo || x.razon || x.Razon || x.Observaciones || x.observaciones || "";
+      if (x.fecha || x.Fecha){
+        S.__sust_por_dia.push({hotel, fecha: iso(x.fecha || x.Fecha), titular, sustituto, motivo});
+      } else {
+        S.__sust_por_rango.push({hotel, desde: x.desde, hasta: x.hasta, titular, sustituto, motivo});
+      }
+    });
+
+    // Extra: detectar sustituciones por día en filas sueltas (como en tu hoja)
+    rows.forEach(r=>{
+      const hotel = r.hotel || r.Hotel || r.establecimiento || r.Establecimiento;
+      const fecha = r.fecha || r.Fecha || r.date || r.dia || r.day;
+      const titular = r.titular || r.Titular || r.empleado || r.Empleado || r.C || r.ColC || r['Col C'];
+      const sustituto = r.sustituto || r.Sustituto || r['sustituto '] || r.D || r.ColD || r['Col D'];
+      const motivo = r.motivo || r.Motivo || r['C/T'] || r.ct || r.Comentario || r.Observaciones || r.observaciones;
+      // heurística: fila de sustitución si hay hotel+fecha y (titular y sustituto)
+      if (hotel && fecha && titular && sustituto){
+        S.__sust_por_dia.push({hotel, fecha: iso(fecha), titular, sustituto, motivo: asText(motivo)});
+      }
+    });
+
     return S;
   }
   const SRC = pickSource();
 
+  // Index de sustituciones por día
+  function buildSustDiaIndex() {
+    const map = new Map(); // key: hotel|fecha|titular => {sustituto,motivo}
+    (SRC.__sust_por_dia||[]).forEach(s=>{
+      const key = `${norm(s.hotel)}|${iso(s.fecha)}|${s.titular}`;
+      map.set(key, {sustituto:s.sustituto, motivo: asText(s.motivo||"")});
+    });
+    return map;
+  }
+  // Index de sustituciones por rango (aplican si cubre toda la semana)
+  function buildSustRangoIndex(hotel, monISO){
+    const wk = weekDays(monISO);
+    const inRange=(d,a,b)=>{ const x=toDate(d).getTime(), A=a?toDate(a).getTime():-Infinity, B=b?toDate(b).getTime():Infinity; return x>=A && x<=B; };
+    const rel = (SRC.__sust_por_rango||[]).filter(s=>norm(s.hotel)===norm(hotel));
+    const map = new Map(); // titular -> {sustituto,motivo}
+    rel.forEach(s=>{
+      const covers = wk.every(d => inRange(d, s.desde, s.hasta));
+      if (covers) map.set(s.titular, {sustituto:s.sustituto, motivo: asText(s.motivo||"")});
+    });
+    return map;
+  }
+
   // ---------- UI / Estado ----------
+  // IDs robustos (por si cambian)
+  function q(id, altSel){
+    return document.getElementById(id) || (altSel ? document.querySelector(altSel) : null);
+  }
   const UI = {
-    app:   document.getElementById("app"),
-    hotel: document.getElementById("hotelSelect"),
-    emp:   document.getElementById("employeeFilter"),
-    from:  document.getElementById("dateFrom"),
-    to:    document.getElementById("dateTo"),
-    prev:  document.getElementById("btnPrev"),
-    next:  document.getElementById("btnNext"),
-    today: document.getElementById("btnToday"),
+    app:   q("app", "#app"),
+    hotel: q("hotelSelect", "#hotel, #hotelFiltro, select[name='hotel']"),
+    emp:   q("employeeFilter", "#empleado, #employee, select[name='empleado']"),
+    from:  q("dateFrom", "#desde, input[name='desde']"),
+    to:    q("dateTo", "#hasta, input[name='hasta']"),
+    prev:  q("btnPrev", "[data-nav='prev']"),
+    next:  q("btnNext", "[data-nav='next']"),
+    today: q("btnToday", "[data-nav='today']")
   };
   const STATE = { hotel:"", emp:"", from:"", to:"", weekCursor:null };
 
@@ -101,6 +171,11 @@
     STATE.from = UI.from?.value || ""; STATE.to = UI.to?.value || "";
     STATE.hotel= UI.hotel?.value||"";  STATE.emp= UI.emp?.value||"";
     STATE.weekCursor = iso(mon);
+
+    // Abrir diálogo Filtros aunque cambie el botón
+    const btnFilters = q("btnFilters", "button:has(svg), button:contains('Filtros'), [data-open='filters']");
+    btnFilters?.addEventListener("click", () => document.querySelector("dialog")?.showModal());
+    document.getElementById("btnApply")?.addEventListener("click", e=>{ e.preventDefault(); applyFilters(); document.querySelector("dialog")?.close(); });
   }
   function applyFilters(){
     STATE.hotel = UI.hotel?.value || "";
@@ -109,9 +184,8 @@
     STATE.to    = UI.to?.value    || "";
     render();
   }
-  document.getElementById("btnApply")?.addEventListener("click", e=>{ e.preventDefault(); applyFilters(); document.querySelector("dialog")?.close(); });
 
-  // Semanas disponibles y navegación
+  // Semanas + navegación robusta
   function allWeekKeys() { return [...new Set((SRC.schedule||[]).map(s=>s.semana_lunes))].sort(); }
   function snapCursor(){
     const keys = allWeekKeys(); if (!keys.length) return null;
@@ -132,16 +206,6 @@
   UI.next?.addEventListener("click", ()=>moveWeek(+1));
   UI.today?.addEventListener("click", ()=>{ STATE.weekCursor=null; render(); });
 
-  // ---------- Sustituciones ----------
-  function sustMap(hotel, monISO){
-    const wk = weekDays(monISO);
-    const inRange=(d,a,b)=>{ const x=toDate(d).getTime(), A=a?toDate(a).getTime():-Infinity, B=b?toDate(b).getTime():Infinity; return x>=A && x<=B; };
-    const rel = SRC.sustituciones.filter(s=>norm(s.hotel)===norm(hotel));
-    const map=new Map();
-    rel.forEach(s=>{ if (wk.every(d=>inRange(d,s.desde,s.hasta))) map.set(s.titular, s.sustituto); });
-    return map;
-  }
-
   // ---------- Render ----------
   function render(){
     const root = UI.app; if (!root) return;
@@ -154,7 +218,7 @@
 
     initFilters(); snapCursor();
 
-    // Agrupar por semana (y aplicar filtro de hotel si existe)
+    // Agrupar por semana (filtrando hotel si procede)
     const byWeek = new Map();
     for (const s of SRC.schedule){
       if (STATE.hotel && s.hotel!==STATE.hotel) continue;
@@ -165,24 +229,30 @@
     const targetWeek = STATE.weekCursor;
     const items = (byWeek.get(targetWeek)||[]).sort((a,b)=>norm(a.hotel).localeCompare(norm(b.hotel)));
 
-    // Contenedor de semana (ambos hoteles)
     const section = document.createElement("section");
     section.className="week-group";
     root.appendChild(section);
 
+    // Índices de sustituciones (uno general por día y uno por rango por hotel/semana)
+    const sustDiaIdx = buildSustDiaIndex();
+
     for (const sem of items){
       const {hotel, semana_lunes, orden_empleados=[], turnos=[]} = sem;
       const dias = weekDays(semana_lunes);
+      const logo = /cumbria/i.test(hotel) ? "cumbria logo.jpg"
+                  : /guadiana/i.test(hotel) ? "guadiana logo.jpg" : "icons/icon-192.png";
 
-      // índice por empleado/día
+      // índice turnos
       const idx = new Map();
       for (const t of turnos){
         const f = iso(t.fecha || t.date || t.dia);
         idx.set(`${t.empleado}__${f}`, asText(t.turno || t.TipoAusencia || t.shift || t.tramo || t));
       }
 
-      // Ausentes toda semana y sustituciones
-      const S = sustMap(hotel, semana_lunes);
+      // Sustituciones por rango (para mover posiciones si el titular está off toda la semana)
+      const sustRango = buildSustRangoIndex(hotel, semana_lunes);
+
+      // Detectar ausentes toda la semana
       const aus = new Set();
       for (const emp of orden_empleados){
         const allOff = dias.every(d=>{
@@ -191,11 +261,18 @@
         });
         if (allOff) aus.add(emp);
       }
+
+      // Orden final: si el titular está ausente toda la semana y hay sustitución por rango, el sustituto ocupa su lugar
       const ordenFinal = [];
       for (const emp of orden_empleados){
-        if (aus.has(emp) && S.has(emp)) ordenFinal.push({emp:S.get(emp), mark:`↔ ${emp}`});
-        else if (!aus.has(emp))        ordenFinal.push({emp, mark:""});
+        if (aus.has(emp) && sustRango.has(emp)){
+          const sub = sustRango.get(emp).sustituto;
+          ordenFinal.push({emp: sub, mark:`↔ ${emp}`, motivoR: sustRango.get(emp).motivo || ""});
+        } else if (!aus.has(emp)) {
+          ordenFinal.push({emp, mark:""});
+        }
       }
+      // Ausentes (toda la semana) al final
       orden_empleados.forEach(e=>{ if (aus.has(e)) ordenFinal.push({emp:e, mark:""}); });
 
       // Filtro de empleado
@@ -203,9 +280,6 @@
 
       // ---- Card por hotel ----
       const card = document.createElement("article"); card.className="row-card week"; section.appendChild(card);
-
-      const logo = /cumbria/i.test(hotel) ? "cumbria logo.jpg"
-                : /guadiana/i.test(hotel) ? "guadiana logo.jpg" : "icons/icon-192.png";
 
       const head = document.createElement("div"); head.className="week-head";
       head.innerHTML = `<img src="${logo}" alt="" onerror="this.src='icons/icon-192.png'"
@@ -222,30 +296,71 @@
       trh.innerHTML = th; thead.appendChild(trh); tbl.appendChild(thead);
 
       const tbody = document.createElement("tbody");
-      function turnoOf(emp,d){
-        const raw = idx.get(`${emp}__${d}`);
-        if (raw) return asText(raw);
-        const titular = [...S.entries()].find(([tit,sub])=>sub===emp)?.[0];
-        if (titular) return asText(idx.get(`${titular}__${d}`) || "");
-        return "";
+
+      function getSustitucionDia(emp, dISO){
+        const key = `${norm(hotel)}|${dISO}|${emp}`;
+        const rec = sustDiaIdx.get(key);
+        return rec ? { sustituto: rec.sustituto, motivo: rec.motivo } : null;
+      }
+      function turnoOf(emp,dISO){
+        // prioridad: si hay sustitución por día para el TITULAR emp → mostramos al sustituto (hereda turno del titular)
+        const sDia = getSustitucionDia(emp, dISO);
+        if (sDia){
+          const rawTit = idx.get(`${emp}__${dISO}`) || "";
+          // devolvemos el turno del titular pero marcando sustitución
+          return { raw: rawTit, sustituto: sDia.sustituto, motivo: sDia.motivo };
+        }
+        // si emp es sustituto por rango (ocupa lugar), hereda del titular cuando no tiene turno propio
+        const titular = [...sustRango.entries()].find(([tit,info]) => info.sustituto===emp)?.[0];
+        const raw = idx.get(`${emp}__${dISO}`);
+        if (raw) return { raw };
+        if (titular){ return { raw: idx.get(`${titular}__${dISO}`) || "" }; }
+        return { raw: "" };
       }
 
-      for (const {emp, mark} of filas){
+      for (const {emp, mark, motivoR} of filas){
         const tr = document.createElement("tr");
-        const name = document.createElement("td"); name.style.textAlign="left"; name.textContent = emp + (mark?`  ${mark}`:""); tr.appendChild(name);
+        const name = document.createElement("td");
+        name.style.textAlign="left";
+        name.textContent = emp + (mark?`  ${mark}`:"");
+        tr.appendChild(name);
+
         for (const d of dias){
           const td=document.createElement("td");
-          const n = normalizeTurno( turnoOf(emp,d) );
-          if (n.label==="—"){ td.textContent="—"; }
-          else { const span=document.createElement("span"); span.className=`pill ${n.cls}`; span.textContent=n.label; td.appendChild(span); }
+          const info = turnoOf(emp, d);
+          const n = normalizeTurno(info.raw);
+          if (n.label==="—"){
+            td.textContent="—";
+          } else {
+            const wrap = document.createElement("div");
+            wrap.style.display="flex"; wrap.style.flexDirection="column"; wrap.style.alignItems="center"; wrap.style.gap="4px";
+            const span=document.createElement("span"); span.className=`pill ${n.cls}`; span.textContent=n.label;
+            wrap.appendChild(span);
+
+            // Etiqueta de motivo (por día o por rango)
+            const motivo = info.motivo || motivoR || "";
+            if (motivo){
+              const badge = document.createElement("small");
+              badge.className = "badge-motivo";
+              badge.textContent = asText(motivo);
+              wrap.appendChild(badge);
+            }
+            // Marcar ↔ cuando aplica sustitución por día
+            if (info.sustituto) {
+              span.textContent = `${span.textContent} ↔`;
+            }
+            td.appendChild(wrap);
+          }
           tr.appendChild(td);
         }
         tbody.appendChild(tr);
       }
-      tbl.appendChild(tbody); card.appendChild(tbl);
+
+      tbl.appendChild(tbody);
+      card.appendChild(tbl);
     }
 
-    // Maquetación de cards (una vez renderizado)
+    // Maquetación de cards
     const cards = [...root.querySelectorAll(".week")];
     if (cards.length){
       const wrap=document.createElement("div"); wrap.className="weeks-grid";
