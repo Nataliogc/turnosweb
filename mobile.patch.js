@@ -1,19 +1,15 @@
-/* Turnos Web · mobile.patch.js
-   - Solo móvil (live.mobile.html). No toca plantilla_adapter_semana.js
-   - Lee window.FULL_DATA.schedule generado por 2_GenerarCuadranteHTML.py
-   - Semanas L→D (España), navegación por semanas existentes, sustituciones ↔
-   - Píldoras: Descanso (rojo), Noche🌙 (gris), Tarde (ámbar), Mañana (verde)
+/* Turnos Web · mobile.patch.js (solo vista móvil)
+   - Autorrender de la semana más cercana
+   - Navegación por semanas existentes
+   - Soporta turnos string/objeto, ausencias y sustituciones ↔
 */
-
 (function () {
   "use strict";
-
-  // ---------- Utils ----------
   const $ = (s, ctx = document) => ctx.querySelector(s);
   const DAY = 86400000;
 
-  // Mojibake → UTF-8
-  function fixMojibake(s) {
+  // --- UTF-8 fixes (mojibake) ---
+  function fix(s) {
     if (typeof s !== "string") return s;
     const map = [
       [/Ã¡/g, "á"], [/Ã©/g, "é"], [/Ã­/g, "í"], [/Ã³/g, "ó"], [/Ãº/g, "ú"],
@@ -22,158 +18,135 @@
     ];
     let out = s;
     for (const [re, rep] of map) out = out.replace(re, rep);
-    // limpiar basura de emojis cortados
-    out = out.replace(/[ðÂŸ][\u0080-\u00FF\-””“„’ï¸\u00A0-\u00FF]*/g, "");
-    return out.trim().replace(/\s{2,}/g, " ");
+    return out.replace(/[ðÂŸ][\u0080-\u00FF\-””“„’ï¸\u00A0-\u00FF]*/g, "").trim();
   }
 
-  // Fechas locales (no UTC)
-  const isoLocal = d => { const x = new Date(d); x.setHours(0,0,0,0);
-    const y=x.getFullYear(), m=String(x.getMonth()+1).padStart(2,'0'), dd=String(x.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; };
-  const fromISO = iso => { const [y,m,d] = iso.split("-").map(n=>parseInt(n,10)); return new Date(y, m-1, d); };
+  // --- fechas locales (sin UTC) ---
+  const iso = d => { const x=new Date(d); x.setHours(0,0,0,0);
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
+  const fromISO = s => { const [y,m,d]=s.split("-").map(n=>+n); return new Date(y,m-1,d); };
   const monday = d => { const x=new Date(d); const w=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-w); return x; };
-  const weekRange = mon => Array.from({length:7},(_,i)=>isoLocal(new Date(mon.getTime()+i*DAY)));
-  const mini = iso => { const dt=fromISO(iso); const dd=String(dt.getDate()).padStart(2,"0");
-    const m=new Intl.DateTimeFormat("es-ES",{month:"short"}).format(dt).replace(".",""); const yy=String(dt.getFullYear()).slice(-2);
-    return `${dd}/${m}/${yy}`.toLowerCase(); };
+  const weekDays = mon => Array.from({length:7},(_,i)=>iso(new Date(mon.getTime()+i*DAY)));
+  const mini = s => { const dt = fromISO(s);
+    return dt.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"2-digit"}).toLowerCase(); };
 
-  // ---------- Datos ----------
+  // --- datos ---
   const DATA = window.FULL_DATA || window.DATA || {};
   const SCHEDULE = Array.isArray(DATA.schedule) ? DATA.schedule : [];
 
-  // Semanas disponibles (ordenadas) y por hotel
   const WEEKS = [...new Set(SCHEDULE.map(g => g.semana_lunes))].sort();
   const byWeekHotel = new Map();
   for (const g of SCHEDULE) byWeekHotel.set(g.semana_lunes + "||" + g.hotel, g);
 
-  // Encontrar semana cercana a hoy
-  function nearestWeekISO(ref = new Date()) {
-    if (!WEEKS.length) return isoLocal(monday(ref));
-    const target = monday(ref).getTime();
-    return WEEKS.map(w => [w, Math.abs(fromISO(w).getTime() - target)])
+  const state = { weekISO: nearestWeek() };
+
+  function nearestWeek(ref = new Date()) {
+    if (!WEEKS.length) return iso(monday(ref));
+    const t = monday(ref).getTime();
+    return WEEKS.map(w => [w, Math.abs(fromISO(w).getTime() - t)])
                 .sort((a,b)=>a[1]-b[1])[0][0];
   }
 
-  // Estado
-  const state = { weekISO: nearestWeekISO(new Date()) };
-
-  // ---------- Interpretación de turnos ----------
-  function labelFromTurno(turno) {
+  // --- interpretación de turnos ---
+  function label(turno) {
     if (turno == null) return "";
-    if (typeof turno === "string") return fixMojibake(turno);
-    // objeto: { TurnoOriginal, TipoInterpretado, TipoAusencia, Sustituto }
-    const tInt = fixMojibake(turno.TipoInterpretado || turno.TipoAusencia || "");
-    const tOrg = fixMojibake(turno.TurnoOriginal || "");
-    return tInt || tOrg || "";
+    if (typeof turno === "string") return fix(turno);
+    // objeto
+    return fix(turno.TipoInterpretado || turno.TipoAusencia || turno.TurnoOriginal || "");
   }
 
-  // Construye parrilla aplicando sustituciones y marcadores
   function buildGrid(group, days) {
     const grid = {}, meta = {};
-    const all = new Set(group.orden_empleados);
-    // sumar posibles sustitutos para que tengan fila
+    const all = new Set(group.orden_empleados || []);
+    // incluir posibles sustitutos para que tengan fila
     (group.turnos || []).forEach(t => {
-      if (typeof t.turno === "object" && t.turno && t.turno.Sustituto) all.add(t.turno.Sustituto);
+      if (t.turno && typeof t.turno === "object" && t.turno.Sustituto) all.add(t.turno.Sustituto);
     });
-    all.forEach(emp => { grid[emp] = {}; meta[emp] = {}; days.forEach(d => { grid[emp][d]=""; meta[emp][d]=null; }); });
+    all.forEach(e => { grid[e] = {}; meta[e] = {}; days.forEach(d => { grid[e][d] = ""; meta[e][d] = null; }); });
 
-    // 1) volcar lo que viene
-    (group.turnos || []).forEach(t => { grid[t.empleado][t.fecha] = t.turno; });
+    // 1) volcar original
+    (group.turnos || []).forEach(t => { grid[t.empleado] && (grid[t.empleado][t.fecha] = t.turno); });
 
-    // 2) aplicar ausencias y sustituciones
+    // 2) aplicar ausencias/sustituciones
     for (const emp of Object.keys(grid)) {
       for (const d of days) {
         const raw = grid[emp][d];
-        if (typeof raw === "object" && raw !== null) {
-          const etiqueta = labelFromTurno(raw);
-          grid[emp][d] = etiqueta;                   // el titular muestra la ausencia
-          meta[emp][d] = { isAbsence: true, absence: etiqueta };
+        if (raw && typeof raw === "object") {
+          const labAbs = label(raw);
+          grid[emp][d] = labAbs; meta[emp][d] = { isAbsence: true };
           const sust = raw.Sustituto;
-          if (sust) {                                // el sustituto hereda el turno original del titular
-            const labS = labelFromTurno({ TurnoOriginal: raw.TurnoOriginal });
-            grid[sust][d] = labS;
-            meta[sust][d] = { isSub: true, for: emp };
+          if (sust) {
+            const heredado = label({ TurnoOriginal: raw.TurnoOriginal });
+            if (!grid[sust]) { grid[sust] = {}; meta[sust] = {}; days.forEach(x=>{ grid[sust][x]=""; meta[sust][x]=null; }); }
+            grid[sust][d] = heredado; meta[sust][d] = { isSub: true, for: emp };
           }
         } else if (typeof raw === "string") {
-          grid[emp][d] = fixMojibake(raw);
+          grid[emp][d] = fix(raw);
         }
       }
     }
 
-    // 3) detectar ausentes toda la semana y proponer sustituto
+    // 3) ausentes toda la semana para enviarlos al final
     const weekAbsent = new Set();
-    const subCandidate = {};
-    group.orden_empleados.forEach(emp => {
-      const allOff = days.every(d => {
+    (group.orden_empleados || []).forEach(emp => {
+      const off = days.every(d => {
         const v = (grid[emp][d] || "").toLowerCase();
         return !v || /descanso|vacac|baja|—/.test(v);
       });
-      if (allOff) {
-        weekAbsent.add(emp);
-        // primer sustituto que encontremos
-        for (const d of days) {
-          const m = meta[emp][d];
-          if (m && m.isAbsence) {
-            // ¿quién lo sustituyó?
-            for (const e of Object.keys(grid)) {
-              const m2 = meta[e][d];
-              if (m2 && m2.isSub && m2.for === emp) { subCandidate[emp] = e; break; }
-            }
-            if (subCandidate[emp]) break;
-          }
-        }
-      }
+      if (off) weekAbsent.add(emp);
     });
 
-    return { grid, meta, weekAbsent, subCandidate };
+    return { grid, meta, weekAbsent };
   }
 
-  // ---------- Render ----------
   function render() {
-    const metaEl = $("#meta");
-    const root = $("#weeks");
-    root.innerHTML = "";
+    const app = $("#app"); if (!app) return;
+    app.innerHTML = "";
 
     if (!SCHEDULE.length) {
-      metaEl.textContent = "Sin datos.";
+      app.innerHTML = `<p class="meta">Sin datos.</p>`;
       return;
     }
 
-    const days = weekRange(fromISO(state.weekISO));
-    metaEl.textContent = `Semana ${mini(days[0])} → ${mini(days[6])}`;
+    const days = weekDays(fromISO(state.weekISO));
+    // cabecera informativa
+    const p = document.createElement("p");
+    p.className = "meta";
+    p.textContent = `Semana ${mini(days[0])} → ${mini(days[6])}`;
+    app.appendChild(p);
 
     const hotels = [...new Set(SCHEDULE.map(g => g.hotel))];
-    for (const h of hotels) {
-      const g = byWeekHotel.get(state.weekISO + "||" + h);
-      if (!g) continue;
 
-      const { grid, meta, weekAbsent, subCandidate } = buildGrid(g, days);
+    hotels.forEach(hotel => {
+      const g = byWeekHotel.get(state.weekISO + "||" + hotel);
+      if (!g) return;
 
-      // orden visual: titulares presentes primero; ausentes toda la semana al final; si hay sustituto, ocupa su sitio
-      let order = g.orden_empleados.map(e => weekAbsent.has(e) ? (subCandidate[e] || e) : e);
-      order = [...new Set(order)]; // sin duplicados
-      order = order.filter(e => !weekAbsent.has(e)).concat([...weekAbsent]);
+      const { grid, meta, weekAbsent } = buildGrid(g, days);
 
-      const card = document.createElement("article");
-      card.className = "card";
-      const logo = /cumbria/i.test(h) ? "cumbria%20logo.jpg" : /guadiana/i.test(h) ? "guadiana%20logo.jpg" : "Logo.png";
+      // orden: presentes primero; ausentes toda la semana al final
+      let order = (g.orden_empleados || []).filter(e => !weekAbsent.has(e))
+                   .concat((g.orden_empleados || []).filter(e => weekAbsent.has(e)));
 
-      // cabecera
+      // tarjeta
+      const card = document.createElement("section");
+      card.className = "week";
+      const logo = /cumbria/i.test(hotel) ? "cumbria%20logo.jpg"
+                  : /guadiana/i.test(hotel) ? "guadiana%20logo.jpg" : "Logo.png";
+
       card.innerHTML = `
-        <div class="head">
-          <img src="${logo}" onerror="this.src='Logo.png'">
+        <div class="week-head">
+          <img src="${logo}" onerror="this.src='Logo.png'" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
           <div>
-            <div class="title"><strong>${fixMojibake(h)}</strong> – Semana ${state.weekISO}</div>
-            <div class="sub">${days[0]} → ${days[6]}</div>
+            <div style="font-weight:700">${fix(hotel)} – Semana ${state.weekISO}</div>
+            <div style="color:#6b7280;font-size:12px">${days[0]} → ${days[6]}</div>
           </div>
         </div>
-        <div class="body">
+        <div class="table-container">
           <table>
             <thead>
               <tr>
                 <th>Empleados</th>
-                ${days.map(d => `<th>${new Date(d+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long'}).toUpperCase()}
-                  <div class="sub">${mini(d)}</div></th>`).join("")}
+                ${days.map(d => `<th>${new Date(d+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long'}).toUpperCase()}<div style="font-size:12px;color:#6b7280">${mini(d)}</div></th>`).join("")}
               </tr>
             </thead>
             <tbody></tbody>
@@ -184,46 +157,44 @@
 
       order.forEach(emp => {
         const tr = document.createElement("tr");
-        let tds = `<td class="emp">${fixMojibake(emp)}</td>`;
+        let tds = `<td style="text-align:left">${fix(emp)}</td>`;
         days.forEach(d => {
-          let label = grid[emp][d] || "";
-          label = fixMojibake(label);
-          const low = label.toLowerCase();
-
-          // clase de estilo por tipo
+          let lab = label(grid[emp]?.[d]);
+          const low = (lab || "").toLowerCase();
           let cls = "";
-          if (/vacaciones|baja|descanso/.test(low)) cls = "p-x";
-          else if (/noche/.test(low)) cls = "p-n";
-          else if (/tarde/.test(low)) cls = "p-t";
-          else if (/mañana|manana/.test(low)) cls = "p-m";
+          if (/vacaciones|baja|descanso/.test(low)) cls = "turno-descanso";
+          else if (/noche/.test(low)) cls = "turno-noche";
+          else if (/tarde/.test(low)) cls = "turno-tarde";
+          else if (/mañana|manana/.test(low)) cls = "turno-mañana";
 
-          // añadir 🌙 a "Noche" si falta
-          if (/^n(oche)?/i.test(label) && !/🌙/.test(label)) label += " 🌙";
+          // añadir 🌙 a noche si falta
+          if (/^noche$/i.test(lab)) lab += " 🌙";
 
-          const m = meta[emp][d];
+          // marca de sustitución
+          const m = meta[emp]?.[d];
           const swap = m && m.isSub ? " ↔" : "";
-          tds += `<td>${ label ? `<span class="pill ${cls}">${label}${swap}</span>` : '<span class="dash">—</span>' }</td>`;
+
+          tds += `<td>${ lab ? `<span class="turno-pill ${cls}">${lab}${swap}</span>` : "—" }</td>`;
         });
         tr.innerHTML = tds;
         tbody.appendChild(tr);
       });
 
-      root.appendChild(card);
-    }
+      app.appendChild(card);
+    });
   }
 
-  // ---------- Navegación (usa las semanas que EXISTEN) ----------
-  function moveWeek(step) {
+  // --- navegación por semanas existentes ---
+  function move(step) {
     if (!WEEKS.length) return;
     const i = Math.max(0, WEEKS.indexOf(state.weekISO));
     const j = Math.min(WEEKS.length - 1, Math.max(0, i + step));
     state.weekISO = WEEKS[j];
     render();
   }
-  $("#mPrev")?.addEventListener("click", () => moveWeek(-1));
-  $("#mNext")?.addEventListener("click", () => moveWeek(+1));
-  $("#mToday")?.addEventListener("click", () => { state.weekISO = nearestWeekISO(new Date()); render(); });
+  $("#btnPrev")?.addEventListener("click", () => move(-1));
+  $("#btnNext")?.addEventListener("click", () => move(+1));
+  $("#btnToday")?.addEventListener("click", () => { state.weekISO = nearestWeek(new Date()); render(); });
 
-  // ---------- Start ----------
   document.addEventListener("DOMContentLoaded", render);
 })();
