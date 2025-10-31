@@ -1,7 +1,8 @@
 /* Turnos Web · mobile.patch.js (solo vista móvil)
    - Autorrender de la semana más cercana
    - Navegación por semanas existentes
-   - Soporta turnos string/objeto, ausencias y sustituciones ↔
+   - Turnos string/objeto, ausencias y sustituciones ↔
+   - Iconos: 🌙 Noche, 🏖️ Vacaciones, 🤒 Baja, 🔄 Cambio
 */
 (function () {
   "use strict";
@@ -18,7 +19,9 @@
     ];
     let out = s;
     for (const [re, rep] of map) out = out.replace(re, rep);
-    return out.replace(/[ðÂŸ][\u0080-\u00FF\-””“„’ï¸\u00A0-\u00FF]*/g, "").trim();
+    // limpiar solo basura típica de mojibake de emojis; no borra emojis válidos
+    out = out.replace(/(?:ð|Â|Ÿ)[\u0080-\u00FF\-””“„’ï¸\u00A0-\u00FF]+/g, "");
+    return out.trim().replace(/\s{2,}/g, " ");
   }
 
   // --- fechas locales (sin UTC) ---
@@ -58,16 +61,13 @@
   function buildGrid(group, days) {
     const grid = {}, meta = {};
     const all = new Set(group.orden_empleados || []);
-    // incluir posibles sustitutos para que tengan fila
     (group.turnos || []).forEach(t => {
       if (t.turno && typeof t.turno === "object" && t.turno.Sustituto) all.add(t.turno.Sustituto);
     });
     all.forEach(e => { grid[e] = {}; meta[e] = {}; days.forEach(d => { grid[e][d] = ""; meta[e][d] = null; }); });
 
-    // 1) volcar original
     (group.turnos || []).forEach(t => { grid[t.empleado] && (grid[t.empleado][t.fecha] = t.turno); });
 
-    // 2) aplicar ausencias/sustituciones
     for (const emp of Object.keys(grid)) {
       for (const d of days) {
         const raw = grid[emp][d];
@@ -86,7 +86,6 @@
       }
     }
 
-    // 3) ausentes toda la semana para enviarlos al final
     const weekAbsent = new Set();
     (group.orden_empleados || []).forEach(emp => {
       const off = days.every(d => {
@@ -109,7 +108,6 @@
     }
 
     const days = weekDays(fromISO(state.weekISO));
-    // cabecera informativa
     const p = document.createElement("p");
     p.className = "meta";
     p.textContent = `Semana ${mini(days[0])} → ${mini(days[6])}`;
@@ -123,11 +121,9 @@
 
       const { grid, meta, weekAbsent } = buildGrid(g, days);
 
-      // orden: presentes primero; ausentes toda la semana al final
       let order = (g.orden_empleados || []).filter(e => !weekAbsent.has(e))
                    .concat((g.orden_empleados || []).filter(e => weekAbsent.has(e)));
 
-      // tarjeta
       const card = document.createElement("section");
       card.className = "week";
       const logo = /cumbria/i.test(hotel) ? "cumbria%20logo.jpg"
@@ -162,15 +158,17 @@
           let lab = label(grid[emp]?.[d]);
           const low = (lab || "").toLowerCase();
           let cls = "";
-          if (/vacaciones|baja|descanso/.test(low)) cls = "turno-descanso";
-          else if (/noche/.test(low)) cls = "turno-noche";
-          else if (/tarde/.test(low)) cls = "turno-tarde";
-          else if (/mañana|manana/.test(low)) cls = "turno-mañana";
+          if (/vacaciones|baja|descanso/.test(low)) cls = "turno-descanso"; // rojo
+          else if (/noche/.test(low)) cls = "turno-noche";                 // gris/azul
+          else if (/tarde/.test(low)) cls = "turno-tarde";                 // ámbar
+          else if (/mañana|manana/.test(low)) cls = "turno-mañana";        // verde
 
-          // añadir 🌙 a noche si falta
-          if (/^noche$/i.test(lab)) lab += " 🌙";
+          // --- ICONOS ---
+          if (/^noche$/i.test(lab) && !/🌙/.test(lab)) lab += " 🌙";
+          if (/vacaciones/.test(low) && !/🏖️/.test(lab)) lab += " 🏖️";
+          if (/baja/.test(low) && !/🤒/.test(lab)) lab += " 🤒";
+          if (/(^| )cambio( de turno)?($| )/i.test(lab) && !/🔄/.test(lab)) lab += " 🔄";
 
-          // marca de sustitución
           const m = meta[emp]?.[d];
           const swap = m && m.isSub ? " ↔" : "";
 
