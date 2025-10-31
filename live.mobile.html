@@ -1,18 +1,45 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Cuadrantes de turnos · APP</title>
-  <link rel="icon" href="icons/icon-192.png">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=APP">
-  <link rel="stylesheet" href="styles.mobile.css?v=APP">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cuadrantes de turnos · APP</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css?v=APP">
+<link rel="stylesheet" href="styles.mobile.css?v=APP">
+<style>
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f6f7fb;color:#111827;-webkit-tap-highlight-color:transparent}
+  .app-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
+  .brand{display:flex;align-items:center;gap:8px}
+  .brand .title{font-weight:700;font-size:15px;margin-bottom:2px}
+  .brand .subtitle{font-size:12px;color:#6b7280;line-height:1.1}
+  .topbar{display:flex;align-items:center;gap:6px}
+  .btn{background:#111827;color:#fff;border-radius:999px;padding:8px 14px;border:0;font-size:13px}
+  .container{padding:10px 14px}
+  .meta{color:#6b7280;font-size:13px}
+  dialog{max-width:880px;width:95%;border:1px solid #d1d5db;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+  label{font-size:13px;color:#374151;margin-bottom:2px;display:block}
+  select,input[type=date]{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}
+
+  /* Layout “una semana por tarjeta” */
+  .weeks-grid{display:grid;grid-template-columns:1fr;gap:16px}
+  .week{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:auto;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+  .week-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e5e7eb;background:#fafafa}
+  .week table{width:100%;border-collapse:collapse;font-size:14px}
+  .week th,.week td{border:1px solid #e5e7eb;padding:8px;text-align:center}
+  .week th{background:#f9fafb}
+  .turno-pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
+  .turno-descanso,.pill-x{background:#fee2e2;border:1px solid #fecaca}
+  .turno-noche,.pill-n{background:#eef2ff;border:1px solid #c7d2fe}
+  .turno-noche .turno-pill::after{content:" 🌙"}
+</style>
 </head>
+
 <body>
   <header class="app-header">
     <div class="brand">
-      <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:contain">
+      <img src="icons/icon-192.png" alt="logo" style="width:30px;height:30px;border-radius:8px">
       <div>
         <div class="title">Cuadrantes de turnos</div>
         <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
@@ -26,18 +53,54 @@
     </div>
   </header>
 
-  <main class="container">
-    <p id="meta" class="meta">Cargando…</p>
-    <section id="weeks" class="weeks"></section>
+  <main id="app" class="container">
+    <p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>
   </main>
 
-  <!-- Datos -->
+  <dialog id="dlg">
+    <form method="dialog" style="padding:14px 16px">
+      <h3 style="margin:0 0 10px 0;font-size:16px">Filtros</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label>Hotel</label>
+          <select id="hotelSelect"><option value="">— Hotel —</option></select>
+        </div>
+        <div>
+          <label>Empleado</label>
+          <select id="employeeFilter"><option value="">— Empleado —</option></select>
+        </div>
+        <div>
+          <label>Desde</label>
+          <input id="dateFrom" type="date">
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input id="dateTo" type="date">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button id="btnApply" class="btn">Aplicar</button>
+        <button class="btn" value="cancel">Cerrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Scripts principales -->
   <script src="data.js?v=APP" defer></script>
-
-  <!-- Adaptador SOLO móvil (no toca desktop) -->
-  <script src="mobile.adapter.js?v=APP" defer></script>
-
-  <!-- Parches y SW -->
   <script src="mobile.patch.js?v=APP" defer></script>
+
+  <!-- Registrar SW solo en http/https -->
+  <script>
+    if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+  </script>
+
+  <!-- Modal de filtros -->
+  <script>
+    document.getElementById("btnFilters")?.addEventListener("click", () => {
+      document.querySelector("dialog")?.showModal();
+    });
+  </script>
 </body>
 </html>
