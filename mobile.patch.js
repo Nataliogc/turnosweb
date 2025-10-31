@@ -1,15 +1,17 @@
 /* Turnos Web · mobile.patch.js (solo vista móvil)
-   - Autorrender de la semana más cercana
-   - Navegación por semanas existentes
+   - Autorrender semana más cercana
+   - Navegación (← / Hoy / →) por semanas existentes
    - Turnos string/objeto, ausencias y sustituciones ↔
-   - Iconos: 🌙 Noche, 🏖️ Vacaciones, 🤒 Baja, 🔄 Cambio
+   - Iconos: 🌙 Noche, 🏖️ Vacaciones, 🤒 Baja, 🗓️ Permiso, 🎓 Formación, 🔄 Cambio/C·T/C/T/→/↔
+   - OCULTAR solo filas 100% vacías (“—” toda la semana)
+   - Regla: ausentes toda la semana se muestran al final; si hay Sustituto, éste ocupa su posición
 */
 (function () {
   "use strict";
   const $ = (s, ctx = document) => ctx.querySelector(s);
   const DAY = 86400000;
 
-  // --- UTF-8 fixes (mojibake) ---
+  // --- Mojibake → UTF-8 limpio (incluye basura de emojis, controles y signos sueltos) ---
   function fix(s) {
     if (typeof s !== "string") return s;
     const map = [
@@ -19,12 +21,25 @@
     ];
     let out = s;
     for (const [re, rep] of map) out = out.replace(re, rep);
-    // limpiar solo basura típica de mojibake de emojis; no borra emojis válidos
-    out = out.replace(/(?:ð|Â|Ÿ)[\u0080-\u00FF\-””“„’ï¸\u00A0-\u00FF]+/g, "");
+
+    // 1) Controles invisibles (incluye \u009F "")
+    out = out.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+
+    // 2) Secuencias típicas de mojibake de emoji (no borra emojis válidos)
+    out = out
+      .replace(/ð[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
+      .replace(/Â[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
+      .replace(/ï¸[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
+      .replace(/\uFFFD/g, "")
+      .replace(/[Ÿ ]/g, "");
+
+    // 3) Símbolos sueltos de mojibake vistos (p. ej. "¤’")
+    out = out.replace(/[¤’‚‹›˘]/g, "");
+
     return out.trim().replace(/\s{2,}/g, " ");
   }
 
-  // --- fechas locales (sin UTC) ---
+  // --- Fechas ---
   const iso = d => { const x=new Date(d); x.setHours(0,0,0,0);
     return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
   const fromISO = s => { const [y,m,d]=s.split("-").map(n=>+n); return new Date(y,m-1,d); };
@@ -33,14 +48,12 @@
   const mini = s => { const dt = fromISO(s);
     return dt.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"2-digit"}).toLowerCase(); };
 
-  // --- datos ---
+  // --- Datos ---
   const DATA = window.FULL_DATA || window.DATA || {};
   const SCHEDULE = Array.isArray(DATA.schedule) ? DATA.schedule : [];
-
   const WEEKS = [...new Set(SCHEDULE.map(g => g.semana_lunes))].sort();
   const byWeekHotel = new Map();
   for (const g of SCHEDULE) byWeekHotel.set(g.semana_lunes + "||" + g.hotel, g);
-
   const state = { weekISO: nearestWeek() };
 
   function nearestWeek(ref = new Date()) {
@@ -50,33 +63,60 @@
                 .sort((a,b)=>a[1]-b[1])[0][0];
   }
 
-  // --- interpretación de turnos ---
-  function label(turno) {
+  // --- Interpretación + emojis canónicos ---
+  function rawLabel(turno) {
     if (turno == null) return "";
     if (typeof turno === "string") return fix(turno);
-    // objeto
     return fix(turno.TipoInterpretado || turno.TipoAusencia || turno.TurnoOriginal || "");
   }
 
+  function withCanonicalEmoji(label) {
+    let out = (label || "").trim();
+    const low = out.toLowerCase();
+
+    const changeMarkRE = /(↔|→|←|”„|->|=>)/;
+
+    if (/vacaciones/.test(low) && !/🏖️/.test(out)) out += " 🏖️";
+    if (/baja/.test(low)       && !/🤒/.test(out)) out += " 🤒";
+    if (/permiso/.test(low)    && !/🗓️/.test(out)) out += " 🗓️";
+    if (/formaci[oó]n/.test(low) && !/🎓/.test(out)) out += " 🎓";
+    if (/(^| )c\/?t( |$)|\bct\b|cambio( de turno)?/i.test(out) || changeMarkRE.test(out)) {
+      if (!/🔄/.test(out)) out += " 🔄";
+    }
+    if (/^noche$/i.test(out) && !/🌙/.test(out)) out += " 🌙";
+
+    // Limpiar flechas/comillas raras que no queremos mostrar
+    out = out.replace(/[↔→←”“„]/g, "").trim().replace(/\s{2,}/g, " ");
+
+    return out;
+  }
+
+  // --- Construir grid + mapa de sustitutos predominantes ---
   function buildGrid(group, days) {
     const grid = {}, meta = {};
+    const subCount = {}; // { empleadoAusente: {Sub: veces} }
+
     const all = new Set(group.orden_empleados || []);
     (group.turnos || []).forEach(t => {
       if (t.turno && typeof t.turno === "object" && t.turno.Sustituto) all.add(t.turno.Sustituto);
     });
     all.forEach(e => { grid[e] = {}; meta[e] = {}; days.forEach(d => { grid[e][d] = ""; meta[e][d] = null; }); });
 
-    (group.turnos || []).forEach(t => { grid[t.empleado] && (grid[t.empleado][t.fecha] = t.turno); });
+    (group.turnos || []).forEach(t => { if (grid[t.empleado]) grid[t.empleado][t.fecha] = t.turno; });
 
     for (const emp of Object.keys(grid)) {
       for (const d of days) {
         const raw = grid[emp][d];
         if (raw && typeof raw === "object") {
-          const labAbs = label(raw);
-          grid[emp][d] = labAbs; meta[emp][d] = { isAbsence: true };
+          const labAbs = rawLabel(raw);
+          grid[emp][d] = labAbs; meta[emp][d] = { isAbsence: true, sub: raw.Sustituto || null };
           const sust = raw.Sustituto;
           if (sust) {
-            const heredado = label({ TurnoOriginal: raw.TurnoOriginal });
+            // contar sustituto predominante del ausente
+            subCount[emp] = subCount[emp] || {};
+            subCount[emp][sust] = (subCount[emp][sust] || 0) + 1;
+
+            const heredado = rawLabel({ TurnoOriginal: raw.TurnoOriginal });
             if (!grid[sust]) { grid[sust] = {}; meta[sust] = {}; days.forEach(x=>{ grid[sust][x]=""; meta[sust][x]=null; }); }
             grid[sust][d] = heredado; meta[sust][d] = { isSub: true, for: emp };
           }
@@ -86,32 +126,56 @@
       }
     }
 
-    const weekAbsent = new Set();
+    // Clasificaciones por semana
+    const weekEmpty = new Set();      // todo "—"
+    const weekAbsent = new Set();     // ausencias (vac/baja/perm/form/descanso) toda la semana
+    const weekAbsenceType = {};       // "vacaciones"/"baja"/"permiso"/"formacion"/"descanso"
     (group.orden_empleados || []).forEach(emp => {
-      const off = days.every(d => {
-        const v = (grid[emp][d] || "").toLowerCase();
-        return !v || /descanso|vacac|baja|—/.test(v);
+      let hasSomething = false;
+      let onlyDashes = true;
+      let onlyAbsences = true;
+      let lastType = null;
+
+      days.forEach(d => {
+        const v = (grid[emp][d] || "").trim();
+        if (v) hasSomething = true;
+        const low = v.toLowerCase();
+        const isDash = v === "—" || v === "-" || v === "";
+        const isAbs = /vacac|baja|permiso|formaci|descanso/.test(low);
+        if (!isDash) onlyDashes = false;
+        if (!isAbs)  onlyAbsences = false;
+        if (isAbs) {
+          if (/vacac/.test(low)) lastType = "vacaciones";
+          else if (/baja/.test(low)) lastType = "baja";
+          else if (/permiso/.test(low)) lastType = "permiso";
+          else if (/formaci/.test(low)) lastType = "formacion";
+          else if (/descanso/.test(low)) lastType = "descanso";
+        }
       });
-      if (off) weekAbsent.add(emp);
+
+      if (onlyDashes) weekEmpty.add(emp);
+      else if (onlyAbsences) { weekAbsent.add(emp); weekAbsenceType[emp] = lastType || "ausencia"; }
     });
 
-    return { grid, meta, weekAbsent };
+    // Mapa sustituto predominante por ausente
+    const mainSub = {};
+    for (const emp of Object.keys(subCount)) {
+      const pairs = Object.entries(subCount[emp]).sort((a,b)=>b[1]-a[1]);
+      if (pairs.length) mainSub[emp] = pairs[0][0];
+    }
+
+    return { grid, meta, weekEmpty, weekAbsent, weekAbsenceType, mainSub };
   }
 
+  // --- Render ---
   function render() {
     const app = $("#app"); if (!app) return;
     app.innerHTML = "";
 
-    if (!SCHEDULE.length) {
-      app.innerHTML = `<p class="meta">Sin datos.</p>`;
-      return;
-    }
+    if (!SCHEDULE.length) { app.innerHTML = `<p class="meta">Sin datos.</p>`; return; }
 
     const days = weekDays(fromISO(state.weekISO));
-    const p = document.createElement("p");
-    p.className = "meta";
-    p.textContent = `Semana ${mini(days[0])} → ${mini(days[6])}`;
-    app.appendChild(p);
+    app.insertAdjacentHTML("beforeend", `<p class="meta">Semana ${mini(days[0])} → ${mini(days[6])}</p>`);
 
     const hotels = [...new Set(SCHEDULE.map(g => g.hotel))];
 
@@ -119,11 +183,37 @@
       const g = byWeekHotel.get(state.weekISO + "||" + hotel);
       if (!g) return;
 
-      const { grid, meta, weekAbsent } = buildGrid(g, days);
+      const { grid, meta, weekEmpty, weekAbsent, weekAbsenceType, mainSub } = buildGrid(g, days);
 
-      let order = (g.orden_empleados || []).filter(e => !weekAbsent.has(e))
-                   .concat((g.orden_empleados || []).filter(e => weekAbsent.has(e)));
+      // Orden base del fichero
+      const base = [...(g.orden_empleados || [])];
 
+      // 1) Ocultar totalmente los 100% vacíos
+      const visibles = base.filter(e => !weekEmpty.has(e));
+
+      // 2) Reordenación según regla: ausentes toda la semana al final
+      const present = visibles.filter(e => !weekAbsent.has(e));
+      const absent  = visibles.filter(e =>  weekAbsent.has(e));
+
+      // 3) Sustituto ocupa posición del ausente (principal en la semana)
+      //    Insertamos sustituto si no está ya; el ausente lo mandamos al final.
+      const ordered = [];
+      const seen = new Set();
+
+      present.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
+
+      base.forEach(e => {
+        if (!weekAbsent.has(e)) return;
+        const sub = mainSub[e];
+        if (sub && !seen.has(sub)) { ordered.push(sub); seen.add(sub); }
+      });
+
+      // Empujamos ausentes al final (vacaciones/baja/…)
+      absent.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
+
+      if (!ordered.length) return; // nada que mostrar
+
+      // Tarjeta
       const card = document.createElement("section");
       card.className = "week";
       const logo = /cumbria/i.test(hotel) ? "cumbria%20logo.jpg"
@@ -151,27 +241,19 @@
 
       const tbody = card.querySelector("tbody");
 
-      order.forEach(emp => {
+      ordered.forEach(emp => {
         const tr = document.createElement("tr");
         let tds = `<td style="text-align:left">${fix(emp)}</td>`;
         days.forEach(d => {
-          let lab = label(grid[emp]?.[d]);
+          let lab = withCanonicalEmoji(rawLabel(grid[emp]?.[d]));
           const low = (lab || "").toLowerCase();
           let cls = "";
-          if (/vacaciones|baja|descanso/.test(low)) cls = "turno-descanso"; // rojo
-          else if (/noche/.test(low)) cls = "turno-noche";                 // gris/azul
-          else if (/tarde/.test(low)) cls = "turno-tarde";                 // ámbar
-          else if (/mañana|manana/.test(low)) cls = "turno-mañana";        // verde
+          if (/vacaciones|baja|permiso|formaci|descanso/.test(low)) cls = "turno-descanso";
+          else if (/noche/.test(low)) cls = "turno-noche";
+          else if (/tarde/.test(low)) cls = "turno-tarde";
+          else if (/mañana|manana/.test(low)) cls = "turno-mañana";
 
-          // --- ICONOS ---
-          if (/^noche$/i.test(lab) && !/🌙/.test(lab)) lab += " 🌙";
-          if (/vacaciones/.test(low) && !/🏖️/.test(lab)) lab += " 🏖️";
-          if (/baja/.test(low) && !/🤒/.test(lab)) lab += " 🤒";
-          if (/(^| )cambio( de turno)?($| )/i.test(lab) && !/🔄/.test(lab)) lab += " 🔄";
-
-          const m = meta[emp]?.[d];
-          const swap = m && m.isSub ? " ↔" : "";
-
+          const swap = meta[emp]?.[d]?.isSub ? " ↔" : "";
           tds += `<td>${ lab ? `<span class="turno-pill ${cls}">${lab}${swap}</span>` : "—" }</td>`;
         });
         tr.innerHTML = tds;
@@ -182,7 +264,7 @@
     });
   }
 
-  // --- navegación por semanas existentes ---
+  // --- Navegación ---
   function move(step) {
     if (!WEEKS.length) return;
     const i = Math.max(0, WEEKS.indexOf(state.weekISO));
