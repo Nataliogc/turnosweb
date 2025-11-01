@@ -1,51 +1,33 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Cuadrantes de turnos · APP</title>
-<link rel="icon" href="icons/icon-192.png">
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=20251031_0246">
-<link rel="stylesheet" href="styles.mobile.css?v=20251031_0246">
-<style>
-  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#f6f7fb;color:#111827;-webkit-tap-highlight-color:transparent}
-  .app-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;position:sticky;top:0;z-index:10}
-  .brand{display:flex;align-items:center;gap:8px}
-  .brand .title{font-weight:700;font-size:15px;margin-bottom:2px}
-  .brand .subtitle{font-size:12px;color:#6b7280;line-height:1.1}
-  .topbar{display:flex;align-items:center;gap:6px}
-  .btn{background:#111827;color:#fff;border-radius:999px;padding:8px 14px;border:0;font-size:13px}
-  .container{padding:10px 14px}
-  .meta{color:#6b7280;font-size:13px}
-  dialog{max-width:880px;width:95%;border:1px solid #d1d5db;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
-  label{font-size:13px;color:#374151;margin-bottom:2px;display:block}
-  select,input[type=date]{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cuadrantes de turnos · Móvil</title>
 
-  /* Layout “una semana por tarjeta” */
-  .weeks-grid{display:grid;grid-template-columns:1fr;gap:16px}
-  .week{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:auto;box-shadow:0 2px 4px rgba(0,0,0,.06)}
-  .week-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e5e7eb;background:#fafafa}
-  .week table{width:100%;border-collapse:collapse;font-size:14px}
-  .week th,.week td{border:1px solid #e5e7eb;padding:8px;text-align:center}
-  .week th{background:#f9fafb}
-  .turno-pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
-  .turno-descanso,.pill-x{background:#fee2e2;border:1px solid #fecaca}
-  .turno-noche,.pill-n{background:#eef2ff;border:1px solid #c7d2fe}
-  .turno-noche .turno-pill::after{content:" 🌙"}
-</style>
+  <!-- Estilos existentes (respetados) -->
+  <link rel="stylesheet" href="styles.css?v=APP">
+  <link rel="stylesheet" href="styles.mobile.css?v=APP">
+  <link rel="icon" href="Logo.png">
+  <meta name="theme-color" content="#0f172a">
+<!-- Datepicker -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
 </head>
-
 <body>
-  <header class="app-header">
+
+  <header class="topbar">
     <div class="brand">
-      <img src="icons/icon-192.png" alt="logo" style="width:30px;height:30px;border-radius:8px">
+      <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:cover">
       <div>
         <div class="title">Cuadrantes de turnos</div>
         <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
       </div>
     </div>
-    <div class="topbar">
+
+    <div class="toolbar">
       <button id="btnPrev" class="btn">← Semana</button>
       <button id="btnToday" class="btn">Hoy</button>
       <button id="btnNext" class="btn">Semana →</button>
@@ -53,56 +35,95 @@
     </div>
   </header>
 
-  <main id="app" class="container">
-    <p class="meta">Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.</p>
+  <main id="app" class="app-content">
+    <p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
   </main>
 
-  <dialog id="dlg">
-    <form method="dialog" style="padding:14px 16px">
-      <h3 style="margin:0 0 10px 0;font-size:16px">Filtros</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <label>Hotel</label>
-          <select id="hotelSelect"><option value="">— Hotel —</option></select>
-        </div>
-        <div>
-          <label>Empleado</label>
-          <select id="employeeFilter"><option value="">— Empleado —</option></select>
-        </div>
-        <div>
-          <label>Desde</label>
-          <input id="dateFrom" type="date">
-        </div>
-        <div>
-          <label>Hasta</label>
-          <input id="dateTo" type="date">
-        </div>
+  <!-- Modal de filtros -->
+  <dialog id="dlgFilters" class="filters">
+    <form method="dialog" class="filters-body">
+      <h2>Filtros</h2>
+
+      <div class="grid">
+        <label>Hotel
+          <select id="fHotel">
+            <option value="">— Hotel —</option>
+          </select>
+        </label>
+
+        <label>Empleado
+          <select id="fEmpleado">
+            <option value="">— Empleado —</option>
+          </select>
+        </label>
+
+       <label>Desde
+  <input id="fDesde" type="text" placeholder="dd/mm/aaaa">
+</label>
+<label>Hasta
+  <input id="fHasta" type="text" placeholder="dd/mm/aaaa">
+</label>
+
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-        <button id="btnApply" class="btn">Aplicar</button>
-        <button class="btn" value="cancel">Cerrar</button>
+
+      <div class="actions">
+        <button id="fApply" class="btn btn-primary">Aplicar</button>
+        <button id="fClose" class="btn">Cerrar</button>
       </div>
     </form>
   </dialog>
 
-  <!-- Scripts principales -->
-  <script src="data.js?v=APP" defer></script>
-  <script src="mobile.patch.js?v=20251031_0246" defer></script>
+  <!-- Datos (el BAT actualizará ?v=...) -->
+  <script src="data.js?v=APP"></script>
 
-  <!-- Registrar SW solo en http/https -->
+  <!-- (dejas tu lógica base; no se toca) -->
+  <script src="plantilla_adapter_semana.js?v=APP"></script>
+
+  <!-- Lógica móvil + parches y filtros -->
+  <script src="mobile.patch.js?v=APP"></script>
+
+  <!-- SW opcional -->
   <script>
-    if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
+    if ('serviceWorker' in navigator) {
+      try { navigator.serviceWorker.register('service-worker.js'); } catch(e){}
     }
-  </script>
-
-  <!-- Modal de filtros -->
-  <script>
-    document.getElementById("btnFilters")?.addEventListener("click", () => {
-      document.querySelector("dialog")?.showModal();
+    // abrir/cerrar filtros
+    document.getElementById('btnFilters')?.addEventListener('click', () => {
+      document.getElementById('dlgFilters')?.showModal();
     });
-  </script>
+    document.getElementById('fClose')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('dlgFilters')?.close();
+    });
+  <script>
+  // Flatpickr en móvil: lunes 1º, nº semana, formato dd/mm/aaaa
+  document.addEventListener("DOMContentLoaded", () => {
+    if (window.flatpickr) {
+      const baseOpts = {
+        locale: flatpickr.l10ns.es,
+        dateFormat: "d/m/Y",
+        weekNumbers: true,
+        firstDayOfWeek: 1,
+        allowInput: true,
+        // 2 meses en pantallas anchas
+        showMonths: (window.matchMedia("(min-width: 1024px)").matches ? 2 : 1),
+        disableMobile: false // deja el calendario propio también en iOS/Android
+      };
+      const fpDesde = flatpickr("#fDesde", {
+        ...baseOpts,
+        onChange: (sel) => {
+          if (fpHasta && sel[0]) fpHasta.set("minDate", sel[0]);
+        }
+      });
+      const fpHasta = flatpickr("#fHasta", {
+        ...baseOpts,
+        onChange: (sel) => {
+          if (fpDesde && sel[0]) fpDesde.set("maxDate", sel[0]);
+        }
+      });
+    }
+  });
+</script>
+
 </body>
 </html>
-
-

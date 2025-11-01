@@ -1,17 +1,10 @@
-/* Turnos Web · mobile.patch.js (solo vista móvil)
-   - Autorrender semana más cercana
-   - Navegación (← / Hoy / →) por semanas existentes
-   - Turnos string/objeto, ausencias y sustituciones ↔
-   - Iconos: 🌙 Noche, 🏖️ Vacaciones, 🤒 Baja, 🗓️ Permiso, 🎓 Formación, 🔄 Cambio/C·T/C/T/→/↔
-   - OCULTAR solo filas 100% vacías (“—” toda la semana)
-   - Regla: ausentes toda la semana se muestran al final; si hay Sustituto, éste ocupa su posición
-*/
+/* Turnos Web · mobile.patch.js (vista móvil) */
 (function () {
   "use strict";
   const $ = (s, ctx = document) => ctx.querySelector(s);
   const DAY = 86400000;
 
-  // --- Mojibake → UTF-8 limpio (incluye basura de emojis, controles y signos sueltos) ---
+  // ---------- Limpieza de mojibake / controles ----------
   function fix(s) {
     if (typeof s !== "string") return s;
     const map = [
@@ -22,10 +15,10 @@
     let out = s;
     for (const [re, rep] of map) out = out.replace(re, rep);
 
-    // 1) Controles invisibles (incluye \u009F "")
+    // Controles invisibles
     out = out.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
 
-    // 2) Secuencias típicas de mojibake de emoji (no borra emojis válidos)
+    // Secuencias típicas de mojibake de emoji
     out = out
       .replace(/ð[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
       .replace(/Â[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
@@ -33,22 +26,22 @@
       .replace(/\uFFFD/g, "")
       .replace(/[Ÿ ]/g, "");
 
-    // 3) Símbolos sueltos de mojibake vistos (p. ej. "¤’")
+    // Restos vistos (p.ej. "¤’")
     out = out.replace(/[¤’‚‹›˘]/g, "");
 
     return out.trim().replace(/\s{2,}/g, " ");
   }
 
-  // --- Fechas ---
+  // ---------- Fechas ----------
   const iso = d => { const x=new Date(d); x.setHours(0,0,0,0);
     return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
-  const fromISO = s => { const [y,m,d]=s.split("-").map(n=>+n); return new Date(y,m-1,d); };
+  const fromISO = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
   const monday = d => { const x=new Date(d); const w=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-w); return x; };
   const weekDays = mon => Array.from({length:7},(_,i)=>iso(new Date(mon.getTime()+i*DAY)));
   const mini = s => { const dt = fromISO(s);
     return dt.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"2-digit"}).toLowerCase(); };
 
-  // --- Datos ---
+  // ---------- Datos ----------
   const DATA = window.FULL_DATA || window.DATA || {};
   const SCHEDULE = Array.isArray(DATA.schedule) ? DATA.schedule : [];
   const WEEKS = [...new Set(SCHEDULE.map(g => g.semana_lunes))].sort();
@@ -63,7 +56,7 @@
                 .sort((a,b)=>a[1]-b[1])[0][0];
   }
 
-  // --- Interpretación + emojis canónicos ---
+  // ---------- Interpretación + emojis ----------
   function rawLabel(turno) {
     if (turno == null) return "";
     if (typeof turno === "string") return fix(turno);
@@ -73,7 +66,6 @@
   function withCanonicalEmoji(label) {
     let out = (label || "").trim();
     const low = out.toLowerCase();
-
     const changeMarkRE = /(↔|→|←|”„|->|=>)/;
 
     if (/vacaciones/.test(low) && !/🏖️/.test(out)) out += " 🏖️";
@@ -85,16 +77,15 @@
     }
     if (/^noche$/i.test(out) && !/🌙/.test(out)) out += " 🌙";
 
-    // Limpiar flechas/comillas raras que no queremos mostrar
+    // limpiar marcas raras
     out = out.replace(/[↔→←”“„]/g, "").trim().replace(/\s{2,}/g, " ");
-
     return out;
   }
 
-  // --- Construir grid + mapa de sustitutos predominantes ---
+  // ---------- Construcción de grid + sustitutos ----------
   function buildGrid(group, days) {
     const grid = {}, meta = {};
-    const subCount = {}; // { empleadoAusente: {Sub: veces} }
+    const subCount = {}; // {EmpleadoAusente: {Sustituto: veces}}
 
     const all = new Set(group.orden_empleados || []);
     (group.turnos || []).forEach(t => {
@@ -112,7 +103,6 @@
           grid[emp][d] = labAbs; meta[emp][d] = { isAbsence: true, sub: raw.Sustituto || null };
           const sust = raw.Sustituto;
           if (sust) {
-            // contar sustituto predominante del ausente
             subCount[emp] = subCount[emp] || {};
             subCount[emp][sust] = (subCount[emp][sust] || 0) + 1;
 
@@ -126,48 +116,33 @@
       }
     }
 
-    // Clasificaciones por semana
-    const weekEmpty = new Set();      // todo "—"
-    const weekAbsent = new Set();     // ausencias (vac/baja/perm/form/descanso) toda la semana
-    const weekAbsenceType = {};       // "vacaciones"/"baja"/"permiso"/"formacion"/"descanso"
+    const weekEmpty = new Set();
+    const weekAbsent = new Set();
     (group.orden_empleados || []).forEach(emp => {
-      let hasSomething = false;
       let onlyDashes = true;
       let onlyAbsences = true;
-      let lastType = null;
-
       days.forEach(d => {
         const v = (grid[emp][d] || "").trim();
-        if (v) hasSomething = true;
         const low = v.toLowerCase();
         const isDash = v === "—" || v === "-" || v === "";
         const isAbs = /vacac|baja|permiso|formaci|descanso/.test(low);
         if (!isDash) onlyDashes = false;
         if (!isAbs)  onlyAbsences = false;
-        if (isAbs) {
-          if (/vacac/.test(low)) lastType = "vacaciones";
-          else if (/baja/.test(low)) lastType = "baja";
-          else if (/permiso/.test(low)) lastType = "permiso";
-          else if (/formaci/.test(low)) lastType = "formacion";
-          else if (/descanso/.test(low)) lastType = "descanso";
-        }
       });
-
       if (onlyDashes) weekEmpty.add(emp);
-      else if (onlyAbsences) { weekAbsent.add(emp); weekAbsenceType[emp] = lastType || "ausencia"; }
+      else if (onlyAbsences) weekAbsent.add(emp);
     });
 
-    // Mapa sustituto predominante por ausente
     const mainSub = {};
     for (const emp of Object.keys(subCount)) {
       const pairs = Object.entries(subCount[emp]).sort((a,b)=>b[1]-a[1]);
       if (pairs.length) mainSub[emp] = pairs[0][0];
     }
 
-    return { grid, meta, weekEmpty, weekAbsent, weekAbsenceType, mainSub };
+    return { grid, meta, weekEmpty, weekAbsent, mainSub };
   }
 
-  // --- Render ---
+  // ---------- Render ----------
   function render() {
     const app = $("#app"); if (!app) return;
     app.innerHTML = "";
@@ -177,43 +152,36 @@
     const days = weekDays(fromISO(state.weekISO));
     app.insertAdjacentHTML("beforeend", `<p class="meta">Semana ${mini(days[0])} → ${mini(days[6])}</p>`);
 
-    const hotels = [...new Set(SCHEDULE.map(g => g.hotel))];
+    // Filtros activos
+    const f = window.__TW_STATE__?.filters || {};
+    let hotelsAll = [...new Set(SCHEDULE.map(g => g.hotel))];
+    if (f.hotel) hotelsAll = hotelsAll.filter(h => h === f.hotel);
 
-    hotels.forEach(hotel => {
+    hotelsAll.forEach(hotel => {
       const g = byWeekHotel.get(state.weekISO + "||" + hotel);
       if (!g) return;
 
-      const { grid, meta, weekEmpty, weekAbsent, weekAbsenceType, mainSub } = buildGrid(g, days);
+      const { grid, meta, weekEmpty, weekAbsent, mainSub } = buildGrid(g, days);
 
-      // Orden base del fichero
       const base = [...(g.orden_empleados || [])];
-
-      // 1) Ocultar totalmente los 100% vacíos
       const visibles = base.filter(e => !weekEmpty.has(e));
-
-      // 2) Reordenación según regla: ausentes toda la semana al final
       const present = visibles.filter(e => !weekAbsent.has(e));
       const absent  = visibles.filter(e =>  weekAbsent.has(e));
 
-      // 3) Sustituto ocupa posición del ausente (principal en la semana)
-      //    Insertamos sustituto si no está ya; el ausente lo mandamos al final.
       const ordered = [];
       const seen = new Set();
-
       present.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
-
       base.forEach(e => {
         if (!weekAbsent.has(e)) return;
         const sub = mainSub[e];
         if (sub && !seen.has(sub)) { ordered.push(sub); seen.add(sub); }
       });
-
-      // Empujamos ausentes al final (vacaciones/baja/…)
       absent.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
 
-      if (!ordered.length) return; // nada que mostrar
+      let order = ordered;
+      if (f.empleado) order = order.filter(x => x === f.empleado);
+      if (!order.length) return;
 
-      // Tarjeta
       const card = document.createElement("section");
       card.className = "week";
       const logo = /cumbria/i.test(hotel) ? "cumbria%20logo.jpg"
@@ -238,10 +206,9 @@
             <tbody></tbody>
           </table>
         </div>`;
-
       const tbody = card.querySelector("tbody");
 
-      ordered.forEach(emp => {
+      order.forEach(emp => {
         const tr = document.createElement("tr");
         let tds = `<td style="text-align:left">${fix(emp)}</td>`;
         days.forEach(d => {
@@ -264,7 +231,18 @@
     });
   }
 
-  // --- Navegación ---
+  // Hooks públicos para filtros
+  window.__TW_RERENDER = () => render();
+  window.__TW_MOVE_TO_WEEK = (isoWeek) => { state.weekISO = isoWeek; render(); };
+  window.__TW_MOVE_TO_NEAREST = (isoWeek) => {
+    const toDate = (s)=>{const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d);};
+    const target = toDate(isoWeek);
+    if (!WEEKS.length) return;
+    const nearest = WEEKS.slice().sort((a,b)=> Math.abs(toDate(a)-target)-Math.abs(toDate(b)-target))[0];
+    state.weekISO = nearest; render();
+  };
+
+  // Navegación
   function move(step) {
     if (!WEEKS.length) return;
     const i = Math.max(0, WEEKS.indexOf(state.weekISO));
@@ -277,4 +255,73 @@
   $("#btnToday")?.addEventListener("click", () => { state.weekISO = nearestWeek(new Date()); render(); });
 
   document.addEventListener("DOMContentLoaded", render);
+})();
+
+// ========= Bloque de Filtros =========
+(function () {
+  const $ = (s, c=document) => c.querySelector(s);
+
+  const fstate = { hotel: null, empleado: null, desde: null, hasta: null };
+  if (!window.__TW_STATE__) window.__TW_STATE__ = {};
+  window.__TW_STATE__.filters = fstate;
+
+  function parseEs(str) {
+    if (!str || !/^\d{2}\/\d{2}\/\d{4}$/.test(str.trim())) return null;
+    const [dd,mm,yy] = str.split("/").map(Number);
+    const d = new Date(yy, mm-1, dd); d.setHours(0,0,0,0);
+    return (d.getFullYear()===yy && d.getMonth()===(mm-1) && d.getDate()===dd) ? d : null;
+  }
+
+  function populate() {
+    const selHotel = $("#fHotel");
+    const selEmp   = $("#fEmpleado");
+    if (!selHotel || !selEmp) return; // defensivo si el modal no existe aún
+
+    const sched = (window.FULL_DATA?.schedule || window.DATA?.schedule || []);
+    const hotels = [...new Set(sched.map(g => g.hotel))].sort((a,b)=>a.localeCompare(b,"es"));
+    selHotel.innerHTML = `<option value="">— Hotel —</option>` + hotels.map(h=>`<option>${h}</option>`).join("");
+
+    function fillEmployees(hFilter) {
+      const emps = new Set();
+      sched.forEach(g => {
+        if (hFilter && g.hotel !== hFilter) return;
+        (g.orden_empleados || []).forEach(e => emps.add(e));
+        (g.turnos || []).forEach(t => { if (t?.empleado) emps.add(t.empleado); const su=t?.turno?.Sustituto; if (su) emps.add(su); });
+      });
+      const list = [...emps].sort((a,b)=>a.localeCompare(b,"es"));
+      selEmp.innerHTML = `<option value="">— Empleado —</option>` + list.map(e=>`<option>${e}</option>`).join("");
+    }
+    fillEmployees(null);
+
+    selHotel.onchange = () => { fstate.hotel = selHotel.value || null; fillEmployees(fstate.hotel); selEmp.value=""; fstate.empleado=null; };
+    selEmp.onchange   = () => { fstate.empleado = selEmp.value || null; };
+  }
+
+  function wire() {
+    const btnApply = $("#fApply"), btnClose = $("#fClose");
+    const iDesde = $("#fDesde"), iHasta = $("#fHasta");
+    if (!btnApply) return;
+
+    btnApply.onclick = (e) => {
+      e.preventDefault();
+      const d = parseEs(iDesde?.value || "");
+      const h = parseEs(iHasta?.value || "");
+      fstate.desde = d; fstate.hasta = h;
+
+      if (d) {
+        const m = new Date(d); m.setDate(m.getDate() - ((m.getDay()+6)%7)); m.setHours(0,0,0,0);
+        const iso = (x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+        const target = iso(m);
+        if (window.__TW_MOVE_TO_WEEK) window.__TW_MOVE_TO_WEEK(target);
+        else if (window.__TW_MOVE_TO_NEAREST) window.__TW_MOVE_TO_NEAREST(target);
+      }
+
+      window.__TW_RERENDER && window.__TW_RERENDER();
+      document.getElementById('dlgFilters')?.close();
+    };
+
+    if (btnClose) btnClose.onclick = (e) => { e.preventDefault(); document.getElementById('dlgFilters')?.close(); };
+  }
+
+  document.addEventListener("DOMContentLoaded", () => { populate(); wire(); });
 })();
