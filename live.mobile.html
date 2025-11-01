@@ -2,160 +2,128 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Cuadrantes de turnos · Móvil</title>
 
-  <link rel="icon" href="Logo.png">
-  <meta name="theme-color" content="#0f172a">
-
-  <!-- Estilos del proyecto -->
   <link rel="stylesheet" href="styles.css?v=APP">
   <link rel="stylesheet" href="styles.mobile.css?v=APP">
 
-  <!-- Ajustes SOLO móviles para compactar el calendario dentro del modal de Filtros -->
   <style>
-    /* El calendario debe quedar por encima del diálogo */
-    .flatpickr-calendar { z-index: 10002 !important; }
-
-    /* Modal compacto */
-    dialog.filters{border:none;border-radius:.75rem;max-width:520px;width:94%;padding:0;}
-    dialog.filters::backdrop{background:rgba(0,0,0,.25)}
-    .filters-body{padding:1rem}
-    .field{display:flex;flex-direction:column;gap:.35rem;margin:.6rem 0}
-    .actions{display:flex;gap:.5rem;justify-content:flex-start;margin-top:.75rem}
-    .btn{background:#1f2937;color:#fff;border:none;border-radius:.5rem;padding:.45rem .8rem;cursor:pointer}
-    .btn-primary{background:#0ea5e9}
-
     /* Barra superior */
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:#111827;color:#fff}
-    .topbar .brand{display:flex;align-items:center;gap:.5rem}
-    .topbar .title{font-weight:700}
-    .topbar .subtitle{opacity:.7;font-size:.85rem}
-    .toolbar .btn{margin-left:.25rem}
+    .appbar{display:flex;align-items:center;gap:.75rem;background:#161d27;color:#fff;padding:.8rem 1rem}
+    .appbar .title{font:600 1.05rem/1.1 Montserrat,system-ui,Segoe UI,Arial}
+    .appbar .subtitle{opacity:.8;font:500 .82rem/1.2 Montserrat,system-ui,Arial}
 
-    /* Área app */
-    .app-content{padding:1rem;background:#f7f8fb;min-height:60vh}
-    .meta{color:#6b7280}
+    .toolbar{margin-left:auto;display:flex;gap:.5rem}
+    .btn{background:#243142;color:#fff;border:0;border-radius:.8rem;padding:.55rem .8rem;font:600 .9rem/1 Montserrat,system-ui;cursor:pointer}
+    .btn:active{scale:.98}
 
-    /* Tarjeta semana (estructura general de la vista) */
-    .week{background:#fff;border-radius:.75rem;margin:1rem;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .week-head{display:flex;gap:.75rem;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #eef2f7}
-    .table-container{overflow:auto}
-    table{width:100%;border-collapse:separate;border-spacing:0}
-    th,td{border-bottom:1px solid #eef2f7;text-align:center;padding:.65rem}
-    th:first-child,td:first-child{text-align:left}
-    .turno-pill{display:inline-block;padding:.35rem .65rem;border-radius:999px;font-weight:600}
-    .turno-mañana{background:#e7f9ec;color:#166534}
-    .turno-tarde{background:#fff3c4;color:#92400e}
-    .turno-noche{background:#e6ebff;color:#1e3a8a}
-    .turno-descanso{background:#ffe2e2;color:#991b1b}
+    .container{padding:10px 12px 80px;background:#f4f6fa;min-height:100vh}
 
-    /* ===== Compactación específica para móviles ===== */
-    @media (max-width: 480px){
-      .filters-body{padding:.75rem}
-      .filters-body .field input,
-      .filters-body .field select{height:36px;font-size:14px}
-
-      /* Escala general del calendario (flatpickr) */
-      .flatpickr-calendar{
-        font-size:12px;           /* tipografía menor */
-        transform:scale(.88);     /* ~12% más pequeño */
-        transform-origin:top left;
-      }
-
-      /* Elementos del calendario más densos */
-      .flatpickr-months .flatpickr-month{height:32px}
-      .flatpickr-current-month .flatpickr-monthDropdown-months,
-      .flatpickr-current-month input.cur-year{
-        font-size:12px;padding:0 4px;height:24px
-      }
-      .flatpickr-weekdays{padding:0 .25rem}
-      .flatpickr-innerContainer{padding:0 .25rem .25rem}
-
-      /* Celdas del mes */
-      .flatpickr-day{width:2rem;height:2rem;line-height:2rem;margin:0}
-
-      /* Evita que se salga a la izquierda en pantallas pequeñas */
-      .flatpickr-calendar.open{
-        left:auto !important;
-        right:.5rem !important;
-      }
+    /* ---------- Modal filtros (estilo compacto móvil) ---------- */
+    .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;z-index:9999}
+    .modal{width:min(980px,calc(100vw - 20px));background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;border:2px solid #222}
+    .modal h3{margin:0 0 .6rem 0;font:700 1.25rem/1.1 Montserrat,system-ui}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:720px){.grid{grid-template-columns:1fr}}
+    .field{display:flex;flex-direction:column;gap:6px;background:#242c36;border-radius:12px;padding:12px}
+    .field label{color:#fff;font:600 .9rem/1.1 Montserrat,system-ui}
+    .field small{color:#b6bfca}
+    .control{position:relative}
+    .control select,.control input[type=date]{
+      width:100%;appearance:none;background:#fff;border:1px solid #cfd6e4;border-radius:9px;
+      padding:12px 40px 12px 12px;font:600 .98rem/1.2 Montserrat,system-ui;color:#111
     }
+    .ico{position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:.55}
+    .row-actions{display:flex;gap:8px;margin-top:12px}
+    .btn-apply{background:#0d6efd}
+    .btn-close{background:#0f1622}
+    /* Calendario nativo type=date: tamaño compacto */
+    input[type="date"]::-webkit-calendar-picker-indicator{opacity:0}
+    .calendar-ico{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.6}
+    /* Zs por si hubiera popups de datepicker del SO */
+    .modal{z-index:10000}
   </style>
 </head>
 <body>
-
-<header class="topbar">
-  <div class="brand">
-    <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:cover">
+  <header class="appbar">
+    <img src="Logo.png" alt="" style="width:28px;height:28px;border-radius:6px;background:#fff;padding:2px">
     <div>
       <div class="title">Cuadrantes de turnos</div>
       <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
     </div>
+    <div class="toolbar">
+      <button class="btn" id="prevBtn">← Semana</button>
+      <button class="btn" id="todayBtn">Hoy</button>
+      <button class="btn" id="nextBtn">Semana →</button>
+      <button class="btn" id="filtersBtn">Filtros</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="status" style="font:600 .95rem Montserrat,system-ui;color:#4b5563;opacity:.9">
+      Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.
+    </div>
+    <div id="root"></div>
+  </main>
+
+  <!-- MODAL FILTROS -->
+  <div class="modal-mask" id="filtersMask" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="filtrosTitle">
+      <h3 id="filtrosTitle">Filtros</h3>
+      <div class="grid">
+        <div class="field">
+          <label for="fHotel">Hotel</label>
+          <div class="control">
+            <select id="fHotel">
+              <option value="">— Hotel —</option>
+            </select>
+            <span class="ico">▾</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fEmpleado">Empleado <small>(opcional)</small></label>
+          <div class="control">
+            <select id="fEmpleado">
+              <option value="">— Empleado —</option>
+            </select>
+            <span class="ico">▾</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fDesde">Desde</label>
+          <div class="control">
+            <input id="fDesde" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
+            <span class="calendar-ico">📅</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="fHasta">Hasta <small>(opcional)</small></label>
+          <div class="control">
+            <input id="fHasta" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
+            <span class="calendar-ico">📅</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn btn-apply" id="applyBtn">Aplicar</button>
+        <button class="btn btn-close" id="closeBtn">Cerrar</button>
+      </div>
+    </div>
   </div>
-  <div class="toolbar">
-    <button id="btnPrev"  class="btn">← Semana</button>
-    <button id="btnToday" class="btn">Hoy</button>
-    <button id="btnNext"  class="btn">Semana →</button>
-    <button id="btnFilters" class="btn">Filtros</button>
-  </div>
-</header>
 
-<main id="app" class="app-content">
-  <p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
-</main>
+  <!-- 1) Datos (siempre sin defer para garantizar disponibilidad) -->
+  <script src="data.js?v=APP"></script>
 
-<!-- Modal Filtros (mismo marcado; solo añadimos compactación por CSS) -->
-<dialog id="dlgFilters" class="filters">
-  <form method="dialog" class="filters-body" id="fForm">
-    <h2>Filtros</h2>
+  <!-- 2) Plantilla + parche móvil (con defer) -->
+  <script defer src="plantilla_adapter_semana.js?v=APP"></script>
+  <script defer src="mobile.patch.js?v=APP"></script>
 
-    <div class="field">
-      <label for="fHotel"><strong>Hotel</strong></label>
-      <select id="fHotel">
-        <option value="">— Hotel —</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label for="fEmpleado"><strong>Empleado</strong> (opcional)</label>
-      <select id="fEmpleado">
-        <option value="">— Empleado —</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label for="fDesde"><strong>Desde</strong></label>
-      <!-- tus inputs siguen igual; flatpickr se engancha desde la lógica existente -->
-      <input id="fDesde" type="text" placeholder="dd/mm/aaaa" autocomplete="off">
-    </div>
-
-    <div class="field">
-      <label for="fHasta"><strong>Hasta</strong> (opcional)</label>
-      <input id="fHasta" type="text" placeholder="dd/mm/aaaa" autocomplete="off">
-    </div>
-
-    <div class="actions">
-      <button id="fApply" type="button" class="btn btn-primary">Aplicar</button>
-      <button id="fClose" type="button" class="btn">Cerrar</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- Datos + lógica (mantenemos el orden que te funcionaba) -->
-<script src="data.js?v=20251101_2352"></script>
-<script src="plantilla_adapter_semana.js?v=20251101_2352"></script>
-<script src="mobile.patch.js?v=20251101_2352"></script>
-
-<!-- SW opcional -->
-<script>
-  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('service-worker.js'); } catch(e){} }
-  document.getElementById('btnFilters')?.addEventListener('click', () => {
-    document.getElementById('dlgFilters')?.showModal();
-  });
-  document.getElementById('fClose')?.addEventListener('click', (e) => {
-    e.preventDefault(); document.getElementById('dlgFilters')?.close();
-  });
-</script>
+  <!-- 3) Registro opcional del SW -->
+  <script> if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js'); } </script>
 </body>
 </html>
