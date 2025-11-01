@@ -23,7 +23,7 @@
     let out = s;
     for (const [re, rep] of map) out = out.replace(re, rep);
 
-    // Controles invisibles (incluye U+009F '')
+    // Controles invisibles (incluye U+009F)
     out = out.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
 
     // Secuencias típicas de mojibake con emojis
@@ -32,10 +32,8 @@
       .replace(/Â[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
       .replace(/ï¸[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
       .replace(/\uFFFD/g, "")
-      .replace(/[Ÿ ]/g, "");
-
-    // Restos vistos (p.ej. "¤’")
-    out = out.replace(/[¤’‚‹›˘]/g, "");
+      .replace(/[Ÿ ]/g, "")
+      .replace(/[¤’‚‹›˘]/g, "");
 
     return out.trim().replace(/\s{2,}/g, " ");
   }
@@ -93,7 +91,7 @@
   // ---------- Construcción de grid + sustitutos ----------
   function buildGrid(group, days) {
     const grid = {}, meta = {};
-    const subCount = {}; // {EmpleadoAusente: {Sustituto: veces}}
+    const subCount = {};
 
     const all = new Set(group.orden_empleados || []);
     (group.turnos || []).forEach(t => {
@@ -180,9 +178,10 @@
       const seen = new Set();
       present.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
       base.forEach(e => {
-        if (!weekAbsent.has(e)) return;
-        const sub = mainSub[e];
-        if (sub && !seen.has(sub)) { ordered.push(sub); seen.add(sub); }
+        if (weekAbsent.has(e)) {
+          const sub = mainSub[e];
+          if (sub && !seen.has(sub)) { ordered.push(sub); seen.add(sub); }
+        }
       });
       absent.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
 
@@ -239,7 +238,7 @@
     });
   }
 
-  // Hooks públicos para filtros
+  // Hooks públicos
   window.__TW_RERENDER = () => render();
   window.__TW_MOVE_TO_WEEK = (isoWeek) => { state.weekISO = isoWeek; render(); };
   window.__TW_MOVE_TO_NEAREST = (isoWeek) => {
@@ -273,7 +272,7 @@
   if (!window.__TW_STATE__) window.__TW_STATE__ = {};
   window.__TW_STATE__.filters = fstate;
 
-  // Acepta “dd/mm/aaaa” y también “ddmmaa” (p.ej. 010125 → 01/01/2025)
+  // Acepta “dd/mm/aaaa” y también “ddmmaa”
   function parseEs(str) {
     if (!str) return null;
     const s = str.trim();
