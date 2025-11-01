@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "turnosweb-app-v20251102_0008";
+const CACHE_NAME = "turnosweb-app-v20251102_0034";
 const PRECACHE = [
   "styles.css",
   "styles.mobile.css",

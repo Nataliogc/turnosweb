@@ -1,129 +1,108 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Cuadrantes de turnos · Móvil</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Turnos · Móvil</title>
 
+  <!-- Tus estilos (no cambio nombres) -->
   <link rel="stylesheet" href="styles.css?v=APP">
   <link rel="stylesheet" href="styles.mobile.css?v=APP">
 
   <style>
-    /* Barra superior */
-    .appbar{display:flex;align-items:center;gap:.75rem;background:#161d27;color:#fff;padding:.8rem 1rem}
-    .appbar .title{font:600 1.05rem/1.1 Montserrat,system-ui,Segoe UI,Arial}
-    .appbar .subtitle{opacity:.8;font:500 .82rem/1.2 Montserrat,system-ui,Arial}
-
-    .toolbar{margin-left:auto;display:flex;gap:.5rem}
-    .btn{background:#243142;color:#fff;border:0;border-radius:.8rem;padding:.55rem .8rem;font:600 .9rem/1 Montserrat,system-ui;cursor:pointer}
-    .btn:active{scale:.98}
-
-    .container{padding:10px 12px 80px;background:#f4f6fa;min-height:100vh}
-
-    /* ---------- Modal filtros (estilo compacto móvil) ---------- */
-    .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;z-index:9999}
-    .modal{width:min(980px,calc(100vw - 20px));background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;border:2px solid #222}
-    .modal h3{margin:0 0 .6rem 0;font:700 1.25rem/1.1 Montserrat,system-ui}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:720px){.grid{grid-template-columns:1fr}}
-    .field{display:flex;flex-direction:column;gap:6px;background:#242c36;border-radius:12px;padding:12px}
-    .field label{color:#fff;font:600 .9rem/1.1 Montserrat,system-ui}
-    .field small{color:#b6bfca}
-    .control{position:relative}
-    .control select,.control input[type=date]{
-      width:100%;appearance:none;background:#fff;border:1px solid #cfd6e4;border-radius:9px;
-      padding:12px 40px 12px 12px;font:600 .98rem/1.2 Montserrat,system-ui;color:#111
+    /* Modal compacto para móvil (sin librerías) */
+    .modal-overlay{position:fixed;inset:0;background:#0008;backdrop-filter:saturate(120%) blur(2px);z-index:9998;display:none}
+    .modal{position:fixed;left:0;right:0;bottom:0;background:#1f242b;color:#e8edf3;border-radius:18px 18px 0 0;
+           box-shadow:0 -10px 24px rgba(0,0,0,.35);padding:14px;z-index:9999;display:none}
+    .modal.show,.modal-overlay.show{display:block}
+    .modal h2{font:600 18px/1.1 system-ui,Segoe UI,Roboto,Arial;margin:4px 2px 10px}
+    .field{margin:10px 2px}
+    .label{font:600 12px/1 system-ui,Segoe UI,Roboto;opacity:.9;margin:0 0 6px 2px}
+    .input,.select{
+      width:100%;height:40px;border-radius:10px;border:1px solid #3a424d;background:#0e1116;color:#e8edf3;
+      padding:0 12px;outline:none
     }
-    .ico{position:absolute;right:10px;top:50%;transform:translateY(-50%);opacity:.55}
-    .row-actions{display:flex;gap:8px;margin-top:12px}
-    .btn-apply{background:#0d6efd}
-    .btn-close{background:#0f1622}
-    /* Calendario nativo type=date: tamaño compacto */
-    input[type="date"]::-webkit-calendar-picker-indicator{opacity:0}
-    .calendar-ico{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.6}
-    /* Zs por si hubiera popups de datepicker del SO */
-    .modal{z-index:10000}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}
+    .btn{height:40px;border-radius:10px;border:0;padding:0 16px;font:600 14px/40px system-ui,Segoe UI,Roboto;cursor:pointer}
+    .btn.primary{background:#0ea5e9;color:#00121a}
+    .btn.ghost{background:#2a313b;color:#e8edf3}
+    /* Barra */
+    .appbar{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#141a21;color:#e8edf3}
+    .appbar .left{display:flex;align-items:center;gap:10px}
+    .appbar img{width:28px;height:28px;border-radius:6px}
+    .pills{display:flex;gap:8px}
+    .pill{background:#26303b;color:#e8edf3;border-radius:10px;height:36px;padding:0 12px;border:0;font:600 14px/36px system-ui;cursor:pointer}
+    .pill.solid{background:#0ea5e9;color:#00121a}
+    main{padding:10px}
+    .hint{color:#768395;margin:.5rem 0 0}
   </style>
 </head>
 <body>
   <header class="appbar">
-    <img src="Logo.png" alt="" style="width:28px;height:28px;border-radius:6px;background:#fff;padding:2px">
-    <div>
-      <div class="title">Cuadrantes de turnos</div>
-      <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+    <div class="left">
+      <img src="Logo.png" alt="">
+      <div>
+        <div style="font:700 16px/1 system-ui">Cuadrantes de turnos</div>
+        <div style="font:12px/1.2 system-ui;opacity:.75">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+      </div>
     </div>
-    <div class="toolbar">
-      <button class="btn" id="prevBtn">← Semana</button>
-      <button class="btn" id="todayBtn">Hoy</button>
-      <button class="btn" id="nextBtn">Semana →</button>
-      <button class="btn" id="filtersBtn">Filtros</button>
+    <div class="pills">
+      <button id="prevW"  class="pill">← Semana</button>
+      <button id="todayW" class="pill">Hoy</button>
+      <button id="nextW"  class="pill">Semana →</button>
+      <button id="openFilters" class="pill solid">Filtros</button>
     </div>
   </header>
 
-  <main class="container">
-    <div id="status" style="font:600 .95rem Montserrat,system-ui;color:#4b5563;opacity:.9">
-      Listo. Abre <b>Filtros</b>, elige Hotel/Rango y pulsa <b>Aplicar</b>.
-    </div>
-    <div id="root"></div>
+  <main id="root">
+    <p id="hint" class="hint">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
   </main>
 
-  <!-- MODAL FILTROS -->
-  <div class="modal-mask" id="filtersMask" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="filtrosTitle">
-      <h3 id="filtrosTitle">Filtros</h3>
-      <div class="grid">
-        <div class="field">
-          <label for="fHotel">Hotel</label>
-          <div class="control">
-            <select id="fHotel">
-              <option value="">— Hotel —</option>
-            </select>
-            <span class="ico">▾</span>
-          </div>
-        </div>
+  <!-- Modal de filtros -->
+  <div id="overlay" class="modal-overlay" aria-hidden="true"></div>
+  <section id="filters" class="modal" aria-modal="true" role="dialog" aria-labelledby="tFiltros">
+    <h2 id="tFiltros">Filtros</h2>
 
-        <div class="field">
-          <label for="fEmpleado">Empleado <small>(opcional)</small></label>
-          <div class="control">
-            <select id="fEmpleado">
-              <option value="">— Empleado —</option>
-            </select>
-            <span class="ico">▾</span>
-          </div>
-        </div>
+    <div class="field">
+      <div class="label">Hotel</div>
+      <select id="fHotel" class="select"></select>
+    </div>
 
-        <div class="field">
-          <label for="fDesde">Desde</label>
-          <div class="control">
-            <input id="fDesde" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
-            <span class="calendar-ico">📅</span>
-          </div>
-        </div>
+    <div class="field">
+      <div class="label">Empleado <span style="opacity:.6">(opcional)</span></div>
+      <select id="fEmp" class="select">
+        <option value="">— Empleado —</option>
+      </select>
+    </div>
 
-        <div class="field">
-          <label for="fHasta">Hasta <small>(opcional)</small></label>
-          <div class="control">
-            <input id="fHasta" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
-            <span class="calendar-ico">📅</span>
-          </div>
-        </div>
+    <div class="row">
+      <div class="field">
+        <div class="label">Desde</div>
+        <!-- input nativo -> calendario del SO (pequeño y rápido) -->
+        <input id="fFrom" class="input" type="date" inputmode="numeric">
       </div>
-
-      <div class="row-actions">
-        <button class="btn btn-apply" id="applyBtn">Aplicar</button>
-        <button class="btn btn-close" id="closeBtn">Cerrar</button>
+      <div class="field">
+        <div class="label">Hasta <span style="opacity:.6">(opcional)</span></div>
+        <input id="fTo" class="input" type="date" inputmode="numeric">
       </div>
     </div>
-  </div>
 
-  <!-- 1) Datos (siempre sin defer para garantizar disponibilidad) -->
+    <div class="modal-footer">
+      <button id="apply" class="btn primary">Aplicar</button>
+      <button id="close" class="btn ghost">Cerrar</button>
+    </div>
+  </section>
+
+  <!-- ORDEN CRÍTICO: primero datos, luego motor, por último el parche -->
   <script src="data.js?v=APP"></script>
+  <script src="plantilla_adapter_semana.js?v=APP"></script>
+  <script src="mobile.patch.js?v=APP"></script>
 
-  <!-- 2) Plantilla + parche móvil (con defer) -->
-  <script defer src="plantilla_adapter_semana.js?v=APP"></script>
-  <script defer src="mobile.patch.js?v=APP"></script>
-
-  <!-- 3) Registro opcional del SW -->
-  <script> if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js'); } </script>
+  <script>
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    }
+  </script>
 </body>
 </html>
