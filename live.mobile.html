@@ -12,24 +12,24 @@
   <link rel="stylesheet" href="styles.css?v=APP">
   <link rel="stylesheet" href="styles.mobile.css?v=APP">
 
-  <!-- Flatpickr (calendario) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
-
-  <!-- Ajustes visuales -->
   <style>
+    /* Barra superior */
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:#111827;color:#fff}
     .topbar .brand{display:flex;align-items:center;gap:.5rem}
     .topbar .title{font-weight:700}
     .topbar .subtitle{opacity:.7;font-size:.85rem}
     .toolbar .btn{margin-left:.25rem}
-    .app-content{padding:1rem;background:#f4f6fb;min-height:60vh}
-    .meta{color:#6b7280}
+
+    /* Botones */
     .btn{background:#1f2937;color:#fff;border:none;border-radius:.5rem;padding:.45rem .8rem;cursor:pointer}
     .btn:hover{opacity:.9}
     .btn-primary{background:#0ea5e9}
 
+    /* Contenido */
+    .app-content{padding:1rem;background:#f7f8fb;min-height:60vh}
+    .meta{color:#6b7280}
+
+    /* Tarjetas de semana */
     .week{background:#fff;border-radius:.75rem;margin:1rem;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,.04)}
     .week-head{display:flex;gap:.75rem;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #eef2f7}
     .table-container{overflow:auto}
@@ -42,127 +42,92 @@
     .turno-noche{background:#e6ebff;color:#1e3a8a}
     .turno-descanso{background:#ffe2e2;color:#991b1b}
 
-    /* Modal simple */
-    dialog.filters{border:none;border-radius:.75rem;max-width:520px;width:94%;padding:0;overflow:visible;z-index:9998}
+    /* Modal filtros minimalista */
+    dialog.filters{border:none;border-radius:.75rem;max-width:520px;width:94%;padding:0;overflow:visible;z-index:10000}
     dialog.filters::backdrop{background:rgba(0,0,0,.25)}
     .filters-body{padding:1rem}
     .filters-body h2{margin:.25rem 0 1rem}
-    .field{display:flex;flex-direction:column;gap:.35rem;margin:.5rem 0}
-    .field input,.field select{padding:.55rem .7rem;border:1px solid #dfe3eb;border-radius:.55rem}
+    .field{display:flex;flex-direction:column;gap:.35rem;margin:.6rem 0}
+    .field input,.field select{padding:.55rem .7rem;border:1px solid #dfe3eb;border-radius:.55rem;background:#fff}
     .actions{display:flex;gap:.5rem;justify-content:flex-start;margin-top:.75rem}
-
-    /* Asegura el calendario por encima y dentro del modal */
-    dialog.filters .flatpickr-calendar{z-index:9999 !important}
   </style>
 </head>
 <body>
 
-  <header class="topbar">
-    <div class="brand">
-      <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:cover">
-      <div>
-        <div class="title">Cuadrantes de turnos</div>
-        <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
-      </div>
+<header class="topbar">
+  <div class="brand">
+    <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:cover">
+    <div>
+      <div class="title">Cuadrantes de turnos</div>
+      <div class="subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button id="btnPrev" class="btn">← Semana</button>
+    <button id="btnToday" class="btn">Hoy</button>
+    <button id="btnNext" class="btn">Semana →</button>
+    <button id="btnFilters" class="btn">Filtros</button>
+  </div>
+</header>
+
+<main id="app" class="app-content">
+  <p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
+</main>
+
+<!-- Modal Filtros -->
+<dialog id="dlgFilters" class="filters">
+  <form method="dialog" class="filters-body" id="fForm">
+    <h2>Filtros</h2>
+
+    <div class="field">
+      <label for="fHotel"><strong>Hotel</strong></label>
+      <select id="fHotel">
+        <option value="">— Hotel —</option>
+      </select>
     </div>
 
-    <div class="toolbar">
-      <button id="btnPrev" class="btn">← Semana</button>
-      <button id="btnToday" class="btn">Hoy</button>
-      <button id="btnNext" class="btn">Semana →</button>
-      <button id="btnFilters" class="btn">Filtros</button>
+    <div class="field">
+      <label for="fEmpleado"><strong>Empleado</strong> (opcional)</label>
+      <select id="fEmpleado">
+        <option value="">— Empleado —</option>
+      </select>
     </div>
-  </header>
 
-  <main id="app" class="app-content">
-    <p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
-  </main>
+    <div class="field">
+      <label for="fDesde"><strong>Desde</strong></label>
+      <!-- Calendario nativo -->
+      <input id="fDesde" type="date">
+    </div>
 
-  <!-- Modal Filtros (formato simple) -->
-  <dialog id="dlgFilters" class="filters">
-    <form method="dialog" class="filters-body" id="fForm">
-      <h2>Filtros</h2>
+    <div class="field">
+      <label for="fHasta"><strong>Hasta</strong> (opcional)</label>
+      <!-- Calendario nativo -->
+      <input id="fHasta" type="date">
+    </div>
 
-      <div class="field">
-        <label for="fHotel"><strong>Hotel</strong></label>
-        <select id="fHotel">
-          <option value="">— Hotel —</option>
-        </select>
-      </div>
+    <div class="actions">
+      <button id="fApply" type="button" class="btn btn-primary">Aplicar</button>
+      <button id="fClose" type="button" class="btn">Cerrar</button>
+    </div>
+  </form>
+</dialog>
 
-      <div class="field">
-        <label for="fEmpleado"><strong>Empleado</strong> (opcional)</label>
-        <select id="fEmpleado">
-          <option value="">— Empleado —</option>
-        </select>
-      </div>
+<!-- Datos + lógica -->
+<script src="data.js?v=APP"></script>
+<script src="plantilla_adapter_semana.js?v=APP"></script>
+<script src="mobile.patch.js?v=APP"></script>
 
-      <div class="field">
-        <label for="fDesde"><strong>Desde</strong></label>
-        <input id="fDesde" inputmode="numeric" placeholder="dd/mm/aaaa">
-      </div>
+<script>
+  // Registrar SW (opcional)
+  if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('service-worker.js'); } catch(e){} }
 
-      <div class="field">
-        <label for="fHasta"><strong>Hasta</strong> (opcional)</label>
-        <input id="fHasta" inputmode="numeric" placeholder="dd/mm/aaaa">
-      </div>
-
-      <div class="actions">
-        <button id="fApply" type="button" class="btn btn-primary">Aplicar</button>
-        <button id="fClose"  type="button" class="btn">Cerrar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Datos + lógica -->
-  <script src="data.js?v=APP"></script>
-  <script src="plantilla_adapter_semana.js?v=APP"></script>
-  <script src="mobile.patch.js?v=APP"></script>
-
-  <!-- SW + wiring + calendario -->
-  <script>
-    // SW
-    if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('service-worker.js'); } catch(e){} }
-
-    // Abrir/cerrar modal
-    document.getElementById('btnFilters')?.addEventListener('click', () => {
-      document.getElementById('dlgFilters')?.showModal();
-    });
-    document.getElementById('fClose')?.addEventListener('click', (e) => {
-      e.preventDefault(); document.getElementById('dlgFilters')?.close();
-    });
-
-    // Calendario: pop-up limpio dentro del dialog
-    document.addEventListener("DOMContentLoaded", () => {
-      if (window.flatpickr) {
-        const dlg = document.getElementById('dlgFilters');
-        const es = window.flatpickr.l10ns.es || {};
-        es.firstDayOfWeek = 1;
-
-        const baseOpts = {
-          locale: es,
-          dateFormat: "d/m/Y",
-          weekNumbers: true,
-          allowInput: true,
-          disableMobile: true,
-          appendTo: dlg,      // render dentro del dialog
-          static: false,      // pop-up flotante (no ocupa sitio fijo)
-          position: "auto"    // deja a FP buscar el mejor sitio
-        };
-
-        const fpDesde = flatpickr("#fDesde", {
-          ...baseOpts,
-          onOpen: () => dlg.style.overflow = "visible",
-          onChange: (sel) => { if (fpHasta && sel[0]) fpHasta.set("minDate", sel[0]); }
-        });
-
-        const fpHasta = flatpickr("#fHasta", {
-          ...baseOpts,
-          onOpen: () => dlg.style.overflow = "visible",
-          onChange: (sel) => { if (fpDesde && sel[0]) fpDesde.set("maxDate", sel[0]); }
-        });
-      }
-    });
-  </script>
+  // Abrir/cerrar modal
+  document.getElementById('btnFilters')?.addEventListener('click', () => {
+    document.getElementById('dlgFilters')?.showModal();
+  });
+  document.getElementById('fClose')?.addEventListener('click', (e) => {
+    e.preventDefault(); document.getElementById('dlgFilters')?.close();
+  });
+</script>
 </body>
 </html>
