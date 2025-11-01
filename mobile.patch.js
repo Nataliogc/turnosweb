@@ -1,4 +1,12 @@
-/* Turnos Web · mobile.patch.js (vista móvil) */
+/* Turnos Web · mobile.patch.js (vista móvil)
+   - Autorrender semana más cercana
+   - Navegación (← / Hoy / →) por semanas existentes
+   - Limpieza de mojibake + emojis canónicos
+   - Ausencias: 🏖️ 🤒 🗓️ 🎓 / Cambio 🔄 / Noche 🌙
+   - Oculta filas 100% “—”
+   - Si hay vacaciones/baja toda la semana: al final; el sustituto ocupa su lugar
+   - Modal Filtros (Hotel/Empleado/Desde/Hasta) integrado
+*/
 (function () {
   "use strict";
   const $ = (s, ctx = document) => ctx.querySelector(s);
@@ -15,10 +23,10 @@
     let out = s;
     for (const [re, rep] of map) out = out.replace(re, rep);
 
-    // Controles invisibles
+    // Controles invisibles (incluye U+009F '')
     out = out.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
 
-    // Secuencias típicas de mojibake de emoji
+    // Secuencias típicas de mojibake con emojis
     out = out
       .replace(/ð[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
       .replace(/Â[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g, "")
@@ -77,7 +85,7 @@
     }
     if (/^noche$/i.test(out) && !/🌙/.test(out)) out += " 🌙";
 
-    // limpiar marcas raras
+    // quitar flechas/comillas rotas
     out = out.replace(/[↔→←”“„]/g, "").trim().replace(/\s{2,}/g, " ");
     return out;
   }
@@ -265,9 +273,16 @@
   if (!window.__TW_STATE__) window.__TW_STATE__ = {};
   window.__TW_STATE__.filters = fstate;
 
+  // Acepta “dd/mm/aaaa” y también “ddmmaa” (p.ej. 010125 → 01/01/2025)
   function parseEs(str) {
-    if (!str || !/^\d{2}\/\d{2}\/\d{4}$/.test(str.trim())) return null;
-    const [dd,mm,yy] = str.split("/").map(Number);
+    if (!str) return null;
+    const s = str.trim();
+    if (/^\d{6}$/.test(s)) {
+      const dd = s.slice(0,2), mm = s.slice(2,4), aa = s.slice(4,6);
+      return parseEs(`${dd}/${mm}/20${aa}`);
+    }
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return null;
+    const [dd,mm,yy] = s.split("/").map(Number);
     const d = new Date(yy, mm-1, dd); d.setHours(0,0,0,0);
     return (d.getFullYear()===yy && d.getMonth()===(mm-1) && d.getDate()===dd) ? d : null;
   }
@@ -275,7 +290,7 @@
   function populate() {
     const selHotel = $("#fHotel");
     const selEmp   = $("#fEmpleado");
-    if (!selHotel || !selEmp) return; // defensivo si el modal no existe aún
+    if (!selHotel || !selEmp) return;
 
     const sched = (window.FULL_DATA?.schedule || window.DATA?.schedule || []);
     const hotels = [...new Set(sched.map(g => g.hotel))].sort((a,b)=>a.localeCompare(b,"es"));

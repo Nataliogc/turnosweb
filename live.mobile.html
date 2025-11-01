@@ -5,16 +5,52 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Cuadrantes de turnos · Móvil</title>
 
-  <!-- Estilos existentes (respetados) -->
-  <link rel="stylesheet" href="styles.css?v=APP">
-  <link rel="stylesheet" href="styles.mobile.css?v=APP">
   <link rel="icon" href="Logo.png">
   <meta name="theme-color" content="#0f172a">
-<!-- Datepicker -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
+  <!-- Estilos del proyecto -->
+  <link rel="stylesheet" href="styles.css?v=APP">
+  <link rel="stylesheet" href="styles.mobile.css?v=APP">
+
+  <!-- Flatpickr (calendario) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+  <!-- Z-index para que el calendario quede por encima dentro del modal -->
+  <style>
+    dialog.filters { z-index: 9998; }
+    dialog.filters::backdrop { background: rgba(0,0,0,.25); }
+    dialog.filters .flatpickr-calendar { z-index: 9999 !important; }
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:#111827;color:#fff}
+    .topbar .brand{display:flex;align-items:center;gap:.5rem}
+    .topbar .title{font-weight:700}
+    .topbar .subtitle{opacity:.7;font-size:.85rem}
+    .toolbar .btn{margin-left:.25rem}
+    .app-content{padding:1rem;background:#f4f6fb;min-height:60vh}
+    .meta{color:#6b7280}
+    .btn{background:#1f2937;color:#fff;border:none;border-radius:.5rem;padding:.45rem .8rem;cursor:pointer}
+    .btn:hover{opacity:.9}
+    .btn-primary{background:#0ea5e9}
+    .week{background:#fff;border-radius:.75rem;margin:1rem;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .week-head{display:flex;gap:.75rem;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #eef2f7}
+    .table-container{overflow:auto}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{border-bottom:1px solid #eef2f7;text-align:center;padding:.65rem}
+    th:first-child,td:first-child{text-align:left}
+    .turno-pill{display:inline-block;padding:.35rem .65rem;border-radius:999px;font-weight:600}
+    .turno-mañana{background:#e7f9ec;color:#166534}
+    .turno-tarde{background:#fff3c4;color:#92400e}
+    .turno-noche{background:#e6ebff;color:#1e3a8a}
+    .turno-descanso{background:#ffe2e2;color:#991b1b}
+    dialog.filters{border:none;border-radius:.75rem;max-width:720px;width:96%}
+    .filters-body{padding:1rem}
+    .filters-body h2{margin:.25rem 0 1rem}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    .grid label{display:flex;flex-direction:column;gap:.25rem;font-weight:600}
+    .actions{display:flex;gap:.5rem;justify-content:flex-start;margin-top:1rem}
+    @media (max-width:640px){.grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
 
@@ -57,37 +93,37 @@
           </select>
         </label>
 
-       <label>Desde
-  <input id="fDesde" type="text" placeholder="dd/mm/aaaa">
-</label>
-<label>Hasta
-  <input id="fHasta" type="text" placeholder="dd/mm/aaaa">
-</label>
+        <label>Desde
+          <input id="fDesde" inputmode="numeric" placeholder="dd/mm/aaaa">
+        </label>
 
+        <label>Hasta
+          <input id="fHasta" inputmode="numeric" placeholder="dd/mm/aaaa">
+        </label>
       </div>
 
       <div class="actions">
-        <button id="fApply" class="btn btn-primary">Aplicar</button>
-        <button id="fClose" class="btn">Cerrar</button>
+        <button id="fApply" type="button" class="btn btn-primary">Aplicar</button>
+        <button id="fClose"  type="button" class="btn">Cerrar</button>
       </div>
     </form>
   </dialog>
 
-  <!-- Datos (el BAT actualizará ?v=...) -->
+  <!-- Datos -->
   <script src="data.js?v=APP"></script>
-
-  <!-- (dejas tu lógica base; no se toca) -->
+  <!-- Lógica base (no se toca) -->
   <script src="plantilla_adapter_semana.js?v=APP"></script>
-
-  <!-- Lógica móvil + parches y filtros -->
+  <!-- Parches / navegación / filtros móviles -->
   <script src="mobile.patch.js?v=APP"></script>
 
-  <!-- SW opcional -->
+  <!-- SW y wiring básico + Flatpickr -->
   <script>
+    // SW
     if ('serviceWorker' in navigator) {
       try { navigator.serviceWorker.register('service-worker.js'); } catch(e){}
     }
-    // abrir/cerrar filtros
+
+    // Abrir/cerrar el modal
     document.getElementById('btnFilters')?.addEventListener('click', () => {
       document.getElementById('dlgFilters')?.showModal();
     });
@@ -95,35 +131,35 @@
       e.preventDefault();
       document.getElementById('dlgFilters')?.close();
     });
-  <script>
-  // Flatpickr en móvil: lunes 1º, nº semana, formato dd/mm/aaaa
-  document.addEventListener("DOMContentLoaded", () => {
-    if (window.flatpickr) {
-      const baseOpts = {
-        locale: flatpickr.l10ns.es,
-        dateFormat: "d/m/Y",
-        weekNumbers: true,
-        firstDayOfWeek: 1,
-        allowInput: true,
-        // 2 meses en pantallas anchas
-        showMonths: (window.matchMedia("(min-width: 1024px)").matches ? 2 : 1),
-        disableMobile: false // deja el calendario propio también en iOS/Android
-      };
-      const fpDesde = flatpickr("#fDesde", {
-        ...baseOpts,
-        onChange: (sel) => {
-          if (fpHasta && sel[0]) fpHasta.set("minDate", sel[0]);
-        }
-      });
-      const fpHasta = flatpickr("#fHasta", {
-        ...baseOpts,
-        onChange: (sel) => {
-          if (fpDesde && sel[0]) fpDesde.set("maxDate", sel[0]);
-        }
-      });
-    }
-  });
-</script>
 
+    // Calendario dentro del dialog (que no quede detrás)
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.flatpickr) {
+        const dlg = document.getElementById('dlgFilters');
+        const es = window.flatpickr.l10ns.es || {};
+        es.firstDayOfWeek = 1;
+
+        const baseOpts = {
+          locale: es,
+          dateFormat: "d/m/Y",
+          weekNumbers: true,
+          allowInput: true,
+          disableMobile: true,
+          appendTo: dlg,   // render dentro del <dialog>
+          static: true     // posición estática, no flotante
+        };
+
+        const fpDesde = flatpickr("#fDesde", {
+          ...baseOpts,
+          onChange: (sel) => { if (fpHasta && sel[0]) fpHasta.set("minDate", sel[0]); }
+        });
+
+        const fpHasta = flatpickr("#fHasta", {
+          ...baseOpts,
+          onChange: (sel) => { if (fpDesde && sel[0]) fpDesde.set("maxDate", sel[0]); }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
