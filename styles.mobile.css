@@ -129,6 +129,46 @@
         window.__fpDesde = flatpickr("#fDesde", opts);
         window.__fpHasta = flatpickr("#fHasta", opts);
       }
+/* ===== Calendario compacto en móvil (flatpickr) ===== */
+.flatpickr-calendar { z-index: 10002 !important; } /* por encima del modal */
+
+@media (max-width: 480px) {
+  /* Modal compacto */
+  dialog.filters { max-width: 94vw; }
+  .filters-body { padding: .75rem; }
+  .filters-body .field input,
+  .filters-body .field select { height: 36px; font-size: 14px; }
+
+  /* Escala general del calendario */
+  .flatpickr-calendar {
+    font-size: 12px;               /* tipografía más pequeña */
+    transform: scale(.88);         /* ~12% más pequeño */
+    transform-origin: top left;
+  }
+
+  /* Estructura más densa */
+  .flatpickr-months .flatpickr-month { height: 32px; }
+  .flatpickr-current-month .flatpickr-monthDropdown-months,
+  .flatpickr-current-month input.cur-year {
+    font-size: 12px; padding: 0 4px; height: 24px;
+  }
+  .flatpickr-weekdays { padding: 0 .25rem; }
+  .flatpickr-innerContainer { padding: 0 .25rem .25rem; }
+
+  /* Celdas del mes más pequeñas */
+  .flatpickr-day {
+    width: 2rem; height: 2rem; line-height: 2rem; margin: 0;
+  }
+
+  /* Botonera inferior */
+  .flatpickr-calendar .flatpickr-footer,
+  .flatpickr-calendar .flatpickr-time { font-size: 12px; }
+
+  /* Evita que se salga: alinear al input dentro del modal */
+  .flatpickr-calendar.open {
+    left: auto !important;
+    right: .5rem !important;   /* ajusta si hace falta */
+  }
     });
   </script>
 </body>

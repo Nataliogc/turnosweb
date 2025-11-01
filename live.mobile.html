@@ -12,7 +12,20 @@
   <link rel="stylesheet" href="styles.css?v=APP">
   <link rel="stylesheet" href="styles.mobile.css?v=APP">
 
+  <!-- Ajustes SOLO móviles para compactar el calendario dentro del modal de Filtros -->
   <style>
+    /* El calendario debe quedar por encima del diálogo */
+    .flatpickr-calendar { z-index: 10002 !important; }
+
+    /* Modal compacto */
+    dialog.filters{border:none;border-radius:.75rem;max-width:520px;width:94%;padding:0;}
+    dialog.filters::backdrop{background:rgba(0,0,0,.25)}
+    .filters-body{padding:1rem}
+    .field{display:flex;flex-direction:column;gap:.35rem;margin:.6rem 0}
+    .actions{display:flex;gap:.5rem;justify-content:flex-start;margin-top:.75rem}
+    .btn{background:#1f2937;color:#fff;border:none;border-radius:.5rem;padding:.45rem .8rem;cursor:pointer}
+    .btn-primary{background:#0ea5e9}
+
     /* Barra superior */
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:#111827;color:#fff}
     .topbar .brand{display:flex;align-items:center;gap:.5rem}
@@ -20,16 +33,11 @@
     .topbar .subtitle{opacity:.7;font-size:.85rem}
     .toolbar .btn{margin-left:.25rem}
 
-    /* Botones */
-    .btn{background:#1f2937;color:#fff;border:none;border-radius:.5rem;padding:.45rem .8rem;cursor:pointer}
-    .btn:hover{opacity:.9}
-    .btn-primary{background:#0ea5e9}
-
-    /* Contenido */
+    /* Área app */
     .app-content{padding:1rem;background:#f7f8fb;min-height:60vh}
     .meta{color:#6b7280}
 
-    /* Tarjetas de semana */
+    /* Tarjeta semana (estructura general de la vista) */
     .week{background:#fff;border-radius:.75rem;margin:1rem;border:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,.04)}
     .week-head{display:flex;gap:.75rem;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #eef2f7}
     .table-container{overflow:auto}
@@ -42,14 +50,37 @@
     .turno-noche{background:#e6ebff;color:#1e3a8a}
     .turno-descanso{background:#ffe2e2;color:#991b1b}
 
-    /* Modal filtros minimalista */
-    dialog.filters{border:none;border-radius:.75rem;max-width:520px;width:94%;padding:0;overflow:visible;z-index:10000}
-    dialog.filters::backdrop{background:rgba(0,0,0,.25)}
-    .filters-body{padding:1rem}
-    .filters-body h2{margin:.25rem 0 1rem}
-    .field{display:flex;flex-direction:column;gap:.35rem;margin:.6rem 0}
-    .field input,.field select{padding:.55rem .7rem;border:1px solid #dfe3eb;border-radius:.55rem;background:#fff}
-    .actions{display:flex;gap:.5rem;justify-content:flex-start;margin-top:.75rem}
+    /* ===== Compactación específica para móviles ===== */
+    @media (max-width: 480px){
+      .filters-body{padding:.75rem}
+      .filters-body .field input,
+      .filters-body .field select{height:36px;font-size:14px}
+
+      /* Escala general del calendario (flatpickr) */
+      .flatpickr-calendar{
+        font-size:12px;           /* tipografía menor */
+        transform:scale(.88);     /* ~12% más pequeño */
+        transform-origin:top left;
+      }
+
+      /* Elementos del calendario más densos */
+      .flatpickr-months .flatpickr-month{height:32px}
+      .flatpickr-current-month .flatpickr-monthDropdown-months,
+      .flatpickr-current-month input.cur-year{
+        font-size:12px;padding:0 4px;height:24px
+      }
+      .flatpickr-weekdays{padding:0 .25rem}
+      .flatpickr-innerContainer{padding:0 .25rem .25rem}
+
+      /* Celdas del mes */
+      .flatpickr-day{width:2rem;height:2rem;line-height:2rem;margin:0}
+
+      /* Evita que se salga a la izquierda en pantallas pequeñas */
+      .flatpickr-calendar.open{
+        left:auto !important;
+        right:.5rem !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -63,9 +94,9 @@
     </div>
   </div>
   <div class="toolbar">
-    <button id="btnPrev" class="btn">← Semana</button>
+    <button id="btnPrev"  class="btn">← Semana</button>
     <button id="btnToday" class="btn">Hoy</button>
-    <button id="btnNext" class="btn">Semana →</button>
+    <button id="btnNext"  class="btn">Semana →</button>
     <button id="btnFilters" class="btn">Filtros</button>
   </div>
 </header>
@@ -74,7 +105,7 @@
   <p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
 </main>
 
-<!-- Modal Filtros -->
+<!-- Modal Filtros (mismo marcado; solo añadimos compactación por CSS) -->
 <dialog id="dlgFilters" class="filters">
   <form method="dialog" class="filters-body" id="fForm">
     <h2>Filtros</h2>
@@ -95,14 +126,13 @@
 
     <div class="field">
       <label for="fDesde"><strong>Desde</strong></label>
-      <!-- Calendario nativo -->
-      <input id="fDesde" type="date">
+      <!-- tus inputs siguen igual; flatpickr se engancha desde la lógica existente -->
+      <input id="fDesde" type="text" placeholder="dd/mm/aaaa" autocomplete="off">
     </div>
 
     <div class="field">
       <label for="fHasta"><strong>Hasta</strong> (opcional)</label>
-      <!-- Calendario nativo -->
-      <input id="fHasta" type="date">
+      <input id="fHasta" type="text" placeholder="dd/mm/aaaa" autocomplete="off">
     </div>
 
     <div class="actions">
@@ -112,16 +142,14 @@
   </form>
 </dialog>
 
-<!-- Datos + lógica -->
-<script src="data.js?v=APP"></script>
-<script src="plantilla_adapter_semana.js?v=APP"></script>
-<script src="mobile.patch.js?v=APP"></script>
+<!-- Datos + lógica (mantenemos el orden que te funcionaba) -->
+<script src="data.js?v=20251101_2344"></script>
+<script src="plantilla_adapter_semana.js?v=20251101_2344"></script>
+<script src="mobile.patch.js?v=20251101_2344"></script>
 
+<!-- SW opcional -->
 <script>
-  // Registrar SW (opcional)
   if ('serviceWorker' in navigator) { try { navigator.serviceWorker.register('service-worker.js'); } catch(e){} }
-
-  // Abrir/cerrar modal
   document.getElementById('btnFilters')?.addEventListener('click', () => {
     document.getElementById('dlgFilters')?.showModal();
   });
