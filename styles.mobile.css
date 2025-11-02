@@ -1,175 +1,28 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Cuadrantes de turnos · Móvil</title>
+/* Móvil – refuerzos ligeros */
+:root{
+  --bg:#f3f5f7;
+  --ink:#132435;
+  --muted:#5a6b7c;
+}
+html,body{margin:0;padding:0}
+#app{max-width:1200px;margin:0 auto}
 
-  <link rel="icon" href="Logo.png">
-  <meta name="theme-color" content="#0f172a">
+/* Evita que algo del layout del desktop afecte al modal móvil */
+.modal-mask{backdrop-filter:saturate(120%) blur(1px)}
+.modal{max-width:min(820px,96vw)}
+@media (max-width:560px){
+  .modal{padding:14px}
+  .f-ctl{font-size:16px} /* tamaño cómodo en móvil */
+}
 
-  <!-- Estilos del proyecto -->
-  <link rel="stylesheet" href="styles.css?v=APP">
-  <link rel="stylesheet" href="styles.mobile.css?v=APP">
-
-  <!-- Flatpickr (calendario) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
-
-  <style>
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.75rem 1rem;background:#111827;color:#fff}
-    .topbar .brand{display:flex;align-items:center;gap:.5rem}
-    .toolbar .btn{margin-left:.25rem}
-    .btn{background:#1f2937;color:#fff;border:none;border-radius:.5rem;padding:.45rem .8rem;cursor:pointer}
-    .btn:hover{opacity:.9}
-    .btn-primary{background:#0ea5e9}
-    .app-content{padding:1rem;background:#f6f8fb;min-height:60vh}
-    .meta{color:#6b7280}
-
-    /* Modal filtros: limpio y claro */
-    dialog.filters{border:none;border-radius:.75rem;max-width:520px;width:92%;padding:0;z-index:9998}
-    dialog.filters::backdrop{background:rgba(0,0,0,.35)}
-    .filters-body{padding:1rem 1rem 1.1rem}
-    .filters-body h2{margin:.25rem 0 1rem}
-    .field{margin:.65rem 0}
-    .field label{display:block;font-weight:600;margin:0 0 .35rem}
-    .field small{color:#6b7280;margin-left:.35rem;font-weight:400}
-    .field input,.field select{width:100%;padding:.55rem .7rem;border:1px solid #dfe3eb;border-radius:.55rem;background:#fff}
-    .actions{display:flex;gap:.5rem;margin-top:.75rem}
-    .flatpickr-calendar{z-index:100000 !important} /* por si alguna hoja de estilos lo tapa */
-  </style>
-</head>
-<body>
-
-  <header class="topbar">
-    <div class="brand">
-      <img src="Logo.png" alt="CG" style="width:28px;height:28px;border-radius:6px;object-fit:cover">
-      <div>
-        <div style="font-weight:700">Cuadrantes de turnos</div>
-        <div style="opacity:.7;font-size:.85rem">Sercotel Guadiana / Cumbria Spa&Hotel</div>
-      </div>
-    </div>
-    <div class="toolbar">
-      <button id="btnPrev" class="btn">← Semana</button>
-      <button id="btnToday" class="btn">Hoy</button>
-      <button id="btnNext" class="btn">Semana →</button>
-      <button id="btnFilters" class="btn">Filtros</button>
-    </div>
-  </header>
-
-  <main id="app" class="app-content">
-    <p class="meta">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
-  </main>
-
-  <!-- Modal de filtros -->
-  <dialog id="dlgFilters" class="filters">
-    <form method="dialog" class="filters-body" id="fForm">
-      <h2>Filtros</h2>
-
-      <div class="field">
-        <label for="fHotel">Hotel</label>
-        <select id="fHotel">
-          <option value="">— Hotel —</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="fEmpleado">Empleado <small>(opcional)</small></label>
-        <select id="fEmpleado">
-          <option value="">— Empleado —</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="fDesde">Desde</label>
-        <input id="fDesde" type="text" inputmode="numeric" placeholder="dd/mm/aaaa">
-      </div>
-
-      <div class="field">
-        <label for="fHasta">Hasta <small>(opcional)</small></label>
-        <input id="fHasta" type="text" inputmode="numeric" placeholder="dd/mm/aaaa">
-      </div>
-
-      <div class="actions">
-        <button id="fApply" type="button" class="btn btn-primary">Aplicar</button>
-        <button id="fClose"  type="button" class="btn">Cerrar</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Datos + lógica -->
-  <script src="data.js?v=APP"></script>
-  <script src="plantilla_adapter_semana.js?v=APP"></script>
-  <script src="mobile.patch.js?v=APP"></script>
-
-  <script>
-    if ('serviceWorker' in navigator) { try{ navigator.serviceWorker.register('service-worker.js'); }catch(e){} }
-
-    // Abrir/cerrar filtros
-    document.getElementById('btnFilters')?.addEventListener('click', () => {
-      document.getElementById('dlgFilters')?.showModal();
-    });
-    document.getElementById('fClose')?.addEventListener('click', (e) => {
-      e.preventDefault(); document.getElementById('dlgFilters')?.close();
-    });
-
-    // Flatpickr (si no carga, mobile.patch hará fallback a <input type="date">)
-    document.addEventListener("DOMContentLoaded", () => {
-      if (window.flatpickr) {
-        const dlg = document.getElementById('dlgFilters');
-        const es = window.flatpickr.l10ns.es || {};
-        es.firstDayOfWeek = 1;
-        const opts = {
-          locale: es, dateFormat: "d/m/Y", weekNumbers: true,
-          allowInput: true, disableMobile: true,
-          appendTo: dlg, position: "auto",
-          onOpen: () => dlg.style.overflow = "visible"
-        };
-        window.__fpDesde = flatpickr("#fDesde", opts);
-        window.__fpHasta = flatpickr("#fHasta", opts);
-      }
-/* ===== Calendario compacto en móvil (flatpickr) ===== */
-.flatpickr-calendar { z-index: 10002 !important; } /* por encima del modal */
-
-@media (max-width: 480px) {
-  /* Modal compacto */
-  dialog.filters { max-width: 94vw; }
-  .filters-body { padding: .75rem; }
-  .filters-body .field input,
-  .filters-body .field select { height: 36px; font-size: 14px; }
-
-  /* Escala general del calendario */
-  .flatpickr-calendar {
-    font-size: 12px;               /* tipografía más pequeña */
-    transform: scale(.88);         /* ~12% más pequeño */
-    transform-origin: top left;
-  }
-
-  /* Estructura más densa */
-  .flatpickr-months .flatpickr-month { height: 32px; }
-  .flatpickr-current-month .flatpickr-monthDropdown-months,
-  .flatpickr-current-month input.cur-year {
-    font-size: 12px; padding: 0 4px; height: 24px;
-  }
-  .flatpickr-weekdays { padding: 0 .25rem; }
-  .flatpickr-innerContainer { padding: 0 .25rem .25rem; }
-
-  /* Celdas del mes más pequeñas */
-  .flatpickr-day {
-    width: 2rem; height: 2rem; line-height: 2rem; margin: 0;
-  }
-
-  /* Botonera inferior */
-  .flatpickr-calendar .flatpickr-footer,
-  .flatpickr-calendar .flatpickr-time { font-size: 12px; }
-
-  /* Evita que se salga: alinear al input dentro del modal */
-  .flatpickr-calendar.open {
-    left: auto !important;
-    right: .5rem !important;   /* ajusta si hace falta */
-  }
-    });
-  </script>
-</body>
-</html>
+/* Píldoras (por si faltan en styles.css) – tonos suaves */
+.pill{display:inline-block;padding:.25rem .6rem;border-radius:999px;font:700 .78rem system-ui}
+.pill-am{background:#e7f7ea;color:#136b2c}
+.pill-pm{background:#fff3d6;color:#7e5b00}
+.pill-night{background:#eae6ff;color:#3e2b84}
+.pill-off{background:#ffe0e0;color:#8b1b1b}
+.pill-vac{background:#dff5ff;color:#035f88}
+.pill-low{background:#fde4ff;color:#7b2d86}
+.pill-perm{background:#e9f0ff;color:#274d9c}
+.pill-form{background:#efe7ff;color:#5b2d91}
+.pill-ct{background:#e6fff2;color:#0f6a45}

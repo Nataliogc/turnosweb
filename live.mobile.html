@@ -1,122 +1,98 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
-  <title>Cuadrantes de turnos – Móvil</title>
-
-  <!-- Estilos (el BAT sustituye ?v=APP por la marca de tiempo) -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cuadrantes de turnos · Móvil</title>
   <link rel="stylesheet" href="styles.css?v=APP">
   <link rel="stylesheet" href="styles.mobile.css?v=APP">
-
-  <!-- Icono -->
-  <link rel="icon" href="Logo.png">
-
   <style>
-    /* Ajustes mínimos del modal de filtros para móvil */
-    .m-modal-backdrop{
-      position:fixed;inset:0;background:rgba(12,18,27,.45);
-      display:none;align-items:flex-start;justify-content:center;
-      z-index:9998;
-      -webkit-backdrop-filter:saturate(180%) blur(3px);
-      backdrop-filter:saturate(180%) blur(3px);
-    }
-    .m-modal{width:min(720px,96vw);margin:10px auto;background:#131a23;color:#eef2f6;
-      border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:16px 16px 12px}
-    .m-modal h3{margin:0 0 8px;font:600 20px/1.2 system-ui,Segoe UI,Roboto,Arial}
-    .m-row{display:grid;gap:10px;margin:12px 0}
-    @media (min-width:560px){.m-row{grid-template-columns:1fr 1fr}}
-    .m-field{display:flex;flex-direction:column;gap:6px;background:#0f151d;border-radius:12px;padding:12px}
-    .m-label{font:600 13px/1 system-ui,Segoe UI;color:#e6edf3}
-    .m-help{opacity:.7;font-weight:500}
-    .m-btns{display:flex;gap:10px;margin-top:8px}
-    .m-btn{padding:10px 16px;border-radius:10px;border:0;cursor:pointer}
-    .m-btn.primary{background:#0ea5e9;color:#07131c;font-weight:700}
-    .m-btn.ghost{background:#1d2633;color:#dbe7f3;font-weight:700}
-    select, input[type="date"], input[type="text"]{
-      width:100%;height:44px;border-radius:10px;border:1px solid #2a3647;
-      background:#0c121b;color:#e6edf3;padding:0 12px;font:600 15px/1 system-ui,Segoe UI;
-    }
-    .toolbar{display:flex;gap:10px;align-items:center}
-    .toolbar .btn{background:#1d2633;color:#e7eef9;border-radius:12px;padding:8px 14px;font-weight:700}
-    .toolbar .btn.primary{background:#0ea5e9;color:#062232}
-    .hint{padding:18px;color:#4b647a}
-    /* Asegurar que el selector nativo/calendario quede por encima del modal */
-    .flatpickr-calendar{z-index:99999!important}
-    input::-webkit-calendar-picker-indicator{opacity:.9}
+    /* Contenedor principal móvil */
+    body{background:#0e151d;}
+    .topbar{display:flex;gap:.5rem;align-items:center;justify-content:space-between;background:#151c24;color:#fff;padding:.75rem 1rem;border-bottom:1px solid #0f1a24}
+    .brand{display:flex;gap:.75rem;align-items:center}
+    .brand img{width:36px;height:36px;border-radius:8px;object-fit:cover}
+    .title{line-height:1.1}
+    .title h1{margin:0;font:600 1.1rem/1.1 system-ui,Segoe UI,Roboto,Helvetica,Arial;color:#fff}
+    .title small{opacity:.8}
+    .btns{display:flex;gap:.5rem}
+    .btn{background:#2a3441;color:#fff;border:none;border-radius:12px;padding:.5rem .8rem;font:600 .9rem system-ui}
+    .btn.primary{background:#0476d0}
+    .wrap{background:#f3f5f7;min-height:calc(100dvh - 64px)}
+    #app{padding:12px}
+    .hint{padding:.75rem 1rem;color:#3a4a5a}
+    /* Modal filtros */
+    .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:9998}
+    .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(820px,96vw);max-height:86dvh;overflow:auto;background:#111923;color:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.45);padding:18px;display:none;z-index:9999}
+    .modal h2{margin:4px 0 14px;font:700 1.25rem system-ui}
+    .f-row{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px}
+    .f-label{font:600 .9rem system-ui;opacity:.9}
+    .f-ctl{background:#0f1720;border:1px solid #223043;border-radius:12px;padding:.65rem .8rem;color:#e8eef6;font:500 .95rem system-ui;width:100%}
+    .f-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+    .btn-outline{background:#0f1720;border:1px solid #2a3a4f;color:#e8eef6;border-radius:12px;padding:.6rem .9rem}
+    .btn-primary{background:#0a84ff;border:none;color:#fff;border-radius:12px;padding:.6rem 1rem}
+    @media(min-width:680px){.f-row{grid-template-columns:1fr 1fr}}
+    /* Asegura que los calendarios nativos queden por encima si el UA los dibuja fuera */
+    input[type="date"]{position:relative;z-index:1}
   </style>
 </head>
 <body>
-
-  <header class="header">
-    <div class="title">
-      <img src="Logo.png" alt="" class="app-logo" style="width:32px;height:32px;border-radius:8px;margin-right:8px">
-      <div>
-        <div class="app-heading">Cuadrantes de turnos</div>
-        <div class="app-subtitle">Sercotel Guadiana / Cumbria Spa&Hotel</div>
+  <header class="topbar">
+    <div class="brand">
+      <img src="img/logo_turnos.png" alt="Turnos">
+      <div class="title">
+        <h1>Cuadrantes de turnos</h1>
+        <small>Sercotel Guadiana / Cumbria Spa&Hotel</small>
       </div>
     </div>
-    <nav class="toolbar">
+    <div class="btns">
       <button id="btnPrev" class="btn">← Semana</button>
-      <button id="btnToday" class="btn">Hoy</button>
+      <button id="btnHoy"  class="btn">Hoy</button>
       <button id="btnNext" class="btn">Semana →</button>
-      <button id="btnFilters" class="btn primary">Filtros</button>
-    </nav>
+      <button id="btnFiltros" class="btn primary">Filtros</button>
+    </div>
   </header>
 
-  <main id="app" class="content">
-    <p class="hint">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
+  <main class="wrap">
+    <div id="app">
+      <p class="hint">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
+    </div>
   </main>
 
-  <!-- Modal de Filtros -->
-  <div id="filtersBackdrop" class="m-modal-backdrop" aria-hidden="true">
-    <div role="dialog" aria-modal="true" class="m-modal">
-      <h3>Filtros</h3>
-
-      <div class="m-row">
-        <div class="m-field">
-          <label class="m-label">Hotel</label>
-          <select id="fHotel"></select>
-        </div>
-        <div class="m-field">
-          <label class="m-label">Empleado <span class="m-help">(opcional)</span></label>
-          <select id="fEmpleado"><option value="">— Empleado —</option></select>
-        </div>
+  <!-- Modal Filtros -->
+  <div id="mask" class="modal-mask" role="presentation"></div>
+  <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="tFiltros">
+    <h2 id="tFiltros">Filtros</h2>
+    <div class="f-row">
+      <div>
+        <div class="f-label">Hotel</div>
+        <select id="fHotel" class="f-ctl"><option>— Hotel —</option></select>
       </div>
-
-      <div class="m-row">
-        <div class="m-field">
-          <label class="m-label">Desde</label>
-          <input id="fDesde" type="date" placeholder="dd/mm/aaaa" inputmode="numeric" />
-        </div>
-        <div class="m-field">
-          <label class="m-label">Hasta <span class="m-help">(opcional)</span></label>
-          <input id="fHasta" type="date" placeholder="dd/mm/aaaa" inputmode="numeric" />
-        </div>
-      </div>
-
-      <div class="m-btns">
-        <button id="fAplicar" class="m-btn primary">Aplicar</button>
-        <button id="fCerrar"  class="m-btn ghost">Cerrar</button>
+      <div>
+        <div class="f-label">Empleado (opcional)</div>
+        <select id="fEmp" class="f-ctl"><option>— Empleado —</option></select>
       </div>
     </div>
-  </div>
+    <div class="f-row">
+      <div>
+        <div class="f-label">Desde</div>
+        <input id="fDesde" class="f-ctl" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
+      </div>
+      <div>
+        <div class="f-label">Hasta (opcional)</div>
+        <input id="fHasta" class="f-ctl" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
+      </div>
+    </div>
+    <div class="f-actions">
+      <button id="btnClose" class="btn-outline">Cerrar</button>
+      <button id="btnApply" class="btn-primary">Aplicar</button>
+    </div>
+  </section>
 
   <!-- Datos -->
   <script src="data.js?v=APP"></script>
-
-  <!-- Lógica de la app móvil -->
-  <script src="mobile.app.js?v=APP"></script>
+  <!-- Lógica móvil -->
   <script src="mobile.patch.js?v=APP"></script>
-
-  <!-- Registrar SW sólo en http(s), nunca en file:// para evitar bloqueos -->
-  <script>
-    if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-    }
-  </script>
+  <script src="mobile.app.js?v=APP"></script>
 </body>
 </html>

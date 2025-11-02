@@ -1,316 +1,246 @@
-/* Turnos Web · mobile.patch.js (vista móvil)
-/* … (todo igual que la versión anterior: limpieza de textos, emojis,
-      ocultar filas vacías, sustituciones, navegación de semanas, etc.) … */
-
+/* mobile.patch.js — capa de compatibilidad para mobile, NO toca index/live */
 (function () {
-  "use strict";
-  const $ = (s, ctx = document) => ctx.querySelector(s);
+  // ---- Normalización de textos y emojis (arregla mojibake y restos) ----
+  const MAP_FIX = [
+    [/MaÃ±ana/g, 'Mañana'],
+    [/Tarde/g, 'Tarde'],
+    [/Noche\s*(?:ð[\u0000-\uFFFF]*|🌙)?/g, 'Noche 🌙'],
+    [/Descanso(?:[^\w]|”|„)*/g, 'Descanso'],/* Turnos · Móvil · Renderer (independiente de index/live)
+   Expone: window.MobileRenderer.renderWeek(target, {weekStartISO, hotel, empleado, from, to, normalize, hideEmptyEmployees})
+*/
+(() => {
   const DAY = 86400000;
-
-  // ---------- Limpieza mojibake ----------
-  function fix(s) {
-    if (typeof s !== "string") return s;
-    const map = [
-      [/Ã¡/g,"á"],[/Ã©/g,"é"],[/Ã­/g,"í"],[/Ã³/g,"ó"],[/Ãº/g,"ú"],
-      [/Ã±/g,"ñ"],[/Ã‘/g,"Ñ"],[/Ã¼/g,"ü"],[/Â¿/g,"¿"],[/Â¡/g,"¡"],
-      [/Âº/g,"º"],[/Âª/g,"ª"],[/Â·/g,"·"]
-    ];
-    let out = s;
-    for (const [re,r] of map) out = out.replace(re,r);
-    out = out.replace(/[\u0000-\u001F\u007F-\u009F]/g,"")
-             .replace(/ð[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g,"")
-             .replace(/Â[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g,"")
-             .replace(/ï¸[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g,"")
-             .replace(/\uFFFD/g,"").replace(/[Ÿ ]/g,"").replace(/[¤’‚‹›˘]/g,"");
-    return out.trim().replace(/\s{2,}/g," ");
-  }
-
-  // ---------- Fechas ----------
-  const iso = d => { const x=new Date(d); x.setHours(0,0,0,0);
-    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
-  const fromISO = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
-  const monday = d => { const x=new Date(d); const w=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-w); return x; };
-  const weekDays = mon => Array.from({length:7},(_,i)=>iso(new Date(mon.getTime()+i*DAY)));
-  const mini = s => { const dt = fromISO(s);
-    return dt.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"2-digit"}).toLowerCase(); };
-
-  // ---------- Datos ----------
-  const DATA = window.FULL_DATA || window.DATA || {};
-  const SCHEDULE = Array.isArray(DATA.schedule) ? DATA.schedule : [];
-  const WEEKS = [...new Set(SCHEDULE.map(g => g.semana_lunes))].sort();
-  const byWeekHotel = new Map();
-  for (const g of SCHEDULE) byWeekHotel.set(g.semana_lunes + "||" + g.hotel, g);
-  const state = { weekISO: nearestWeek() };
-
-  function nearestWeek(ref = new Date()) {
-    if (!WEEKS.length) return iso(monday(ref));
-    const t = monday(ref).getTime();
-    return WEEKS.map(w => [w, Math.abs(fromISO(w).getTime() - t)])
-                .sort((a,b)=>a[1]-b[1])[0][0];
-  }
-
-  // ---------- Intérpretes ----------
-  function rawLabel(turno) {
-    if (turno == null) return "";
-    if (typeof turno === "string") return fix(turno);
-    return fix(turno.TipoInterpretado || turno.TipoAusencia || turno.TurnoOriginal || "");
-  }
-
-  function withCanonicalEmoji(label) {
-    let out = (label || "").trim();
-    const low = out.toLowerCase();
-    const changeMarkRE = /(↔|→|←|”„|->|=>)/;
-
-    if (/vacaciones/.test(low) && !/🏖️/.test(out)) out += " 🏖️";
-    if (/baja/.test(low)       && !/🤒/.test(out)) out += " 🤒";
-    if (/permiso/.test(low)    && !/🗓️/.test(out)) out += " 🗓️";
-    if (/formaci[oó]n/.test(low) && !/🎓/.test(out)) out += " 🎓";
-    if (/(^| )c\/?t( |$)|\bct\b|cambio( de turno)?/i.test(out) || changeMarkRE.test(out)) {
-      if (!/🔄/.test(out)) out += " 🔄";
-    }
-    if (/^noche$/i.test(out) && !/🌙/.test(out)) out += " 🌙";
-
-    out = out.replace(/[↔→←”“„]/g,"").trim().replace(/\s{2,}/g," ");
-    return out;
-  }
-
-  // ---------- Grid + sustitutos ----------
-  function buildGrid(group, days) {
-    const grid = {}, meta = {}, subCount = {};
-    const all = new Set(group.orden_empleados || []);
-    (group.turnos || []).forEach(t => { if (t.turno && typeof t.turno==="object" && t.turno.Sustituto) all.add(t.turno.Sustituto); });
-    all.forEach(e => { grid[e] = {}; meta[e] = {}; days.forEach(d => { grid[e][d]=""; meta[e][d]=null; }); });
-
-    (group.turnos || []).forEach(t => { if (grid[t.empleado]) grid[t.empleado][t.fecha] = t.turno; });
-
-    for (const emp of Object.keys(grid)) {
-      for (const d of days) {
-        const raw = grid[emp][d];
-        if (raw && typeof raw === "object") {
-          const labAbs = rawLabel(raw);
-          grid[emp][d] = labAbs; meta[emp][d] = { isAbsence:true, sub: raw.Sustituto || null };
-          const sust = raw.Sustituto;
-          if (sust) {
-            subCount[emp] = subCount[emp] || {};
-            subCount[emp][sust] = (subCount[emp][sust] || 0) + 1;
-            const heredado = rawLabel({ TurnoOriginal: raw.TurnoOriginal });
-            if (!grid[sust]) { grid[sust]={}; meta[sust]={}; days.forEach(x=>{ grid[sust][x]=""; meta[sust][x]=null; }); }
-            grid[sust][d] = heredado; meta[sust][d] = { isSub:true, for:emp };
-          }
-        } else if (typeof raw === "string") {
-          grid[emp][d] = fix(raw);
-        }
-      }
-    }
-
-    const weekEmpty = new Set(), weekAbsent = new Set();
-    (group.orden_empleados || []).forEach(emp => {
-      let onlyDashes = true, onlyAbs = true;
-      days.forEach(d => {
-        const v = (grid[emp][d] || "").trim();
-        const low = v.toLowerCase();
-        const isDash = v === "—" || v === "-" || v === "";
-        const isAbs  = /vacac|baja|permiso|formaci|descanso/.test(low);
-        if (!isDash) onlyDashes = false;
-        if (!isAbs)  onlyAbs = false;
-      });
-      if (onlyDashes) weekEmpty.add(emp);
-      else if (onlyAbs) weekAbsent.add(emp);
-    });
-
-    const mainSub = {};
-    for (const emp of Object.keys(subCount)) {
-      const pairs = Object.entries(subCount[emp]).sort((a,b)=>b[1]-a[1]);
-      if (pairs.length) mainSub[emp] = pairs[0][0];
-    }
-
-    return { grid, meta, weekEmpty, weekAbsent, mainSub };
-  }
-
-  // ---------- Render ----------
-  function render() {
-    const app = $("#app"); if (!app) return;
-    app.innerHTML = "";
-
-    if (!SCHEDULE.length) { app.innerHTML = `<p class="meta">Sin datos.</p>`; return; }
-
-    const days = weekDays(fromISO(state.weekISO));
-    app.insertAdjacentHTML("beforeend", `<p class="meta">Semana ${mini(days[0])} → ${mini(days[6])}</p>`);
-
-    const f = window.__TW_STATE__?.filters || {};
-    let hotelsAll = [...new Set(SCHEDULE.map(g => g.hotel))];
-    if (f.hotel) hotelsAll = hotelsAll.filter(h => h === f.hotel);
-
-    hotelsAll.forEach(hotel => {
-      const g = byWeekHotel.get(state.weekISO + "||" + hotel);
-      if (!g) return;
-
-      const { grid, meta, weekEmpty, weekAbsent, mainSub } = buildGrid(g, days);
-
-      const base = [...(g.orden_empleados || [])];
-      const visibles = base.filter(e => !weekEmpty.has(e));
-      const present = visibles.filter(e => !weekAbsent.has(e));
-      const absent  = visibles.filter(e =>  weekAbsent.has(e));
-
-      const ordered = [];
-      const seen = new Set();
-      present.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
-      base.forEach(e => {
-        if (weekAbsent.has(e)) {
-          const sub = mainSub[e];
-          if (sub && !seen.has(sub)) { ordered.push(sub); seen.add(sub); }
-        }
-      });
-      absent.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
-
-      let order = ordered;
-      if (f.empleado) order = order.filter(x => x === f.empleado);
-      if (!order.length) return;
-
-      const card = document.createElement("section");
-      card.className = "week";
-      const logo = /cumbria/i.test(hotel) ? "cumbria%20logo.jpg"
-                  : /guadiana/i.test(hotel) ? "guadiana%20logo.jpg" : "Logo.png";
-
-      card.innerHTML = `
-        <div class="week-head">
-          <img src="${logo}" onerror="this.src='Logo.png'" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
-          <div>
-            <div style="font-weight:700">${fix(hotel)} – Semana ${state.weekISO}</div>
-            <div style="color:#6b7280;font-size:12px">${days[0]} → ${days[6]}</div>
-          </div>
-        </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Empleados</th>
-                ${days.map(d => `<th>${new Date(d+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long'}).toUpperCase()}<div style="font-size:12px;color:#6b7280">${mini(d)}</div></th>`).join("")}
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>`;
-      const tbody = card.querySelector("tbody");
-
-      order.forEach(emp => {
-        const tr = document.createElement("tr");
-        let tds = `<td style="text-align:left">${fix(emp)}</td>`;
-        days.forEach(d => {
-          let lab = withCanonicalEmoji(rawLabel(grid[emp]?.[d]));
-          const low = (lab || "").toLowerCase();
-          let cls = "";
-          if (/vacaciones|baja|permiso|formaci|descanso/.test(low)) cls = "turno-descanso";
-          else if (/noche/.test(low)) cls = "turno-noche";
-          else if (/tarde/.test(low)) cls = "turno-tarde";
-          else if (/mañana|manana/.test(low)) cls = "turno-mañana";
-          const swap = meta[emp]?.[d]?.isSub ? " ↔" : "";
-          tds += `<td>${ lab ? `<span class="turno-pill ${cls}">${lab}${swap}</span>` : "—" }</td>`;
-        });
-        tr.innerHTML = tds;
-        tbody.appendChild(tr);
-      });
-
-      app.appendChild(card);
-    });
-  }
-
-  // Navegación
-  function move(step) {
-    if (!WEEKS.length) return;
-    const i = Math.max(0, WEEKS.indexOf(state.weekISO));
-    const j = Math.min(WEEKS.length - 1, Math.max(0, i + step));
-    state.weekISO = WEEKS[j];
-    render();
-  }
-  $("#btnPrev")?.addEventListener("click", () => move(-1));
-  $("#btnNext")?.addEventListener("click", () => move(+1));
-  $("#btnToday")?.addEventListener("click", () => { state.weekISO = nearestWeek(new Date()); render(); });
-
-  // API pública
-  window.__TW_RERENDER = () => render();
-  window.__TW_MOVE_TO_WEEK = (isoWeek) => { state.weekISO = isoWeek; render(); };
-  window.__TW_MOVE_TO_NEAREST = (isoWeek) => {
-    const toDate = (s)=>{const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d);};
-    const target = toDate(isoWeek);
-    if (!WEEKS.length) return;
-    const nearest = WEEKS.slice().sort((a,b)=> Math.abs(toDate(a)-target)-Math.abs(toDate(b)-target))[0];
-    state.weekISO = nearest; render();
+  const toISO = (d) => (typeof d === 'string') ? d.slice(0,10) : new Date(d).toISOString().slice(0,10);
+  const fromISO = (s) => new Date(s);
+  const addDays = (iso, n) => toISO(new Date(fromISO(iso).getTime()+n*DAY));
+  const mondayOf = (any) => {
+    const d = new Date(any); const wd = (d.getDay()+6)%7;
+    return toISO(new Date(d.getFullYear(), d.getMonth(), d.getDate()-wd));
   };
 
-  document.addEventListener("DOMContentLoaded", render);
-})();
-
-/* ======== Bloque de Filtros ======== */
-(function () {
-  const $ = (s, c=document) => c.querySelector(s);
-  const fstate = { hotel:null, empleado:null, desde:null, hasta:null };
-  if (!window.__TW_STATE__) window.__TW_STATE__ = {};
-  window.__TW_STATE__.filters = fstate;
-
-  // Acepta yyyy-mm-dd (type=date), dd/mm/aaaa y ddmmaa
-  function parseEs(str) {
-    if (!str) return null;
-    const s = str.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {            // nativo
-      const [y,m,d] = s.split("-").map(Number);
-      const dt = new Date(y,m-1,d); dt.setHours(0,0,0,0); return dt;
-    }
-    if (/^\d{6}$/.test(s)) {                        // ddmmaa
-      const dd=s.slice(0,2), mm=s.slice(2,4), aa=s.slice(4,6);
-      return parseEs(`${dd}/${mm}/20${aa}`);
-    }
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {          // dd/mm/aaaa
-      const [dd,mm,yy]=s.split("/").map(Number);
-      const dt=new Date(yy,mm-1,dd); dt.setHours(0,0,0,0);
-      return dt;
-    }
-    return null;
+  // Fuente de datos flexible
+  function getRows(){
+    const S = window.SCHEDULE || window.FULL_DATA || window.DATA || {};
+    if (Array.isArray(S)) return S;
+    if (Array.isArray(S.schedule)) return S.schedule;
+    if (Array.isArray(S.data)) return S.data;
+    if (Array.isArray(S.rows)) return S.rows;
+    return [];
   }
 
-  function populate() {
-    const selHotel = $("#fHotel"), selEmp = $("#fEmpleado");
-    const sched = (window.FULL_DATA?.schedule || window.DATA?.schedule || []);
-    const hotels = [...new Set(sched.map(g => g.hotel))].sort((a,b)=>a.localeCompare(b,"es"));
-    selHotel.innerHTML = `<option value="">— Hotel —</option>` + hotels.map(h=>`<option>${h}</option>`).join("");
+  // Pick helpers
+  const pick = (o, keys) => {
+    for (const k of keys) if (o && (k in o) && o[k]!=null && String(o[k]).trim()!=='') return String(o[k]).trim();
+    return '';
+  };
+  const COL = {
+    hotel:    ['hotel','Hotel','establecimiento','Establecimiento'],
+    emp:      ['empleado','Empleado','employee','nombre','name','persona'],
+    fecha:    ['fecha','Fecha','date','dia','day'],
+    turno:    ['turno','Turno','shift','tramo','TipoAusencia','ausencia','motivo']
+  };
 
-    function fillEmployees(hFilter) {
-      const emps = new Set();
-      sched.forEach(g => {
-        if (hFilter && g.hotel !== hFilter) return;
-        (g.orden_empleados || []).forEach(e => emps.add(e));
-        (g.turnos || []).forEach(t => { if (t?.empleado) emps.add(t.empleado); const su=t?.turno?.Sustituto; if (su) emps.add(su); });
-      });
-      const list = [...emps].sort((a,b)=>a.localeCompare(b,"es"));
-      selEmp.innerHTML = `<option value="">— Empleado —</option>` + list.map(e=>`<option>${e}</option>`).join("");
+  // Agrupa por hotel + semana (lunes)
+  function buildMap(){
+    const rows = getRows();
+    const map = new Map();
+    for (const r of rows){
+      const h = pick(r, COL.hotel);
+      const e = pick(r, COL.emp);
+      const f = toISO(pick(r, COL.fecha));
+      const t = pick(r, COL.turno);
+      if (!h || !e || !f) continue;
+      const mon = mondayOf(f);
+      const key = `${h}|${mon}`;
+      if (!map.has(key)) map.set(key, {hotel:h, week:mon, byEmp:new Map()});
+      const wk = map.get(key);
+      if (!wk.byEmp.has(e)) wk.byEmp.set(e, {});
+      wk.byEmp.get(e)[f] = t;
     }
-    fillEmployees(null);
-
-    selHotel.onchange = () => { fstate.hotel = selHotel.value || null; fillEmployees(fstate.hotel); selEmp.value=""; fstate.empleado=null; };
-    selEmp.onchange   = () => { fstate.empleado = selEmp.value || null; };
+    return map;
   }
 
-  function wire() {
-    const btnApply=$("#fApply"), btnClose=$("#fClose");
-    const iDesde=$("#fDesde"), iHasta=$("#fHasta");
-    btnApply.onclick = (e) => {
-      e.preventDefault();
-      const d = parseEs(iDesde.value), h = parseEs(iHasta.value);
-      fstate.desde = d; fstate.hasta = h;
+  // Píldoras
+  function pill(label){
+    const txt = label || '';
+    const l = txt.toLowerCase();
+    let cls = 'pill';
+    if (l.startsWith('mañana')) cls += ' pill-am';
+    else if (l.startsWith('tarde')) cls += ' pill-pm';
+    else if (l.startsWith('noche')) cls += ' pill-night';
+    else if (l.startsWith('descanso')) cls += ' pill-off';
+    else if (l.startsWith('vacaciones')) cls += ' pill-vac';
+    else if (l.startsWith('baja')) cls += ' pill-low';
+    else if (l.startsWith('permiso')) cls += ' pill-perm';
+    else if (l.startsWith('formación')) cls += ' pill-form';
+    else if (l.startsWith('c/t')) cls += ' pill-ct';
+    return `<span class="${cls}">${txt}</span>`;
+  }
 
-      if (d) {
-        const m = new Date(d); m.setDate(m.getDate() - ((m.getDay()+6)%7)); m.setHours(0,0,0,0);
-        const iso = (x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
-        const target = iso(m);
-        if (window.__TW_MOVE_TO_WEEK) window.__TW_MOVE_TO_WEEK(target);
-        else if (window.__TW_MOVE_TO_NEAREST) window.__TW_MOVE_TO_NEAREST(target);
+  // CSS mínimo (usa styles.mobile.css, pero añadimos clases de las píldoras por si no existen)
+  const STYLE = `
+  .weekCard{background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.08);padding:12px;margin:10px 0}
+  .weekHead{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .weekLogo{width:36px;height:36px;object-fit:contain;border-radius:8px}
+  .weekTitle{font:700 1rem system-ui;color:#122}
+  .weekRange{font:600 .85rem system-ui;color:#456}
+  .grid{width:100%;border-collapse:collapse}
+  .grid th,.grid td{border-bottom:1px solid #eef3f7;padding:10px 8px;vertical-align:middle}
+  .grid th{font:700 .85rem system-ui;color:#2a3a46;background:#f8fafc}
+  .emp{white-space:nowrap;font:600 .95rem system-ui;color:#112}
+  .muted{color:#9fb0c0}
+  .pill{display:inline-block;padding:.25rem .6rem;border-radius:999px;font:700 .8rem system-ui}
+  .pill-am{background:#e7f7ea;color:#136b2c}
+  .pill-pm{background:#fff3d6;color:#7e5b00}
+  .pill-night{background:#eae6ff;color:#3e2b84}
+  .pill-off{background:#ffe0e0;color:#8b1b1b}
+  .pill-vac{background:#dff5ff;color:#035f88}
+  .pill-low{background:#fde4ff;color:#7b2d86}
+  .pill-perm{background:#e9f0ff;color:#274d9c}
+  .pill-form{background:#efe7ff;color:#5b2d91}
+  .pill-ct{background:#e6fff2;color:#0f6a45}
+  `;
+  function ensureStyle(){
+    if (document.getElementById('mobile-inline-style')) return;
+    const s=document.createElement('style'); s.id='mobile-inline-style'; s.textContent=STYLE; document.head.appendChild(s);
+  }
+
+  // Público
+  window.MobileRenderer = {
+    renderWeek(target, opts){
+      ensureStyle();
+
+      const normalize = typeof opts.normalize==='function' ? opts.normalize : (x=>x);
+      const hideEmpty = !!opts.hideEmptyEmployees;
+      const weekStartISO = opts.weekStartISO || mondayOf(new Date());
+      const map = buildMap();
+
+      // Filtrado por hotel
+      const cards = [];
+      for (const [key, wk] of map){
+        if (opts.hotel && wk.hotel !== opts.hotel) continue;
+        if (wk.week !== weekStartISO) continue; // solo esa semana
+        // Cabecera hotel
+        const logo = wk.hotel.toLowerCase().includes('cumbria') ? 'img/logo_cumbria.png' : 'img/logo_guadiana.png';
+        const range = `${weekStartISO} → ${addDays(weekStartISO,6)}`;
+
+        // Construcción de filas
+        const days = Array.from({length:7}, (_,i)=> addDays(weekStartISO,i));
+        const rowsHtml = [];
+        for (const [emp, byDate] of wk.byEmp){
+          if (opts.empleado && emp!==opts.empleado) continue;
+
+          // ¿tiene algo esa semana?
+          let has = false;
+          const tds = days.map(d=>{
+            let raw = byDate[d] || ''; raw = normalize(raw);
+            if (raw && raw!=='—') has = true;
+            return `<td>${raw ? pill(raw) : '<span class="muted">—</span>'}</td>`;
+          }).join('');
+
+          if (hideEmpty && !has) continue;
+          rowsHtml.push(`<tr><td class="emp">${emp}</td>${tds}</tr>`);
+        }
+
+        // Si tras filtrar no quedan filas, muestra sólo cabecera vacía
+        const tableHtml = `
+          <div class="weekCard">
+            <div class="weekHead">
+              <img class="weekLogo" src="${logo}" alt="">
+              <div>
+                <div class="weekTitle">${wk.hotel} – Semana ${new Date(weekStartISO).toLocaleDateString('es-ES',{week:'numeric'}) || ''}</div>
+                <div class="weekRange">${range}</div>
+              </div>
+            </div>
+            <table class="grid">
+              <thead>
+                <tr>
+                  <th>Empleado</th>
+                  <th>Lunes<br>${days[0].split('-').reverse().join('/')}</th>
+                  <th>Martes<br>${days[1].split('-').reverse().join('/')}</th>
+                  <th>Miércoles<br>${days[2].split('-').reverse().join('/')}</th>
+                  <th>Jueves<br>${days[3].split('-').reverse().join('/')}</th>
+                  <th>Viernes<br>${days[4].split('-').reverse().join('/')}</th>
+                  <th>Sábado<br>${days[5].split('-').reverse().join('/')}</th>
+                  <th>Domingo<br>${days[6].split('-').reverse().join('/')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml.join('') || '<tr><td colspan="8" class="muted">No hay datos para los filtros seleccionados.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        `;
+        cards.push(tableHtml);
       }
 
-      window.__TW_RERENDER && window.__TW_RERENDER();
-      document.getElementById('dlgFilters')?.close();
-    };
-    btnClose.onclick = (e) => { e.preventDefault(); document.getElementById('dlgFilters')?.close(); };
+      target.innerHTML = cards.join('') || `<p class="hint">Selecciona un hotel y fechas en <strong>Filtros</strong>.</p>`;
+    }
+  };
+})();
+
+    // Vacaciones y baja con restos “raros”
+    [/Vacaciones(?:[^\w]|¤|–|ï¸|–)*/g, 'Vacaciones 🏖️'],
+    [/Baja(?:[^\w]|¤|’|ï¸)*/g, 'Baja 🤒'],
+    // Permiso / Formación / C/T
+    [/Permiso(?:[^\w]|ðŸ—“ï¸)*/g, 'Permiso 🗓️'],
+    [/Formaci[oó]n(?:[^\w]|ðŸ“)?/g, 'Formación 🎓'],
+    // Cambio de turno (C/T, Cambio, ↔ -> 🔄)
+    [/\bC\/T\b|Cambio(?:\s+de)?\s+turno|\u2194/g, 'C/T 🔄'],
+    // Ruidos habituales
+    [/[\uFFFD\u0092\u00AD]/g, ''], //  , controles, soft hyphen
+  ];
+
+  function normalizeCell(txt) {
+    if (!txt) return '';
+    let out = String(txt);
+    MAP_FIX.forEach(([re, rep]) => (out = out.replace(re, rep)));
+    // Si quedó “Noche” sin emoji, se lo añadimos
+    if (/^Noche\s*$/.test(out)) out = 'Noche 🌙';
+    return out.trim();
   }
 
-  document.addEventListener("DOMContentLoaded", () => { populate(); wire(); });
+  // ---- Utilidad: comprueba si una fila está vacía (todo “—” o vacío) ----
+  function rowIsEmpty(tr) {
+    const tds = [...tr.querySelectorAll('td.turno-cell, td')].slice(1); // ignora primera (nombre)
+    if (!tds.length) return false;
+    return tds.every(td => {
+      const v = normalizeCell(td.textContent || '').replace(/—/g, '').trim();
+      return v === '';
+    });
+  }
+
+  // ---- Hook tras render: normaliza celdas y oculta filas vacías ----
+  function patchAfterRender() {
+    const root = document.getElementById('app') || document.body;
+    const allCells = root.querySelectorAll('td, .pill, .turno, .chip');
+
+    allCells.forEach(el => {
+      // Evita romper HTML: normalizamos solo texto plano
+      if (el.firstElementChild) return;
+      el.textContent = normalizeCell(el.textContent);
+    });
+
+    // Ocultar filas de empleados completamente vacíos
+    const rows = root.querySelectorAll('table tbody tr');
+    rows.forEach(tr => {
+      if (rowIsEmpty(tr)) tr.style.display = 'none';
+    });
+  }
+
+  // ---- Integración con el flujo de la app móvil ----
+  // 1) Si tu app dispara un evento propio cuando termina de pintar, lo enganchamos:
+  document.addEventListener('mobile:rendered', patchAfterRender);
+
+  // 2) Además, por seguridad, aplicamos tras cada navegación/click principal:
+  ['click', 'change'].forEach(ev =>
+    document.addEventListener(ev, () => {
+      // Pequeño debounce para dejar terminar el render
+      clearTimeout(window.__mobPatchTimer);
+      window.__mobPatchTimer = setTimeout(patchAfterRender, 30);
+    })
+  );
+
+  // 3) Y al primer load:
+  document.addEventListener('DOMContentLoaded', () => setTimeout(patchAfterRender, 30));
 })();
