@@ -1,145 +1,316 @@
-// mobile.patch.js — robusto: UI siempre activa y sincroniza cuando el motor esté listo
+/* Turnos Web · mobile.patch.js (vista móvil)
+/* … (todo igual que la versión anterior: limpieza de textos, emojis,
+      ocultar filas vacías, sustituciones, navegación de semanas, etc.) … */
 
 (function () {
-  const $  = s => document.querySelector(s);
-  const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+  "use strict";
+  const $ = (s, ctx = document) => ctx.querySelector(s);
+  const DAY = 86400000;
 
-  // === Compat helpers =======================================================
-  const getData = () => window.FULL_DATA || window.DATA || window.__DATA__;
-  const call = (names, ...args) => {
-    for (const n of names) {
-      const fn = window[n];
-      if (typeof fn === 'function') return fn(...args);
+  // ---------- Limpieza mojibake ----------
+  function fix(s) {
+    if (typeof s !== "string") return s;
+    const map = [
+      [/Ã¡/g,"á"],[/Ã©/g,"é"],[/Ã­/g,"í"],[/Ã³/g,"ó"],[/Ãº/g,"ú"],
+      [/Ã±/g,"ñ"],[/Ã‘/g,"Ñ"],[/Ã¼/g,"ü"],[/Â¿/g,"¿"],[/Â¡/g,"¡"],
+      [/Âº/g,"º"],[/Âª/g,"ª"],[/Â·/g,"·"]
+    ];
+    let out = s;
+    for (const [re,r] of map) out = out.replace(re,r);
+    out = out.replace(/[\u0000-\u001F\u007F-\u009F]/g,"")
+             .replace(/ð[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g,"")
+             .replace(/Â[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g,"")
+             .replace(/ï¸[\u0080-\u00FF\-–—”“"'\u00A0-\u00FF]*/g,"")
+             .replace(/\uFFFD/g,"").replace(/[Ÿ ]/g,"").replace(/[¤’‚‹›˘]/g,"");
+    return out.trim().replace(/\s{2,}/g," ");
+  }
+
+  // ---------- Fechas ----------
+  const iso = d => { const x=new Date(d); x.setHours(0,0,0,0);
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
+  const fromISO = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+  const monday = d => { const x=new Date(d); const w=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-w); return x; };
+  const weekDays = mon => Array.from({length:7},(_,i)=>iso(new Date(mon.getTime()+i*DAY)));
+  const mini = s => { const dt = fromISO(s);
+    return dt.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"2-digit"}).toLowerCase(); };
+
+  // ---------- Datos ----------
+  const DATA = window.FULL_DATA || window.DATA || {};
+  const SCHEDULE = Array.isArray(DATA.schedule) ? DATA.schedule : [];
+  const WEEKS = [...new Set(SCHEDULE.map(g => g.semana_lunes))].sort();
+  const byWeekHotel = new Map();
+  for (const g of SCHEDULE) byWeekHotel.set(g.semana_lunes + "||" + g.hotel, g);
+  const state = { weekISO: nearestWeek() };
+
+  function nearestWeek(ref = new Date()) {
+    if (!WEEKS.length) return iso(monday(ref));
+    const t = monday(ref).getTime();
+    return WEEKS.map(w => [w, Math.abs(fromISO(w).getTime() - t)])
+                .sort((a,b)=>a[1]-b[1])[0][0];
+  }
+
+  // ---------- Intérpretes ----------
+  function rawLabel(turno) {
+    if (turno == null) return "";
+    if (typeof turno === "string") return fix(turno);
+    return fix(turno.TipoInterpretado || turno.TipoAusencia || turno.TurnoOriginal || "");
+  }
+
+  function withCanonicalEmoji(label) {
+    let out = (label || "").trim();
+    const low = out.toLowerCase();
+    const changeMarkRE = /(↔|→|←|”„|->|=>)/;
+
+    if (/vacaciones/.test(low) && !/🏖️/.test(out)) out += " 🏖️";
+    if (/baja/.test(low)       && !/🤒/.test(out)) out += " 🤒";
+    if (/permiso/.test(low)    && !/🗓️/.test(out)) out += " 🗓️";
+    if (/formaci[oó]n/.test(low) && !/🎓/.test(out)) out += " 🎓";
+    if (/(^| )c\/?t( |$)|\bct\b|cambio( de turno)?/i.test(out) || changeMarkRE.test(out)) {
+      if (!/🔄/.test(out)) out += " 🔄";
     }
-  };
-  const has = names => names.some(n => typeof window[n] === 'function');
+    if (/^noche$/i.test(out) && !/🌙/.test(out)) out += " 🌙";
 
-  // input date  YYYY-MM-DD  ↔  motor dd/mm/aaaa
-  const toMotor   = v => !v ? '' : v.split('-').reverse().join('/');     // 2025-11-02 → 02/11/2025
-  const fromMotor = v => !v ? '' : v.split('/').reverse().join('-');     // 02/11/2025 → 2025-11-02
-
-  // === Modal ================================================================
-  function openFilters()  { $('#overlay')?.classList.add('show'); $('#filters')?.classList.add('show'); }
-  function closeFilters() { $('#overlay')?.classList.remove('show'); $('#filters')?.classList.remove('show'); }
-
-  // === Empleados (fallback local si el motor no lo hace) ====================
-  function buildEmployeeList(data, hotel) {
-    if (!data || !hotel || !data[hotel]) return [];
-    const set = new Set();
-    Object.values(data[hotel]).forEach(semana => {
-      const empleados = (semana && semana.empleados) || (semana && semana.Employees) || {};
-      Object.keys(empleados).forEach(n => set.add(n));
-    });
-    return Array.from(set).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
+    out = out.replace(/[↔→←”“„]/g,"").trim().replace(/\s{2,}/g," ");
+    return out;
   }
 
-  function fillHotelSelect(data) {
-    const sel = $('#fHotel'); if (!sel) return;
-    sel.innerHTML = '';
-    const o0 = new Option('— Hotel —', '');
-    sel.appendChild(o0);
+  // ---------- Grid + sustitutos ----------
+  function buildGrid(group, days) {
+    const grid = {}, meta = {}, subCount = {};
+    const all = new Set(group.orden_empleados || []);
+    (group.turnos || []).forEach(t => { if (t.turno && typeof t.turno==="object" && t.turno.Sustituto) all.add(t.turno.Sustituto); });
+    all.forEach(e => { grid[e] = {}; meta[e] = {}; days.forEach(d => { grid[e][d]=""; meta[e][d]=null; }); });
 
-    // Hoteles conocidos en tu dataset
-    const keys = Object.keys(data || {});
-    const preferred = ['Cumbria Spa&Hotel', 'Sercotel Guadiana'];
-    const ordered = preferred.concat(keys.filter(k => !preferred.includes(k)));
-    ordered.forEach(k => { if (data && data[k]) sel.appendChild(new Option(k, k)); });
-  }
+    (group.turnos || []).forEach(t => { if (grid[t.empleado]) grid[t.empleado][t.fecha] = t.turno; });
 
-  function fillEmployeeSelect(list) {
-    const sel = $('#fEmp'); if (!sel) return;
-    const keep = sel.value;
-    sel.innerHTML = '';
-    sel.appendChild(new Option('— Empleado —', ''));
-    (list || []).forEach(n => sel.appendChild(new Option(n, n)));
-    if (keep) sel.value = keep;
-  }
-
-  // === Sincronización con el motor =========================================
-  let synced = false;
-  function trySync() {
-    const data = getData();
-    const motorReady = has(['applyFilters','aplicarFiltros']) &&
-                       has(['injectNav','navegarSemana']) &&
-                       has(['currentFilters','getFiltrosActuales']);
-    // Poblar hoteles cuando tengamos data
-    if (data && !$('#fHotel').options?.length) fillHotelSelect(data);
-
-    if (!motorReady) return; // seguimos intentando cada 120ms
-    if (synced)     return;
-
-    // Reflejar filtros actuales (si los hay)
-    try {
-      const f = call(['currentFilters','getFiltrosActuales']);
-      if (f) {
-        if (f.hotel)     $('#fHotel').value = f.hotel;
-        if (f.employee)  $('#fEmp').value   = f.employee;
-        if (f.dateFrom)  $('#fFrom').value  = fromMotor(f.dateFrom);
-        if (f.dateTo)    $('#fTo').value    = fromMotor(f.dateTo);
-      }
-    } catch {}
-
-    // Lista de empleados al cambiar hotel (fallback si el motor no la provee)
-    on($('#fHotel'), 'change', () => {
-      try {
-        if (typeof window.refreshEmployeeOptions === 'function') {
-          window.refreshEmployeeOptions(getData(), call(['currentFilters','getFiltrosActuales']) || {});
-        } else {
-          fillEmployeeSelect(buildEmployeeList(getData(), $('#fHotel').value));
+    for (const emp of Object.keys(grid)) {
+      for (const d of days) {
+        const raw = grid[emp][d];
+        if (raw && typeof raw === "object") {
+          const labAbs = rawLabel(raw);
+          grid[emp][d] = labAbs; meta[emp][d] = { isAbsence:true, sub: raw.Sustituto || null };
+          const sust = raw.Sustituto;
+          if (sust) {
+            subCount[emp] = subCount[emp] || {};
+            subCount[emp][sust] = (subCount[emp][sust] || 0) + 1;
+            const heredado = rawLabel({ TurnoOriginal: raw.TurnoOriginal });
+            if (!grid[sust]) { grid[sust]={}; meta[sust]={}; days.forEach(x=>{ grid[sust][x]=""; meta[sust][x]=null; }); }
+            grid[sust][d] = heredado; meta[sust][d] = { isSub:true, for:emp };
+          }
+        } else if (typeof raw === "string") {
+          grid[emp][d] = fix(raw);
         }
-      } catch {}
-    });
-
-    synced = true;
-  }
-
-  // === UI: listeners inmediatos (funcionan aunque el motor no esté listo) ===
-  function bindUI() {
-    // Abrir/cerrar modal
-    on($('#openFilters'), 'click', openFilters);
-    on($('#close'),       'click', closeFilters);
-    on($('#overlay'),     'click', closeFilters);
-
-    // Aplicar: si el motor no está aún, simplemente cierra; cuando esté listo, el usuario vuelve a aplicar.
-    on($('#apply'), 'click', () => {
-      const f = {
-        hotel:    $('#fHotel')?.value || '',
-        employee: $('#fEmp')?.value   || '',
-        dateFrom: toMotor($('#fFrom')?.value || ''),
-        dateTo:   toMotor($('#fTo')?.value   || '')
-      };
-      try { call(['applyFilters','aplicarFiltros'], f); } catch {}
-      $('#hint')?.remove();
-      closeFilters();
-    });
-
-    // Navegación: soporta varios nombres
-    const callNav = (delta, today=false) => {
-      try { call(['injectNav','navegarSemana'], delta, today); } catch {}
-    };
-    on($('#prevW'),  'click', () => callNav(-1));
-    on($('#nextW'),  'click', () => callNav(+1));
-    on($('#todayW'), 'click', () => callNav(0, true));
-  }
-
-  // === Arranque =============================================================
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindUI);
-  } else {
-    bindUI();
-  }
-
-  // Reintentos suaves para sincronizar con el motor/datos
-  const t = setInterval(() => {
-    trySync();
-    if (synced && $('#fHotel').options.length) clearInterval(t);
-  }, 120);
-
-  // Primer pintado razonable si el motor expone navegación
-  const kick = setInterval(() => {
-    if (has(['injectNav','navegarSemana'])) {
-      try { call(['injectNav','navegarSemana'], 0, true); } catch {}
-      clearInterval(kick);
+      }
     }
-  }, 200);
+
+    const weekEmpty = new Set(), weekAbsent = new Set();
+    (group.orden_empleados || []).forEach(emp => {
+      let onlyDashes = true, onlyAbs = true;
+      days.forEach(d => {
+        const v = (grid[emp][d] || "").trim();
+        const low = v.toLowerCase();
+        const isDash = v === "—" || v === "-" || v === "";
+        const isAbs  = /vacac|baja|permiso|formaci|descanso/.test(low);
+        if (!isDash) onlyDashes = false;
+        if (!isAbs)  onlyAbs = false;
+      });
+      if (onlyDashes) weekEmpty.add(emp);
+      else if (onlyAbs) weekAbsent.add(emp);
+    });
+
+    const mainSub = {};
+    for (const emp of Object.keys(subCount)) {
+      const pairs = Object.entries(subCount[emp]).sort((a,b)=>b[1]-a[1]);
+      if (pairs.length) mainSub[emp] = pairs[0][0];
+    }
+
+    return { grid, meta, weekEmpty, weekAbsent, mainSub };
+  }
+
+  // ---------- Render ----------
+  function render() {
+    const app = $("#app"); if (!app) return;
+    app.innerHTML = "";
+
+    if (!SCHEDULE.length) { app.innerHTML = `<p class="meta">Sin datos.</p>`; return; }
+
+    const days = weekDays(fromISO(state.weekISO));
+    app.insertAdjacentHTML("beforeend", `<p class="meta">Semana ${mini(days[0])} → ${mini(days[6])}</p>`);
+
+    const f = window.__TW_STATE__?.filters || {};
+    let hotelsAll = [...new Set(SCHEDULE.map(g => g.hotel))];
+    if (f.hotel) hotelsAll = hotelsAll.filter(h => h === f.hotel);
+
+    hotelsAll.forEach(hotel => {
+      const g = byWeekHotel.get(state.weekISO + "||" + hotel);
+      if (!g) return;
+
+      const { grid, meta, weekEmpty, weekAbsent, mainSub } = buildGrid(g, days);
+
+      const base = [...(g.orden_empleados || [])];
+      const visibles = base.filter(e => !weekEmpty.has(e));
+      const present = visibles.filter(e => !weekAbsent.has(e));
+      const absent  = visibles.filter(e =>  weekAbsent.has(e));
+
+      const ordered = [];
+      const seen = new Set();
+      present.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
+      base.forEach(e => {
+        if (weekAbsent.has(e)) {
+          const sub = mainSub[e];
+          if (sub && !seen.has(sub)) { ordered.push(sub); seen.add(sub); }
+        }
+      });
+      absent.forEach(e => { if (!seen.has(e)) { ordered.push(e); seen.add(e); } });
+
+      let order = ordered;
+      if (f.empleado) order = order.filter(x => x === f.empleado);
+      if (!order.length) return;
+
+      const card = document.createElement("section");
+      card.className = "week";
+      const logo = /cumbria/i.test(hotel) ? "cumbria%20logo.jpg"
+                  : /guadiana/i.test(hotel) ? "guadiana%20logo.jpg" : "Logo.png";
+
+      card.innerHTML = `
+        <div class="week-head">
+          <img src="${logo}" onerror="this.src='Logo.png'" style="width:32px;height:32px;border-radius:8px;object-fit:cover">
+          <div>
+            <div style="font-weight:700">${fix(hotel)} – Semana ${state.weekISO}</div>
+            <div style="color:#6b7280;font-size:12px">${days[0]} → ${days[6]}</div>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Empleados</th>
+                ${days.map(d => `<th>${new Date(d+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long'}).toUpperCase()}<div style="font-size:12px;color:#6b7280">${mini(d)}</div></th>`).join("")}
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>`;
+      const tbody = card.querySelector("tbody");
+
+      order.forEach(emp => {
+        const tr = document.createElement("tr");
+        let tds = `<td style="text-align:left">${fix(emp)}</td>`;
+        days.forEach(d => {
+          let lab = withCanonicalEmoji(rawLabel(grid[emp]?.[d]));
+          const low = (lab || "").toLowerCase();
+          let cls = "";
+          if (/vacaciones|baja|permiso|formaci|descanso/.test(low)) cls = "turno-descanso";
+          else if (/noche/.test(low)) cls = "turno-noche";
+          else if (/tarde/.test(low)) cls = "turno-tarde";
+          else if (/mañana|manana/.test(low)) cls = "turno-mañana";
+          const swap = meta[emp]?.[d]?.isSub ? " ↔" : "";
+          tds += `<td>${ lab ? `<span class="turno-pill ${cls}">${lab}${swap}</span>` : "—" }</td>`;
+        });
+        tr.innerHTML = tds;
+        tbody.appendChild(tr);
+      });
+
+      app.appendChild(card);
+    });
+  }
+
+  // Navegación
+  function move(step) {
+    if (!WEEKS.length) return;
+    const i = Math.max(0, WEEKS.indexOf(state.weekISO));
+    const j = Math.min(WEEKS.length - 1, Math.max(0, i + step));
+    state.weekISO = WEEKS[j];
+    render();
+  }
+  $("#btnPrev")?.addEventListener("click", () => move(-1));
+  $("#btnNext")?.addEventListener("click", () => move(+1));
+  $("#btnToday")?.addEventListener("click", () => { state.weekISO = nearestWeek(new Date()); render(); });
+
+  // API pública
+  window.__TW_RERENDER = () => render();
+  window.__TW_MOVE_TO_WEEK = (isoWeek) => { state.weekISO = isoWeek; render(); };
+  window.__TW_MOVE_TO_NEAREST = (isoWeek) => {
+    const toDate = (s)=>{const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d);};
+    const target = toDate(isoWeek);
+    if (!WEEKS.length) return;
+    const nearest = WEEKS.slice().sort((a,b)=> Math.abs(toDate(a)-target)-Math.abs(toDate(b)-target))[0];
+    state.weekISO = nearest; render();
+  };
+
+  document.addEventListener("DOMContentLoaded", render);
+})();
+
+/* ======== Bloque de Filtros ======== */
+(function () {
+  const $ = (s, c=document) => c.querySelector(s);
+  const fstate = { hotel:null, empleado:null, desde:null, hasta:null };
+  if (!window.__TW_STATE__) window.__TW_STATE__ = {};
+  window.__TW_STATE__.filters = fstate;
+
+  // Acepta yyyy-mm-dd (type=date), dd/mm/aaaa y ddmmaa
+  function parseEs(str) {
+    if (!str) return null;
+    const s = str.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {            // nativo
+      const [y,m,d] = s.split("-").map(Number);
+      const dt = new Date(y,m-1,d); dt.setHours(0,0,0,0); return dt;
+    }
+    if (/^\d{6}$/.test(s)) {                        // ddmmaa
+      const dd=s.slice(0,2), mm=s.slice(2,4), aa=s.slice(4,6);
+      return parseEs(`${dd}/${mm}/20${aa}`);
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {          // dd/mm/aaaa
+      const [dd,mm,yy]=s.split("/").map(Number);
+      const dt=new Date(yy,mm-1,dd); dt.setHours(0,0,0,0);
+      return dt;
+    }
+    return null;
+  }
+
+  function populate() {
+    const selHotel = $("#fHotel"), selEmp = $("#fEmpleado");
+    const sched = (window.FULL_DATA?.schedule || window.DATA?.schedule || []);
+    const hotels = [...new Set(sched.map(g => g.hotel))].sort((a,b)=>a.localeCompare(b,"es"));
+    selHotel.innerHTML = `<option value="">— Hotel —</option>` + hotels.map(h=>`<option>${h}</option>`).join("");
+
+    function fillEmployees(hFilter) {
+      const emps = new Set();
+      sched.forEach(g => {
+        if (hFilter && g.hotel !== hFilter) return;
+        (g.orden_empleados || []).forEach(e => emps.add(e));
+        (g.turnos || []).forEach(t => { if (t?.empleado) emps.add(t.empleado); const su=t?.turno?.Sustituto; if (su) emps.add(su); });
+      });
+      const list = [...emps].sort((a,b)=>a.localeCompare(b,"es"));
+      selEmp.innerHTML = `<option value="">— Empleado —</option>` + list.map(e=>`<option>${e}</option>`).join("");
+    }
+    fillEmployees(null);
+
+    selHotel.onchange = () => { fstate.hotel = selHotel.value || null; fillEmployees(fstate.hotel); selEmp.value=""; fstate.empleado=null; };
+    selEmp.onchange   = () => { fstate.empleado = selEmp.value || null; };
+  }
+
+  function wire() {
+    const btnApply=$("#fApply"), btnClose=$("#fClose");
+    const iDesde=$("#fDesde"), iHasta=$("#fHasta");
+    btnApply.onclick = (e) => {
+      e.preventDefault();
+      const d = parseEs(iDesde.value), h = parseEs(iHasta.value);
+      fstate.desde = d; fstate.hasta = h;
+
+      if (d) {
+        const m = new Date(d); m.setDate(m.getDate() - ((m.getDay()+6)%7)); m.setHours(0,0,0,0);
+        const iso = (x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+        const target = iso(m);
+        if (window.__TW_MOVE_TO_WEEK) window.__TW_MOVE_TO_WEEK(target);
+        else if (window.__TW_MOVE_TO_NEAREST) window.__TW_MOVE_TO_NEAREST(target);
+      }
+
+      window.__TW_RERENDER && window.__TW_RERENDER();
+      document.getElementById('dlgFilters')?.close();
+    };
+    btnClose.onclick = (e) => { e.preventDefault(); document.getElementById('dlgFilters')?.close(); };
+  }
+
+  document.addEventListener("DOMContentLoaded", () => { populate(); wire(); });
 })();
