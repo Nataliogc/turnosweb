@@ -1,0 +1,1 @@
+window.FULL_DATA = window.FULL_DATA||{}; window.FULL_DATA.ausencias = window.FULL_DATA.ausencias||[];
