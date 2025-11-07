@@ -4,16 +4,30 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cuadrantes de turnos · Móvil</title>
-  <link rel="icon" href="img/favicon.png" />
+  <link rel="icon" href="img/turnos_icon.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="styles.mobile.css" />
   <style>
-    body{background:#f3f6f9;margin:0}
-    header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#121a22;color:#f5f7fa}
+    :root{--bg:#f3f6f9;--ink:#0e1720;--panel:#121a22;--muted:#7f96aa;--brand:#0b67ff}
+    html,body{background:var(--bg);margin:0}
+    header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--panel);color:#f5f7fa}
     header .brand{display:flex;align-items:center;gap:10px}
     header img{width:24px;height:24px;border-radius:6px}
     header .title{font:700 16px/1.2 system-ui}
-    .wrap{max-width:1200px;margin:16px auto;padding:0 12px}
+    header .actions{display:flex;gap:8px}
+    .btn{border:0;border-radius:999px;padding:8px 12px;font:600 13px system-ui;background:#1f2a36;color:#eaf1f7;cursor:pointer}
+    .btn.primary{background:var(--brand)}
+    .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
+
+    /* Panel filtros */
+    .drawer{position:fixed;inset:auto 0 0 0;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.25);
+            transform:translateY(100%);transition:transform .25s ease;z-index:50}
+    .drawer.open{transform:translateY(0)}
+    .drawer header{background:transparent;color:var(--ink);padding:12px}
+    .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 16px}
+    .f-grid label{font:600 12px system-ui;color:#345}
+    .f-grid select,.f-grid input[type="date"]{width:100%;padding:10px;border:1px solid #d6e0ea;border-radius:10px;font:600 14px system-ui}
+    .f-actions{display:flex;gap:8px;justify-content:flex-end;padding:10px 12px 16px}
   </style>
 </head>
 <body>
@@ -22,16 +36,38 @@
       <img src="img/turnos_icon.png" alt="">
       <div class="title">Cuadrantes de turnos</div>
     </div>
-    <nav>
+    <div class="actions">
       <button id="btnPrev" class="btn">← Semana</button>
       <button id="btnToday" class="btn">Hoy</button>
       <button id="btnNext" class="btn">Semana →</button>
-    </nav>
+      <button id="btnFilters" class="btn primary">Filtros</button>
+    </div>
   </header>
 
   <main class="wrap">
     <div id="monthly-summary-container"></div>
   </main>
+
+  <!-- Drawer Filtros -->
+  <section id="drawer" class="drawer" aria-hidden="true">
+    <header><strong>Filtros</strong></header>
+    <div class="f-grid">
+      <div>
+        <label>Hotel</label>
+        <select id="f-hotel">
+          <option value="">(Todos)</option>
+        </select>
+      </div>
+      <div>
+        <label>Semana (lunes)</label>
+        <input id="f-week" type="date">
+      </div>
+    </div>
+    <div class="f-actions">
+      <button id="f-cancel" class="btn">Cerrar</button>
+      <button id="f-apply" class="btn primary">Aplicar</button>
+    </div>
+  </section>
 
   <!-- Datos -->
   <script src="data.js?v=TS"></script>
@@ -40,8 +76,7 @@
   <!-- Adaptador SOLO móvil -->
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
 
-  <!-- Normalización opcional y parches (si los usas) -->
-  <!-- <script src="normalize_data.js?v=TS"></script> -->
+  <!-- Parches de texto (opcional, deja si ya lo usas) -->
   <script src="mobile.patch.js?v=TS"></script>
 
   <!-- App móvil -->
