@@ -90,12 +90,22 @@
   </section>
 
   <!-- Datos -->
- <script src="data.js?v=TS"></script>
+<script src="data.js?v=TS"></script>
 <script src="data.ausencias.js?v=TS"></script> <!-- si existe -->
-<script src="normalize_data.js?v=TS"></script>  <!-- si existe -->
-<script src="plantilla_adapter_semana.js?v=TS"></script>
+
+<!-- Quita esta si no existe el archivo en tu carpeta -->
+<!-- <script src="normalize_data.js?v=TS"></script> -->
+
+<!-- 👇 ADAPTADOR SOLO MÓVIL (no usa UI de escritorio) -->
+<script src="plantilla_mobile_adapter.js?v=TS"></script>
+
+<!-- Opcional, parches de textos/emojis -->
 <script src="mobile.patch.js?v=TS"></script>
+
+<!-- Arranque móvil -->
 <script src="mobile.app.js?v=TS"></script>
+
+<!-- Bootstrap inline (opcional) -->
 <script>
 (function(){
   function iso(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
@@ -104,22 +114,23 @@
   const dom=new Date(lun); dom.setDate(lun.getDate()+6);
 
   if(!window.FULL_DATA){console.error('[mobile boot] Falta data.js');return;}
-  if(typeof window.renderContent!=='function'){console.error('[mobile boot] Falta plantilla_adapter_semana.js');return;}
+  if(typeof window.renderContent!=='function'){console.error('[mobile boot] Falta plantilla_mobile_adapter.js');return;}
 
-  // primer hotel disponible
-  const hs = Array.isArray(FULL_DATA.hoteles) ? FULL_DATA.hoteles : [];
-  const h0 = hs[0] || {};
-  const hotel = h0.id || h0.codigo || h0.code || h0.nombre || h0.name || '';
-
-  // asegura contenedor si el móvil usa otro layout
+  // Asegura contenedor si no existe
   if(!document.getElementById('monthly-summary-container')){
     const box=document.createElement('div'); box.id='monthly-summary-container';
     (document.querySelector('main')||document.body).appendChild(box);
   }
 
-  window.renderContent(FULL_DATA,{hotel,employee:'',dateFrom:iso(lun),dateTo:iso(dom)});
+  // Hotel por defecto (primero disponible)
+  const H = Array.isArray(FULL_DATA.hoteles) ? FULL_DATA.hoteles : [];
+  const h0 = H[0] || {};
+  const hotel = h0.id || h0.codigo || h0.code || h0.nombre || h0.name || '';
+
+  window.renderContent(FULL_DATA, { hotel, employee:'', dateFrom:iso(lun), dateTo:iso(dom) });
 })();
 </script>
+
 
 </body>
 </html>
