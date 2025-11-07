@@ -1,31 +1,42 @@
-/* plantilla_mobile_adapter.js
-   Adaptador SOLO para móvil: expone window.renderContent sin depender
-   de selects o UI de escritorio. No toca nada del index.
-*/
+/* plantilla_mobile_adapter.js — SOLO móvil (safe) */
 (function () {
   'use strict';
 
+  // === utilidades robustas de fecha ===
   const DAY = 86400000;
-  const toISO = d => {
-    const z = (typeof d === 'string') ? new Date(d) : new Date(d.getTime() - d.getTimezoneOffset()*60000);
-    return z.toISOString().slice(0,10);
-  };
+
+  function toISO(d) {
+    if (!d) return '';                          // <- evita undefined/null
+    let dt = d;
+    if (!(d instanceof Date)) dt = new Date(d); // acepta string o timestamp
+    if (!(dt instanceof Date) || isNaN(dt)) return '';
+    const z = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+    return z.toISOString().slice(0, 10);
+  }
   const fromISO = s => new Date(s);
-  const addDays = (iso, n) => toISO(new Date(fromISO(iso).getTime() + n*DAY));
+  const addDays = (iso, n) => {
+    if (!iso) return '';
+    const t = fromISO(iso).getTime();
+    if (isNaN(t)) return '';
+    return toISO(new Date(t + n * DAY));
+  };
   const mondayOf = any => {
-    const d = typeof any === 'string' ? fromISO(any) : new Date(any);
-    const wd = (d.getDay() + 6) % 7; // lunes=0
-    const m = new Date(d); m.setDate(d.getDate() - wd);
+    const base = (any instanceof Date) ? any : new Date(any || Date.now());
+    if (isNaN(base)) return toISO(new Date());
+    const wd = (base.getDay() + 6) % 7; // lunes=0
+    const m = new Date(base); m.setDate(base.getDate() - wd);
     return toISO(m);
   };
 
+  // === lectura flexible de filas ===
   function getRows(D) {
     if (!D) return [];
     if (Array.isArray(D.rows))      return D.rows;
     if (Array.isArray(D.data))      return D.data;
     if (Array.isArray(D.schedule))  return D.schedule;
-    if (Array.isArray(D))           return D; // plano
-    // fallback desde FULL_DATA.hoteles/personas/turnos
+    if (Array.isArray(D))           return D;
+
+    // fallback FULL_DATA.hoteles/personas/turnos
     const out = [];
     const H = Array.isArray(D.hoteles) ? D.hoteles : [];
     for (const h of H) {
@@ -40,6 +51,7 @@
     return out;
   }
 
+  // === UI mínima ===
   function pill(txt) {
     const t = String(txt||'').trim(), l = t.toLowerCase();
     let cls = 'pill';
@@ -75,22 +87,24 @@
     document.head.appendChild(s);
   }
 
-  // API pública usada por mobile.app.js
+  // === API pública usada por mobile.app.js ===
   window.renderContent = function renderContent(DATA, opts = {}) {
     ensureStyle();
 
     const rows = getRows(DATA);
     const hotel = String(opts.hotel||'').trim();
     const from  = mondayOf(opts.dateFrom || new Date());
-    const days  = Array.from({length:7}, (_,i)=> addDays(from, i));
+    const days  = Array.from({length:7}, (_,i)=> addDays(from, i)).filter(Boolean);
 
+    // Filtra; si una fila no tiene fecha válida, se descarta
     const filtered = rows.filter(r => {
       const h  = String(r.hotel || r.Hotel || r.establecimiento || '').trim();
       const dt = toISO(r.fecha || r.Fecha || r.day || r.date);
+      if (!dt) return false;                // <- evita crash por fecha inválida
       return (!hotel || h === hotel) && days.includes(dt);
     });
 
-    // agrupar por empleado
+    // Agrupa por empleado
     const byEmp = new Map();
     for (const r of filtered) {
       const emp = String(r.empleado||r.Empleado||r.nombre||r.name||r.persona||'').trim();
