@@ -1,35 +1,29 @@
-﻿# ▸ SO / IDE
+﻿# ▸ Temporales / SO
 Thumbs.db
 .DS_Store
-*.swp
-.vscode/
-.idea/
+*.tmp
+*.bak
 
-# ▸ Python / entornos
+# ▸ Python / entorno
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 
-# ▸ Logs y temporales
+# ▸ Logs
 logs/
 *.log
-*.tmp
-~$*.xlsx
-~$*.docx
 
-# ▸ Copias / artefactos
+# ▸ Copias o exports
 *.zip
 index.fixed*.html
-*.bak
-
-# ▸ Subidas/exports locales que no necesita Pages
 .tmp.driveupload/
-*.csv
 
-# ▸ Submódulos accidentales / restos
+# ▸ Archivos de trabajo (no necesarios para Pages)
+~$*.xlsx
+~$*.csv
+~$*.docx
+
+# ▸ Submódulos accidentales
 .gitmodules
 .git/modules/
-
-# ▸ Construcciones externas (si aparecieran)
-turnosweb/
