@@ -1,29 +1,38 @@
-﻿# ▸ Temporales / SO
-Thumbs.db
-.DS_Store
+﻿# ▸ Carpetas temporales / locales
+.tmp.driveupload/
+turnosweb/
+logs/
+*.log
 *.tmp
 *.bak
 
-# ▸ Python / entorno
+# ▸ Python / entornos
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 
-# ▸ Logs
-logs/
-*.log
+# ▸ Archivos de sistema / IDE
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+*.swp
 
-# ▸ Copias o exports
-*.zip
+# ▸ Copias o artefactos de trabajo
 index.fixed*.html
-.tmp.driveupload/
+*.zip
+*.rar
 
-# ▸ Archivos de trabajo (no necesarios para Pages)
+# ▸ Ficheros intermedios que no van a Pages
+*.csv
 ~$*.xlsx
-~$*.csv
+~$*.xlsm
 ~$*.docx
 
-# ▸ Submódulos accidentales
+# ▸ Submódulos y residuos de Git erróneos
 .gitmodules
 .git/modules/
+
+# ▸ PWA opcional (si no se usa en móvil)
+# service-worker.js
