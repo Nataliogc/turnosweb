@@ -1,137 +1,50 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cuadrantes de turnos · Móvil</title>
-  <link rel="stylesheet" href="styles.css?v=APP">
-  <link rel="stylesheet" href="styles.mobile.css?v=APP">
+  <link rel="icon" href="img/favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.mobile.css" />
   <style>
-    /* Contenedor principal móvil */
-    body{background:#0e151d;}
-    .topbar{display:flex;gap:.5rem;align-items:center;justify-content:space-between;background:#151c24;color:#fff;padding:.75rem 1rem;border-bottom:1px solid #0f1a24}
-    .brand{display:flex;gap:.75rem;align-items:center}
-    .brand img{width:36px;height:36px;border-radius:8px;object-fit:cover}
-    .title{line-height:1.1}
-    .title h1{margin:0;font:600 1.1rem/1.1 system-ui,Segoe UI,Roboto,Helvetica,Arial;color:#fff}
-    .title small{opacity:.8}
-    .btns{display:flex;gap:.5rem}
-    .btn{background:#2a3441;color:#fff;border:none;border-radius:12px;padding:.5rem .8rem;font:600 .9rem system-ui}
-    .btn.primary{background:#0476d0}
-    .wrap{background:#f3f5f7;min-height:calc(100dvh - 64px)}
-    #app{padding:12px}
-    .hint{padding:.75rem 1rem;color:#3a4a5a}
-    /* Modal filtros */
-    .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:9998}
-    .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(820px,96vw);max-height:86dvh;overflow:auto;background:#111923;color:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.45);padding:18px;display:none;z-index:9999}
-    .modal h2{margin:4px 0 14px;font:700 1.25rem system-ui}
-    .f-row{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px}
-    .f-label{font:600 .9rem system-ui;opacity:.9}
-    .f-ctl{background:#0f1720;border:1px solid #223043;border-radius:12px;padding:.65rem .8rem;color:#e8eef6;font:500 .95rem system-ui;width:100%}
-    .f-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
-    .btn-outline{background:#0f1720;border:1px solid #2a3a4f;color:#e8eef6;border-radius:12px;padding:.6rem .9rem}
-    .btn-primary{background:#0a84ff;border:none;color:#fff;border-radius:12px;padding:.6rem 1rem}
-    @media(min-width:680px){.f-row{grid-template-columns:1fr 1fr}}
-    /* Asegura que los calendarios nativos queden por encima si el UA los dibuja fuera */
-    input[type="date"]{position:relative;z-index:1}
+    body{background:#f3f6f9;margin:0}
+    header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#121a22;color:#f5f7fa}
+    header .brand{display:flex;align-items:center;gap:10px}
+    header img{width:24px;height:24px;border-radius:6px}
+    header .title{font:700 16px/1.2 system-ui}
+    .wrap{max-width:1200px;margin:16px auto;padding:0 12px}
   </style>
 </head>
 <body>
-  <header class="topbar">
+  <header>
     <div class="brand">
-      <img src="img/logo_turnos.png" alt="Turnos">
-      <div class="title">
-        <h1>Cuadrantes de turnos</h1>
-        <small>Sercotel Guadiana / Cumbria Spa&Hotel</small>
-      </div>
+      <img src="img/turnos_icon.png" alt="">
+      <div class="title">Cuadrantes de turnos</div>
     </div>
-    <div class="btns">
+    <nav>
       <button id="btnPrev" class="btn">← Semana</button>
-      <button id="btnHoy"  class="btn">Hoy</button>
+      <button id="btnToday" class="btn">Hoy</button>
       <button id="btnNext" class="btn">Semana →</button>
-      <button id="btnFiltros" class="btn primary">Filtros</button>
-    </div>
+    </nav>
   </header>
 
   <main class="wrap">
-    <div id="app">
-      <p class="hint">Listo. Abre <strong>Filtros</strong>, elige Hotel/Rango y pulsa <strong>Aplicar</strong>.</p>
-    </div>
+    <div id="monthly-summary-container"></div>
   </main>
 
-  <!-- Modal Filtros -->
-  <div id="mask" class="modal-mask" role="presentation"></div>
-  <section id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="tFiltros">
-    <h2 id="tFiltros">Filtros</h2>
-    <div class="f-row">
-      <div>
-        <div class="f-label">Hotel</div>
-        <select id="fHotel" class="f-ctl"><option>— Hotel —</option></select>
-      </div>
-      <div>
-        <div class="f-label">Empleado (opcional)</div>
-        <select id="fEmp" class="f-ctl"><option>— Empleado —</option></select>
-      </div>
-    </div>
-    <div class="f-row">
-      <div>
-        <div class="f-label">Desde</div>
-        <input id="fDesde" class="f-ctl" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
-      </div>
-      <div>
-        <div class="f-label">Hasta (opcional)</div>
-        <input id="fHasta" class="f-ctl" type="date" inputmode="numeric" placeholder="dd/mm/aaaa">
-      </div>
-    </div>
-    <div class="f-actions">
-      <button id="btnClose" class="btn-outline">Cerrar</button>
-      <button id="btnApply" class="btn-primary">Aplicar</button>
-    </div>
-  </section>
+  <!-- Datos -->
+  <script src="data.js?v=TS"></script>
+  <script src="data.ausencias.js?v=TS"></script> <!-- opcional -->
 
-<!-- Datos -->
-<script src="data.js?v=TS"></script>
-<script src="data.ausencias.js?v=TS"></script> <!-- si existe -->
+  <!-- Adaptador SOLO móvil -->
+  <script src="plantilla_mobile_adapter.js?v=TS"></script>
 
-<!-- Si NO tienes este archivo, comenta o quita la línea -->
-<!-- <script src="normalize_data.js?v=TS"></script> -->
+  <!-- Normalización opcional y parches (si los usas) -->
+  <!-- <script src="normalize_data.js?v=TS"></script> -->
+  <script src="mobile.patch.js?v=TS"></script>
 
-<!-- Adaptador SOLO móvil (no depende de la UI de escritorio) -->
-<script src="plantilla_mobile_adapter.js?v=TS"></script>
-
-<!-- Opcional: parches de texto/emoji -->
-<script src="mobile.patch.js?v=TS"></script>
-
-<!-- Arranque móvil -->
-<script src="mobile.app.js?v=TS"></script>
-
-
-<!-- Bootstrap inline (opcional) -->
-<script>
-(function(){
-  function iso(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
-  const now=new Date(),wd=now.getDay(),diff=(wd===0?-6:1-wd);
-  const lun=new Date(now); lun.setDate(now.getDate()+diff);
-  const dom=new Date(lun); dom.setDate(lun.getDate()+6);
-
-  if(!window.FULL_DATA){console.error('[mobile boot] Falta data.js');return;}
-  if(typeof window.renderContent!=='function'){console.error('[mobile boot] Falta plantilla_mobile_adapter.js');return;}
-
-  // Asegura contenedor si no existe
-  if(!document.getElementById('monthly-summary-container')){
-    const box=document.createElement('div'); box.id='monthly-summary-container';
-    (document.querySelector('main')||document.body).appendChild(box);
-  }
-
-  // Hotel por defecto (primero disponible)
-  const H = Array.isArray(FULL_DATA.hoteles) ? FULL_DATA.hoteles : [];
-  const h0 = H[0] || {};
-  const hotel = h0.id || h0.codigo || h0.code || h0.nombre || h0.name || '';
-
-  window.renderContent(FULL_DATA, { hotel, employee:'', dateFrom:iso(lun), dateTo:iso(dom) });
-})();
-</script>
-
-
+  <!-- App móvil -->
+  <script src="mobile.app.js?v=TS"></script>
 </body>
 </html>
