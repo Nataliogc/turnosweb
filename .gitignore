@@ -1,9 +1,35 @@
-﻿.tmp.driveupload/
-turnosweb/
-__pycache__/
-*.pyc
-.venv/
-venv/
-logs/
+﻿# ▸ SO / IDE
 Thumbs.db
 .DS_Store
+*.swp
+.vscode/
+.idea/
+
+# ▸ Python / entornos
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ▸ Logs y temporales
+logs/
+*.log
+*.tmp
+~$*.xlsx
+~$*.docx
+
+# ▸ Copias / artefactos
+*.zip
+index.fixed*.html
+*.bak
+
+# ▸ Subidas/exports locales que no necesita Pages
+.tmp.driveupload/
+*.csv
+
+# ▸ Submódulos accidentales / restos
+.gitmodules
+.git/modules/
+
+# ▸ Construcciones externas (si aparecieran)
+turnosweb/
