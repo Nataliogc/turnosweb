@@ -71,16 +71,25 @@
 
   <!-- Datos -->
 <script src="data.js?v=TS"></script>
-<script src="data.ausencias.js?v=TS"></script> <!-- opcional -->
+<script src="data.ausencias.js?v=TS"></script>
 
 <!-- Adaptador SOLO móvil -->
 <script src="plantilla_mobile_adapter.js?v=TS"></script>
+
+<!-- Bridge necesario -->
+<script>
+  window.MobileTemplate = window.MobileTemplate || {};
+  if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
+    window.MobileTemplate.renderContent = window.renderContent;
+  }
+</script>
 
 <!-- Parches de texto (opcional) -->
 <script src="mobile.patch.js?v=TS"></script>
 
 <!-- App móvil -->
 <script src="mobile.app.js?v=TS"></script>
+
 
 </body>
 </html>
