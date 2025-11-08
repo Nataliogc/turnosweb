@@ -23,26 +23,21 @@
     if(/^Noche\s*$/.test(out)) out="Noche 🌙"; return out.trim(); }
 
   function buildModel(){
-    // --- Normalización de origen de datos ---
-    // Acepta: FULL_DATA.schedule (index/live), FULL_DATA.semanas (mobile), o cualquier alias común
-    if (!Array.isArray(FD.semanas)) {
-      const candidates = [
-        FD.semanas, FD.schedule, FD.data, FD.rows, (FD.SCHEDULE && FD.SCHEDULE.schedule)
-      ].filter(Array.isArray);
-      if (candidates.length) FD.semanas = candidates[0];
+let FD=window.FULL_DATA || window.DATA || window.SCHEDULE || {};
+  // --- Normalización de origen de datos (schedule -> semanas) ---
+  if (!Array.isArray(FD.semanas)) {
+    const candidates = [FD.semanas, FD.schedule, FD.data, FD.rows].filter(Array.isArray);
+    if (candidates.length) FD.semanas = candidates[0];
+  }
+  // Derivar lista de hoteles si no viene
+  if (!Array.isArray(FD.hoteles)) {
+    const set = new Set();
+    if (Array.isArray(FD.semanas)) {
+      for (const s of FD.semanas) { if (s && s.hotel) set.add(String(s.hotel).trim()); }
     }
-    // Si no hay lista de hoteles, derivarla de las semanas
-    if (!Array.isArray(FD.hoteles)) {
-      const set = new Set();
-      if (Array.isArray(FD.semanas)) {
-        for (const s of FD.semanas) {
-          if (s && s.hotel) set.add(String(s.hotel).trim());
-        }
-      }
-      FD.hoteles = [...set].map(h => ({ id: h, nombre: h }));
-    }
-    
-    let FD=window.FULL_DATA || window.DATA || window.SCHEDULE || {};
+    FD.hoteles = [...set].map(h => ({ id: h, nombre: h }));
+  }
+
     if(Array.isArray(FD)) FD={semanas:FD};
     if(!Array.isArray(FD.semanas)){
       const guess=FD.rows||FD.data||FD.turnos||FD.semana||FD.semana_rows||[];
