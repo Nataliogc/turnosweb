@@ -23,12 +23,13 @@
 
   function renderWeek(monISO, hotel=''){
     if(!window.FULL_DATA){ console.error('[mobile] Falta data.js'); return; }
-    if(!window.MobileTemplate?.renderContent){ console.error('[mobile] Falta plantilla_mobile_adapter.js'); return; }
+    const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;
+    if(!render){ console.error('[mobile] Falta plantilla_mobile_adapter.js'); return; }
 
     ensureContainer();
 
     try{
-      const {monday, hotelsAll} = window.MobileTemplate.renderContent(window.FULL_DATA, {hotel, dateFrom: monISO});
+      const {monday, hotelsAll} = render(window.FULL_DATA, {hotel, dateFrom: monISO});
       // actualizar filtros
       populateFilters(hotelsAll, monday);
       // evento hook
@@ -44,6 +45,13 @@
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
+    // Espera breve por si el adaptador define MobileTemplate/renderContent con retraso
+    let readyTries = 0;
+    const waitForAdapter = (cb)=>{
+      const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;
+      if (render || readyTries>20) return cb();
+      readyTries++; setTimeout(()=>waitForAdapter(cb), 50);
+    };
     const btnPrev  = document.getElementById('btnPrev');
     const btnNext  = document.getElementById('btnNext');
     const btnToday = document.getElementById('btnToday');

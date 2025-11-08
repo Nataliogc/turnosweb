@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cuadrantes de turnos · Móvil</title>
+  <link rel="icon" href="img/turnos_icon.png" />
+  <link rel="stylesheet" href="styles.css?v=TS" />
+  <link rel="stylesheet" href="styles.mobile.css?v=TS" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="img/turnos_icon.png" alt="" style="width:24px;height:24px;border-radius:6px">
+      <div class="title">Cuadrantes de turnos</div>
+    </div>
+    <div class="actions">
+      <button id="btnPrev" class="btn">← Semana</button>
+      <button id="btnToday" class="btn">Hoy</button>
+      <button id="btnNext" class="btn">Semana →</button>
+      <button id="btnFilters" class="btn primary">Filtros</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="monthly-summary-container"></div>
+  </main>
+
+  <!-- ===== Datos ===== -->
+  <script src="data.js?v=TS"></script>
+  <script src="data.ausencias.js?v=TS"></script>
+
+  <!-- ===== Adaptador móvil ===== -->
+  <script src="plantilla_mobile_adapter.js?v=TS"></script>
+  <script>
+    // Alias por si el adaptador exporta como window.renderContent
+    window.MobileTemplate = window.MobileTemplate || {};
+    if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
+      window.MobileTemplate.renderContent = window.renderContent;
+    }
+  </script>
+
+  <!-- ===== Parche de textos (opcional) ===== -->
+  <script src="mobile.patch.js?v=TS"></script>
+
+  <!-- ===== App móvil ===== -->
+  <script src="mobile.app.js?v=TS"></script>
+</body>
+</html>
