@@ -15,6 +15,14 @@ html,body{margin:0;padding:0}
 /* Botones superiores más pequeños */
 .actions .btn{padding:6px 10px;font-size:12px}
 
+/* Columnas homogéneas y ancho consistente en ambas tarjetas */
+.grid.grid--fixed{ table-layout: fixed; width: 100%; }
+.grid.grid--fixed th, .grid.grid--fixed td{ word-break: keep-all; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+
+/* Logo compacto y misma separación arriba/abajo */
+.weekCard{ margin: 18px 0 26px; }
+.weekHead{ display:flex; align-items:center; gap:12px; margin: 4px 0 10px; }
+.weekHead .weekLogo{ width:48px; height:48px; object-fit:contain; border-radius:10px; }
 
 /* Evita que algo del layout del desktop afecte al modal móvil */
 .modal-mask{backdrop-filter:saturate(120%) blur(1px)}
