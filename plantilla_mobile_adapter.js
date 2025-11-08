@@ -10,41 +10,71 @@
   const mondayOf = (any)=>{ const d=typeof any==="string"?new Date(any):new Date(any);
     const wd=(d.getDay()+6)%7; return toISO(new Date(d.getFullYear(),d.getMonth(),d.getDate()-wd)); };
 
-  function normalizeCell(t){ if(!t) return ""; let out=String(t);
-    out=out.replace(/MaÃ±ana/g,"Mañana").replace(/Tarde/g,"Tarde")
-           .replace(/Noche[\s\S]*$/g,"Noche 🌙")
-           .replace(/Descanso[\s\S]*$/g,"Descanso")
-           .replace(/Vacaciones[\s\S]*$/g,"Vacaciones 🏖️")
-           .replace(/\bC\/T\b|Cambio(?:\s+de)?\s+turno|\u2194|↔/g,"C/T 🔄");
-    return out.trim();
+  // ---- Texto limpio (acentos + emojis + etiquetas) ----
+  function cleanStr(s){
+    return String(s==null?"":s)
+      .replace(/Ã¡/g,"á").replace(/Ã©/g,"é").replace(/Ã­/g,"í")
+      .replace(/Ã³/g,"ó").replace(/Ãº/g,"ú").replace(/Ã±/g,"ñ")
+      .replace(/Ã/g,"Á").replace(/Ã‰/g,"É").replace(/Ã/g,"Í")
+      .replace(/Ã“/g,"Ó").replace(/Ãš/g,"Ú").replace(/Ã‘/g,"Ñ")
+      .replace(/ðŸ”„/g,"🔄").replace(/ðŸ–ï¸/g,"🏖️").replace(/ï¸/g,"")
+      .trim();
+  }
+
+  // ---- Normaliza cualquier celda de turno (string u objeto) ----
+  function normalizeCell(v){
+    if (v==null) return "";
+    if (typeof v === "string") {
+      let out = cleanStr(v);
+      out = out
+        .replace(/Noche[\s\S]*$/i,"Noche 🌙")
+        .replace(/Descanso[\s\S]*$/i,"Descanso")
+        .replace(/Vacaciones[\s\S]*$/i,"Vacaciones 🏖️")
+        .replace(/\bC\/T\b|Cambio(?:\s+de)?\s+turno|\u2194|↔/gi,"C/T 🔄");
+      return out;
+    }
+    // Si viene objeto, intenta campos conocidos
+    if (typeof v === "object") {
+      const cand = v.turno || v.texto || v.tipo || v.nombre || v.name || v.label || "";
+      return normalizeCell(cand);
+    }
+    return cleanStr(v);
   }
 
   function buildModel(){
     let FD = window.FULL_DATA || window.DATA || window.SCHEDULE || {};
 
-    // Normalización de origen
+    // --- schedule → semanas (acepta ambas)
     if (!Array.isArray(FD.semanas)) {
       const candidates = [FD.semanas, FD.schedule, FD.data, FD.rows].filter(Array.isArray);
       if (candidates.length) FD.semanas = candidates[0];
     }
+    // --- Derivar lista de hoteles
     if (!Array.isArray(FD.hoteles)) {
       const set = new Set();
       if (Array.isArray(FD.semanas)) {
-        for (const s of FD.semanas) if (s && s.hotel) set.add(String(s.hotel).trim());
+        for (const s of FD.semanas) if (s && s.hotel) set.add(cleanStr(s.hotel));
       }
       FD.hoteles = [...set].map(h => ({ id:h, nombre:h }));
     }
+
     window.FULL_DATA = FD;
     return FD;
   }
 
   function pickRowsForWeek(FD, hotel, weekStartISO){
     const rows=[];
-    const group = (FD.semanas||[]).filter(s => s && String(s.hotel).trim()===String(hotel).trim()
-      && toISO(s.semana_lunes||s.weekStart||s.lunes||s.mon)===weekStartISO);
+    const group = (FD.semanas||[]).filter(s =>
+      s && cleanStr(s.hotel)===cleanStr(hotel)
+      && toISO(s.semana_lunes||s.weekStart||s.lunes||s.mon)===weekStartISO
+    );
     for(const s of group){
       for(const r of (s.turnos||[])){
-        rows.push({ empleado:r.empleado||r.persona||r.nombre, fecha:r.fecha, turno:normalizeCell(r.turno) });
+        rows.push({
+          empleado: r.empleado||r.persona||r.nombre,
+          fecha: r.fecha,
+          turno: normalizeCell(r.turno)
+        });
       }
     }
     return rows;
@@ -54,8 +84,11 @@
     const FD=buildModel();
     const hotels = FD.hoteles||[];
     const selHotel=(opts&&(opts.hotel||opts.Hotel))||(hotels[0]&&hotels[0].id)||"";
-    if(!selHotel){ (document.getElementById('monthly-summary-container')||document.body).innerHTML =
-      '<div class="weekCard"><div class="muted">No se han detectado hoteles en los datos.</div></div>'; return {monday:mondayOf(new Date()), hotelsAll:hotels}; }
+    if(!selHotel){
+      (document.getElementById('monthly-summary-container')||document.body).innerHTML=
+       '<div class="weekCard"><div class="muted">No se han detectado hoteles en los datos.</div></div>';
+      return {monday:mondayOf(new Date()), hotelsAll:hotels};
+    }
 
     const weekStartISO=mondayOf((opts&&(opts.dateFrom||opts.from))||new Date());
     const days=Array.from({length:7},(_,i)=>addDays(weekStartISO,i));
@@ -63,20 +96,19 @@
 
     const byEmp=new Map();
     for(const r of rows){
-      const emp=String(r.empleado||"").trim(); if(!emp) continue;
+      const emp=cleanStr(r.empleado||""); if(!emp) continue;
       if(!byEmp.has(emp)) byEmp.set(emp,{});
       byEmp.get(emp)[toISO(r.fecha)]=normalizeCell(r.turno||"");
     }
 
-    const order=[]; const wk=(FD.semanas||[]).find(s=> s && String(s.hotel).trim()===String(selHotel).trim()
+    const order=[]; const wk=(FD.semanas||[]).find(s=> s && cleanStr(s.hotel)===cleanStr(selHotel)
       && toISO(s.semana_lunes||s.weekStart||s.lunes||s.mon)===weekStartISO);
     if(wk && Array.isArray(wk.orden_empleados)) order.push(...wk.orden_empleados);
-    // añade empleados “nuevos” al final
     for(const name of byEmp.keys()){ if(!order.includes(name)) order.push(name); }
 
     const rowsHtml = order.map(name=>{
       const cells = days.map(d=>`<td>${byEmp.get(name)?.[d]||'—'}</td>`).join('');
-      return `<tr><td>${name}</td>${cells}</tr>`;
+      return `<tr><td>${cleanStr(name)}</td>${cells}</tr>`;
     });
 
     const logo = /cumbria/i.test(selHotel) ? 'img/cumbria.jpg' :

@@ -16,7 +16,13 @@
   <link rel="stylesheet" href="styles.css?v=TS" />
   <link rel="stylesheet" href="styles.mobile.css?v=TS" />
   <style>
-    /* Ajustes mínimos para móvil */
+   /* Forzar logo pequeño dentro de la tarjeta */
+.weekHead .weekLogo{ width:48px; height:48px; border-radius:10px; object-fit:contain }
+
+/* Ocultar cualquier banner suelto inyectado encima del cuadrante (legado) */
+.wrap > img:first-child{ display:none !important; max-height:0 !important; }
+
+ /* Ajustes mínimos para móvil */
     .app-header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;background:#0e1720;color:#f5f7fa;padding:10px 12px}
     .app-header .brand{display:flex;align-items:center;gap:10px}
     .app-header .brand img{width:24px;height:24px;border-radius:6px}
