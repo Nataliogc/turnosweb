@@ -3,83 +3,279 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cuadrantes de turnos · Móvil</title>
-  <link rel="icon" href="img/turnos_icon.png" />
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="styles.mobile.css" />
+  <title>Turnos · Vista móvil (autónoma)</title>
   <style>
-    :root{--bg:#f3f6f9;--ink:#0e1720;--panel:#121a22;--muted:#7f96aa;--brand:#0b67ff}
-    html,body{background:var(--bg);margin:0}
-    header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--panel);color:#f5f7fa}
-    header .brand{display:flex;align-items:center;gap:10px}
-    header img{width:24px;height:24px;border-radius:6px}
-    header .title{font:700 16px/1.2 system-ui}
-    header .actions{display:flex;gap:8px}
-    .btn{border:0;border-radius:999px;padding:8px 12px;font:600 13px system-ui;background:#1f2a36;color:#eaf1f7;cursor:pointer}
-    .btn.primary{background:var(--brand)}
-    .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
+    :root{
+      --bg:#0b0c10; --panel:#121318; --muted:#98a2b3; --ink:#e6e6e6; --brand:#d4af37;
+      --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --night:#3f3f46; --day:#1f2937;
+      --chip:#1f2530; --chipBorder:#2b3140;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0b0c10,#0b0c10ee 70%,#0b0c1000)}
+    .wrap{max-width:980px;margin:0 auto;padding:12px}
+    h1{font-size:18px;margin:0 0 6px;display:flex;gap:10px;align-items:center}
+    .title-mark{height:20px;width:6px;border-radius:6px;background:linear-gradient(90deg,var(--brand),#fff0)}
 
-    /* Panel filtros */
-    .drawer{position:fixed;inset:auto 0 0 0;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.25);
-            transform:translateY(100%);transition:transform .25s ease;z-index:50}
-    .drawer.open{transform:translateY(0)}
-    .drawer header{background:transparent;color:var(--ink);padding:12px}
-    .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 16px}
-    .f-grid label{font:600 12px system-ui;color:#345}
-    .f-grid select,.f-grid input[type="date"]{width:100%;padding:10px;border:1px solid #d6e0ea;border-radius:10px;font:600 14px system-ui}
-    .f-actions{display:flex;gap:8px;justify-content:flex-end;padding:10px 12px 16px}
+    /* Cabecera Semana + logos */
+    .week-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #232531;border-radius:16px;background:var(--panel);margin:12px 0}
+    .week-title{font-weight:600}
+    .logos{display:flex;gap:10px;align-items:center}
+    .logos img{height:28px;filter:drop-shadow(0 1px 0 #0008)}
+
+    /* Filtros */
+    .filters{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;padding:10px;border:1px solid #232531;border-radius:14px;background:#0f1117}
+    .filters label{font-size:12px;color:var(--muted)}
+    .filters input[type="date"]{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #2a2f3b;background:#0c0f15;color:var(--ink)}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid #2b3140;background:#151923;color:#fff;cursor:pointer}
+    .btn.primary{border-color:#3a2d10;background:linear-gradient(180deg,#2b2412,#1a160a)}
+    .btn:active{transform:translateY(1px)}
+
+    /* Tabla compacta móvil */
+    .table{border:1px solid #232531;border-radius:16px;overflow:hidden}
+    .thead,.row{display:grid;grid-template-columns:140px repeat(7,1fr)}
+    .thead{background:#0f121a;color:#cbd5e1;position:sticky;top:116px;z-index:4}
+    .cell{padding:10px;border-bottom:1px solid #202534;border-right:1px solid #202534;min-height:42px}
+    .thead .cell{font-size:12px;text-transform:uppercase;letter-spacing:.04em;text-align:center}
+    .name{display:flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* Píldoras de turno */
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--chipBorder);font-size:12px;white-space:nowrap}
+    .pill.descanso{background:#2a1010;border-color:#3a1a1a;color:#fecaca}
+    .pill.noche{background:var(--night);border-color:#52525b}
+    .tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px dashed #3a3f4b;color:#cbd5e1}
+    .swap{font-weight:700}
+
+    /* Colores por hotel */
+    .hotel-chip{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid #394150;background:#121621;color:#cbd5e1}
+
+    /* Footer */
+    .footer-gap{height:40px}
+
+    /* Responsive tweaks */
+    @media (max-width:700px){
+      .thead,.row{grid-template-columns:120px repeat(7,1fr)}
+      .logos img{height:24px}
+    }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand">
-      <img src="img/turnos_icon.png" alt="">
-      <div class="title">Cuadrantes de turnos</div>
-    </div>
-    <div class="actions">
-      <button id="btnPrev" class="btn">← Semana</button>
-      <button id="btnToday" class="btn">Hoy</button>
-      <button id="btnNext" class="btn">Semana →</button>
-      <button id="btnFilters" class="btn primary">Filtros</button>
+    <div class="wrap">
+      <h1><span class="title-mark"></span>Turnos Recepción — Vista móvil</h1>
+      <div class="filters" id="filters">
+        <div>
+          <label>Desde</label>
+          <input id="f-desde" type="date" />
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input id="f-hasta" type="date" />
+        </div>
+        <button class="btn" id="btn-hoy" title="Ir a la semana actual">Hoy</button>
+        <button class="btn primary" id="btn-aplicar">Aplicar</button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <div id="monthly-summary-container"></div>
-  </main>
+  <main class="wrap" id="app"></main>
+  <div class="footer-gap"></div>
 
-  <!-- Drawer Filtros -->
-  <section id="drawer" class="drawer" aria-hidden="true">
-    <header><strong>Filtros</strong></header>
-    <div class="f-grid">
-      <div>
-        <label>Hotel</label>
-        <select id="f-hotel">
-          <option value="">(Todos)</option>
-        </select>
-      </div>
-      <div>
-        <label>Semana (lunes)</label>
-        <input id="f-week" type="date">
-      </div>
-    </div>
-    <div class="f-actions">
-      <button id="f-cancel" class="btn">Cerrar</button>
-      <button id="f-apply" class="btn primary">Aplicar</button>
-    </div>
-  </section>
+  <!-- ==========================
+       1) DATOS EMBEBIDOS
+       Pega AQUÍ el contenido entero de tu data.js y data.ausencias.js.
+       Deben definir exactamente estas variables globales:
+         - window.FULL_DATA  (estructura ya usada en index/live)
+         - window.AUSENCIAS  (opcional)
+       ========================== -->
+  <script>
+  // ===== EJEMPLO MÍNIMO (sustituir por tus datos reales) =====
+  window.FULL_DATA = window.FULL_DATA || {"schedule": [
+    { "hotel":"Sercotel Guadiana", "semana_lunes":"2025-01-06",
+      "orden_empleados":["Natalio","Antonio","Cristina"],
+      "turnos":[
+        {"empleado":"Natalio","fecha":"2025-01-06","turno":"Descanso"},
+        {"empleado":"Natalio","fecha":"2025-01-07","turno":"Mañana"},
+        {"empleado":"Natalio","fecha":"2025-01-08","turno":"Noche 🌙"},
+        {"empleado":"Antonio","fecha":"2025-01-06","turno":"Mañana"},
+        {"empleado":"Cristina","fecha":"2025-01-06","turno":"Tarde 🔄"}
+      ]
+    },
+    { "hotel":"Cumbria Spa&Hotel", "semana_lunes":"2025-01-06",
+      "orden_empleados":["Isabel Hidalgo","Valentín"],
+      "turnos":[
+        {"empleado":"Isabel Hidalgo","fecha":"2025-01-06","turno":"Mañana"},
+        {"empleado":"Valentín","fecha":"2025-01-06","turno":"Noche 🌙"}
+      ]
+    }
+  ]};
 
-  <!-- Datos -->
-  <script src="data.js?v=TS"></script>
-  <script src="data.ausencias.js?v=TS"></script> <!-- opcional -->
+  // Opcional: ausencias con el TEXTO EXACTO del TipoAusencia
+  window.AUSENCIAS = window.AUSENCIAS || [
+    {"empleado":"Natalio","fecha":"2025-01-09","tipo":"Vacaciones 🏖️"},
+    {"empleado":"Cristina","fecha":"2025-01-10","tipo":"Baja 🤒"}
+  ];
+  </script>
 
-  <!-- Adaptador SOLO móvil -->
-  <script src="plantilla_mobile_adapter.js?v=TS"></script>
+  <!-- ==========================
+       2) LÓGICA DE RENDERIZADO
+       Sin dependencias externas. No toca index ni live.
+       ========================== -->
+  <script>
+  (function(){
+    const $ = s=>document.querySelector(s);
+    const $$ = s=>Array.from(document.querySelectorAll(s));
 
-  <!-- Parches de texto (opcional, deja si ya lo usas) -->
-  <script src="mobile.patch.js?v=TS"></script>
+    const fmtShort = d=>d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'});
+    const fmtISO = d=>d.toISOString().slice(0,10);
+    const parse = s=>{const [y,m,dd]=s.split('-').map(Number);return new Date(y,m-1,dd)};
 
-  <!-- App móvil -->
-  <script src="mobile.app.js?v=TS"></script>
+    const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+    // Mapa de ausencias: { empleado|fechaISO -> texto }
+    const ausMap = new Map();
+    (window.AUSENCIAS||[]).forEach(a=>{
+      ausMap.set(`${a.empleado}|${a.fecha}`, a.tipo);
+    });
+
+    // Normaliza el texto del turno (mantiene el exacto para ausencias)
+    const classifyTurn = (txt)=>{
+      const t = (txt||'').toLowerCase();
+      if(t.includes('descanso')) return {kind:'descanso', label:'Descanso'};
+      if(t.includes('noche')) return {kind:'noche', label:txt.replace(/\s*🌙?/, ' 🌙')};
+      return {kind:'normal', label:txt};
+    };
+
+    // Devuelve semanas filtradas por rango [d1,d2]
+    function filtrarSemanas(data, d1, d2){
+      if(!d1 && !d2) return data;
+      return data.filter(sem=>{
+        const monday = parse(sem.semana_lunes);
+        const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
+        if(d1 && sunday < d1) return false;
+        if(d2 && monday > d2) return false;
+        return true;
+      });
+    }
+
+    // Render
+    function render(){
+      const app = $('#app');
+      app.innerHTML = '';
+
+      // Rango filtros
+      const d1 = $('#f-desde').value? parse($('#f-desde').value) : null;
+      const d2 = $('#f-hasta').value? parse($('#f-hasta').value) : null;
+
+      // Agrupa por semana (ya viene así) y por hotel
+      const semanas = filtrarSemanas(window.FULL_DATA.schedule||[], d1, d2);
+
+      semanas.forEach(sem=>{
+        // Cabecera por semana
+        const monday = parse(sem.semana_lunes);
+        const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+        const weekLabel = `Semana ${fmtShort(monday)} → ${fmtShort(sunday)} · ${monday.getFullYear()}`;
+
+        const header = document.createElement('section');
+        header.innerHTML = `
+          <div class="week-header">
+            <div class="week-title">${sem.hotel} — <span class="tag">${weekLabel}</span></div>
+            <div class="logos">
+              ${logoFor(sem.hotel)}
+            </div>
+          </div>`;
+        app.appendChild(header);
+
+        // Tabla
+        const table = document.createElement('section');
+        table.className = 'table';
+        const thead = document.createElement('div');
+        thead.className = 'thead';
+        thead.innerHTML = `
+          <div class="cell">Empleado</div>
+          ${[0,1,2,3,4,5,6].map(i=>{
+            const d = new Date(monday); d.setDate(monday.getDate()+i);
+            return `<div class="cell">${DAYS[i]}<br>${fmtShort(d)}</div>`;
+          }).join('')}`;
+        table.appendChild(thead);
+
+        const byEmp = new Map();
+        (sem.turnos||[]).forEach(t=>{
+          const key = t.empleado;
+          if(!byEmp.has(key)) byEmp.set(key, new Map());
+          byEmp.get(key).set(t.fecha, t);
+        });
+
+        const order = sem.orden_empleados || Array.from(byEmp.keys()).sort();
+        order.forEach(emp=>{
+          const row = document.createElement('div');
+          row.className = 'row';
+          const nameCell = document.createElement('div');
+          nameCell.className = 'cell name';
+          nameCell.innerHTML = `<span>${emp}</span>`;
+          row.appendChild(nameCell);
+
+          for(let i=0;i<7;i++){
+            const d = new Date(monday); d.setDate(monday.getDate()+i);
+            const iso = fmtISO(d);
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+
+            // Ausencia exacta tiene prioridad
+            const aus = ausMap.get(`${emp}|${iso}`);
+            if(aus){
+              cell.innerHTML = `<span class="pill">${aus}</span>`;
+              row.appendChild(cell); continue;
+            }
+
+            const t = byEmp.get(emp)?.get(iso);
+            if(!t){ row.appendChild(cell); continue; }
+
+            const info = classifyTurn(t.turno||'');
+            const cls = ['pill'];
+            if(info.kind==='descanso') cls.push('descanso');
+            if(info.kind==='noche') cls.push('noche');
+
+            // Marcado de sustituciones: si el texto incluye flecha, mantenemos ↔
+            const swap = /↔|sustit/i.test(t.turno||'');
+
+            cell.innerHTML = `<span class="${cls.join(' ')}">${swap?'<span class="swap">↔</span>':''}${escapeHTML(info.label)}</span>`;
+            row.appendChild(cell);
+          }
+
+          table.appendChild(row);
+        });
+
+        app.appendChild(table);
+      });
+    }
+
+    function escapeHTML(s){
+      return (s||'').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    }
+
+    function logoFor(hotel){
+      // Rutas relativas dentro de /img/ (mantiene tu preferencia)
+      if(/guadiana/i.test(hotel)) return '<img alt="Guadiana" src="img/guadiana.png"/>';
+      if(/cumbria/i.test(hotel)) return '<img alt="Cumbria" src="img/cumbria.png"/>';
+      return '';
+    }
+
+    // Controles
+    $('#btn-aplicar').addEventListener('click', render);
+    $('#btn-hoy').addEventListener('click', ()=>{
+      const now = new Date();
+      const dow = (now.getDay()+6)%7; // 0=Lunes
+      const monday = new Date(now); monday.setDate(now.getDate()-dow);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+      $('#f-desde').value = fmtISO(monday);
+      $('#f-hasta').value = fmtISO(sunday);
+      render();
+    });
+
+    // Inicio: semana actual
+    $('#btn-hoy').click();
+  })();
+  </script>
 </body>
 </html>
