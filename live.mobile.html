@@ -1,37 +1,35 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>Cuadrantes de turnos · Móvil</title>
-  <link rel="icon" href="img/turnos_icon.png" />
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="styles.mobile.css" />
-  <style>
-    :root{--bg:#f3f6f9;--ink:#0e1720;--panel:#121a22;--muted:#7f96aa;--brand:#0b67ff}
-    html,body{background:var(--bg);margin:0}
-    header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--panel);color:#f5f7fa}
-    header .brand{display:flex;align-items:center;gap:10px}
-    header img{width:24px;height:24px;border-radius:6px}
-    header .title{font:700 16px/1.2 system-ui}
-    header .actions{display:flex;gap:8px}
-    .btn{border:0;border-radius:999px;padding:8px 12px;font:600 13px system-ui;background:#1f2a36;color:#eaf1f7;cursor:pointer}
-    .btn.primary{background:var(--brand)}
-    .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
 
-    /* Panel filtros */
-    .drawer{position:fixed;inset:auto 0 0 0;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.25);
-            transform:translateY(100%);transition:transform .25s ease;z-index:50}
-    .drawer.open{transform:translateY(0)}
-    .drawer header{background:transparent;color:var(--ink);padding:12px}
-    .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 12px 16px}
-    .f-grid label{font:600 12px system-ui;color:#345}
-    .f-grid select,.f-grid input[type="date"]{width:100%;padding:10px;border:1px solid #d6e0ea;border-radius:10px;font:600 14px system-ui}
-    .f-actions{display:flex;gap:8px;justify-content:flex-end;padding:10px 12px 16px}
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1520">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="icon" href="img/turnos_icon.png" />
+  <link rel="stylesheet" href="styles.css?v=TS" />
+  <link rel="stylesheet" href="styles.mobile.css?v=TS" />
+  <style>
+    /* Ajustes mínimos para móvil */
+    .app-header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;background:#0e1720;color:#f5f7fa;padding:10px 12px}
+    .app-header .brand{display:flex;align-items:center;gap:10px}
+    .app-header .brand img{width:24px;height:24px;border-radius:6px}
+    .app-header .title{font:700 16px/1 system-ui}
+    .actions{display:flex;gap:6px}
+    .btn{appearance:none;border:1px solid #253040;background:#142130;color:#e6edf5;border-radius:999px;padding:6px 10px;font:600 12px system-ui}
+    .btn.primary{background:#0b67ff;border-color:#0b67ff;color:#fff}
+    main.wrap{padding:12px}
+    @media (min-width:768px){ main.wrap{padding:20px} }
   </style>
 </head>
 <body>
-  <header>
+  <header class="app-header">
     <div class="brand">
       <img src="img/turnos_icon.png" alt="">
       <div class="title">Cuadrantes de turnos</div>
@@ -45,44 +43,53 @@
   </header>
 
   <main class="wrap">
-    <div id="monthly-summary-container"></div>
+    <div id="monthly-summary-container" role="region" aria-live="polite"></div>
   </main>
 
-  <!-- Drawer Filtros -->
-  <section id="drawer" class="drawer" aria-hidden="true">
-    <header><strong>Filtros</strong></header>
-    <div class="f-grid">
+  <!-- Drawer de filtros accesible (móvil) -->
+  <section id="drawer" class="drawer" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:0;transform:translateY(100%);transition:transform .25s ease;background:#fff;border-top-left-radius:16px;border-top-right-radius:16px;box-shadow:0 -10px 30px rgba(0,0,0,.15)">
+    <header style="padding:14px 14px 0;font:700 14px system-ui;color:#123">Filtros</header>
+    <div class="f-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px">
       <div>
-        <label>Hotel</label>
-        <select id="f-hotel">
-          <option value="">(Todos)</option>
-        </select>
+        <label style="display:block;font:600 12px system-ui;color:#345;margin-bottom:6px">Hotel</label>
+        <select id="f-hotel" style="width:100%;padding:8px 10px;border:1px solid #d6e0ea;border-radius:10px;font:600 14px system-ui"></select>
       </div>
       <div>
-        <label>Semana (lunes)</label>
-        <input id="f-week" type="date">
+        <label style="display:block;font:600 12px system-ui;color:#345;margin-bottom:6px">Semana (lunes)</label>
+        <input id="f-week" type="date" style="width:100%;padding:8px 10px;border:1px solid #d6e0ea;border-radius:10px;font:600 14px system-ui">
       </div>
     </div>
-    <div class="f-actions">
-      <button id="f-cancel" class="btn">Cerrar</button>
+    <div class="f-actions" style="display:flex;gap:8px;justify-content:flex-end;padding:0 12px 12px">
+      <button id="f-cancel" class="btn">Cancelar</button>
       <button id="f-apply" class="btn primary">Aplicar</button>
     </div>
   </section>
 
   <!-- Datos -->
-<<script src="data.js?v=TS"></script>
-<script src="data.ausencias.js?v=TS"></script>
-<script src="plantilla_mobile_adapter.js?v=TS"></script>
-<script>
-  window.MobileTemplate = window.MobileTemplate || {};
-  if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
-    window.MobileTemplate.renderContent = window.renderContent;
-  }
-</script>
-<script src="mobile.patch.js?v=TS"></script>
-<script src="mobile.app.js?v=TS"></script>
+  <script src="data.js?v=TS"></script>
+  <script src="data.ausencias.js?v=TS"></script>
 
+  <!-- Adaptador móvil -->
+  <script src="plantilla_mobile_adapter.js?v=TS"></script>
+  <script>
+    // Bridge por compatibilidad
+    window.MobileTemplate = window.MobileTemplate || {};
+    if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
+      window.MobileTemplate.renderContent = window.renderContent;
+    }
+  </script>
 
+  <!-- Parche de textos (opcional) -->
+  <script src="mobile.patch.js?v=TS"></script>
 
+  <!-- App móvil -->
+  <script src="mobile.app.js?v=TS"></script>
+
+  <script>
+    // Registro SW (sólo en http/https)
+    if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    }
+  </script>
 </body>
 </html>
