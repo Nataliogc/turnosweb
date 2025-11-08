@@ -29,10 +29,13 @@
   if (sel) {
     sel.innerHTML = '<option value="*">— Todos —</option>' +
       (hotelsAll||[]).map(h=>`<option value="${h.id}">${h.nombre||h.id}</option>`).join('');
-    if (!sel.value) sel.value="*";
+    if (!sel.value) sel.value = '*';   // por defecto, Todos
   }
   if (inp) inp.value = monday;
 }
+
+
+
 
 
   function ensureContainer(){
@@ -75,8 +78,9 @@
     const fHotel   = document.getElementById('f-hotel');
     const fWeek    = document.getElementById('f-week');
 
-    let monday = currentMondayFromHash();
-    let hotel  = (getFD().hoteles[0]||{}).id || '';
+  let monday = currentMondayFromHash();
+let hotel  = '*';   // ← clave para pintar ambos al iniciar
+
 
     const safeRender = ()=>{
       const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;

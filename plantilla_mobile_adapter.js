@@ -80,63 +80,77 @@
     return rows;
   }
 
-  window.renderContent=function(_FD, opts){
-    const FD=buildModel();
-    const hotels = FD.hoteles||[];
-    const selHotel=(opts&&(opts.hotel||opts.Hotel))||(hotels[0]&&hotels[0].id)||"";
-    if(!selHotel){
-      (document.getElementById('monthly-summary-container')||document.body).innerHTML=
-       '<div class="weekCard"><div class="muted">No se han detectado hoteles en los datos.</div></div>';
-      return {monday:mondayOf(new Date()), hotelsAll:hotels};
+  window.renderContent = function (_FD, opts) {
+  const FD = buildFD();
+  const hotels = FD.hoteles || [];
+  const mondayISO = mondayOf((opts && (opts.dateFrom || opts.from)) || new Date());
+  const sel = (opts && (opts.hotel || opts.Hotel)) || ""; // "" o "*" = todos
+
+  // Objetivos a renderizar
+  const targetIds = (!sel || sel === "*") ? hotels.map(h => h.id) : [sel];
+
+  function renderOne(hotelId) {
+    const days = Array.from({ length: 7 }, (_, i) => addDays(mondayISO, i));
+    const rows = rowsFor(FD, hotelId, mondayISO);
+
+    const byEmp = new Map();
+    for (const r of rows) {
+      const emp = clean(r.empleado || ""); if (!emp) continue;
+      if (!byEmp.has(emp)) byEmp.set(emp, {});
+      byEmp.get(emp)[toISO(r.fecha)] = normTurno(r.turno || "");
     }
 
-    const weekStartISO=mondayOf((opts&&(opts.dateFrom||opts.from))||new Date());
-    const days=Array.from({length:7},(_,i)=>addDays(weekStartISO,i));
-    const rows=pickRowsForWeek(FD, selHotel, weekStartISO);
-
-    const byEmp=new Map();
-    for(const r of rows){
-      const emp=cleanStr(r.empleado||""); if(!emp) continue;
-      if(!byEmp.has(emp)) byEmp.set(emp,{});
-      byEmp.get(emp)[toISO(r.fecha)]=normalizeCell(r.turno||"");
+    // orden (sin duplicados)
+    const seen = new Set(), order = [];
+    const wk = (FD.semanas || []).find(s =>
+      s && clean(s.hotel) === clean(hotelId) &&
+      toISO(s.semana_lunes || s.weekStart || s.lunes || s.mon) === mondayISO
+    );
+    if (wk && Array.isArray(wk.orden_empleados)) {
+      for (const n of wk.orden_empleados) { const k = clean(n); if (!seen.has(k)) { order.push(n); seen.add(k); } }
     }
+    for (const n of byEmp.keys()) { const k = clean(n); if (!seen.has(k)) { order.push(n); seen.add(k); } }
 
-    const order=[]; const wk=(FD.semanas||[]).find(s=> s && cleanStr(s.hotel)===cleanStr(selHotel)
-      && toISO(s.semana_lunes||s.weekStart||s.lunes||s.mon)===weekStartISO);
-    if(wk && Array.isArray(wk.orden_empleados)) order.push(...wk.orden_empleados);
-    for(const name of byEmp.keys()){ if(!order.includes(name)) order.push(name); }
-
-    const rowsHtml = order.map(name=>{
-      const cells = days.map(d=>`<td>${byEmp.get(name)?.[d]||'—'}</td>`).join('');
-      return `<tr><td>${cleanStr(name)}</td>${cells}</tr>`;
+    const rowsHtml = order.map(name => {
+      const key = clean(name);
+      const cells = days.map(d => `<td>${byEmp.get(key)?.[d] || "—"}</td>`).join("");
+      return `<tr><td>${key}</td>${cells}</tr>`;
     });
 
-    const logo = /cumbria/i.test(selHotel) ? 'img/cumbria.jpg' :
-                 (/guadiana/i.test(selHotel) ? 'img/guadiana.jpg' : '');
-    const range = `${weekStartISO} → ${addDays(weekStartISO,6)}`;
-    const html = `
+    const logo = /cumbria/i.test(hotelId) ? "img/cumbria.jpg" :
+                 (/guadiana/i.test(hotelId) ? "img/guadiana.jpg" : "");
+    const range = `${mondayISO} → ${addDays(mondayISO, 6)}`;
+
+    return `
       <div class="weekCard">
         <div class="weekHead">
-          ${logo?`<img class="weekLogo" src="${logo}" alt="">`:''}
-          <div><div class="weekTitle">${selHotel}</div><div class="weekRange">${range}</div></div>
+          ${logo ? `<img class="weekLogo" src="${logo}" alt="">` : ""}
+          <div><div class="weekTitle">${hotelId}</div><div class="weekRange">${range}</div></div>
         </div>
         <table class="grid">
           <thead><tr>
             <th>Empleado</th>
-            <th>Lun<br>${days[0].split('-').reverse().join('/')}</th>
-            <th>Mar<br>${days[1].split('-').reverse().join('/')}</th>
-            <th>Mié<br>${days[2].split('-').reverse().join('/')}</th>
-            <th>Jue<br>${days[3].split('-').reverse().join('/')}</th>
-            <th>Vie<br>${days[4].split('-').reverse().join('/')}</th>
-            <th>Sáb<br>${days[5].split('-').reverse().join('/')}</th>
-            <th>Dom<br>${days[6].split('-').reverse().join('/')}</th>
+            <th>Lun<br>${days[0].split("-").reverse().join("/")}</th>
+            <th>Mar<br>${days[1].split("-").reverse().join("/")}</th>
+            <th>Mié<br>${days[2].split("-").reverse().join("/")}</th>
+            <th>Jue<br>${days[3].split("-").reverse().join("/")}</th>
+            <th>Vie<br>${days[4].split("-").reverse().join("/")}</th>
+            <th>Sáb<br>${days[5].split("-").reverse().join("/")}</th>
+            <th>Dom<br>${days[6].split("-").reverse().join("/")}</th>
           </tr></thead>
-          <tbody>${rowsHtml.join('')||'<tr><td colspan="8" class="muted">No hay datos para esa semana.</td></tr>'}</tbody>
+          <tbody>${rowsHtml.join("") || '<tr><td colspan="8" class="muted">No hay datos para esa semana.</td></tr>'}</tbody>
         </table>
       </div>`;
+  }
 
-    (document.getElementById('monthly-summary-container')||document.body).innerHTML = html;
-    document.dispatchEvent(new CustomEvent('mobile:rendered'));
-    return { monday: weekStartISO, hotelsAll: hotels };
-  };
+  // Pinta todos o uno
+  const html = targetIds.map(id => renderOne(id)).join("");
+
+  (document.getElementById("monthly-summary-container") || document.body).innerHTML =
+    html || '<div class="weekCard"><div class="muted">No hay datos para esa semana.</div></div>';
+
+  document.dispatchEvent(new CustomEvent("mobile:rendered"));
+  return { monday: mondayISO, hotelsAll: hotels };
+};
+
 })();

@@ -31,7 +31,9 @@
       .replace(/\bNoche\b[\s\S]*$/g, 'Noche 🌙')
       .replace(/Descanso[\s\S]*$/g, 'Descanso')
       .replace(/Vacaciones[\s\S]*$/g, 'Vacaciones 🏖️')
-      .replace(/\bC\/T\b|Cambio(?:\s+de)?\s+turno|\u2194|\u21C4|↔/g, 'C/T 🔄');
+      .replace(/(\b(?:Mañana|Tarde|Noche)\b)(?=.*(?:C\/T|Cambio\s*de\s*turno|↔|↔️|\u2194|\u21C4))/gi, '$1 🔄')
+.replace(/\bC\/T\b|Cambio\s*de\s*turno|↔|↔️|\u2194|\u21C4/gi, '🔄')
+
 
     return s.trim();
   }
