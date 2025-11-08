@@ -153,9 +153,3 @@
     document.dispatchEvent(new CustomEvent('mobile:rendered'));
   };
 })();
-
-// ---- Exponer API esperada por mobile.app.js ----
-if (!window.MobileTemplate) window.MobileTemplate = {};
-if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
-  window.MobileTemplate.renderContent = window.renderContent;
-}
