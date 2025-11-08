@@ -26,3 +26,18 @@ html,body{margin:0;padding:0}
 .pill-perm{background:#e9f0ff;color:#274d9c}
 .pill-form{background:#efe7ff;color:#5b2d91}
 .pill-ct{background:#e6fff2;color:#0f6a45}
+/* Píldoras como el index, adaptadas a móvil */
+.pill{display:inline-block; min-width:64px; padding:6px 12px; border-radius:999px; font:600 13px/1 system-ui; text-align:center; box-shadow:0 0 0 1px rgba(0,0,0,.05) inset}
+.pill--desc{background:#ffe5e7;color:#9a1320}
+.pill--man{background:#e9f8ee;color:#146c2e}
+.pill--tar{background:#fff6d9;color:#7a5b00}
+.pill--noc{background:#eef1f5;color:#243b53}
+.pill--vac{background:#e6f6ff;color:#0b6aa2}
+.pill--ct{background:#f1edff;color:#5a3ea6}
+
+/* Logo compacto dentro de la cabecera */
+.weekHead .weekLogo{width:48px;height:48px;border-radius:10px;object-fit:contain}
+
+/* Oculta cualquier banner viejo suelto encima del cuadrante */
+.wrap > img:first-child{display:none !important; max-height:0 !important;}
+

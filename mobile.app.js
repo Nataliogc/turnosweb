@@ -24,11 +24,16 @@
   }
 
   function populateFilters(hotelsAll, monday){
-    const sel = document.getElementById('f-hotel');
-    const inp = document.getElementById('f-week');
-    if (sel) sel.innerHTML = (hotelsAll||[]).map(h=>`<option value="${h.id}">${h.nombre||h.id}</option>`).join('');
-    if (inp) inp.value = monday;
+  const sel = document.getElementById('f-hotel');
+  const inp = document.getElementById('f-week');
+  if (sel) {
+    sel.innerHTML = '<option value="*">— Todos —</option>' +
+      (hotelsAll||[]).map(h=>`<option value="${h.id}">${h.nombre||h.id}</option>`).join('');
+    if (!sel.value) sel.value="*";
   }
+  if (inp) inp.value = monday;
+}
+
 
   function ensureContainer(){
     if(!document.getElementById('monthly-summary-container')){
