@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>Cuadrantes de turnos · Móvil</title>
 
-  <!-- PWA (sólo registrará SW en http/https) -->
+  <!-- PWA (el SW solo se registra en http/https) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b1520">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -13,10 +13,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <link rel="icon" href="img/turnos_icon.png" />
-  <link rel="stylesheet" href="styles.css?v=TS" />
-  <link rel="stylesheet" href="styles.mobile.css?v=TS" />
+  <link rel="stylesheet" href="styles.css?v=20251108_1415" />
+  <link rel="stylesheet" href="styles.mobile.css?v=20251108_1415" />
+
   <style>
-    /* Cabecera y botones compactos */
+    /* ====== Cabecera y botones compactos ====== */
     .app-header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;background:#0e1720;color:#f5f7fa;padding:10px 12px}
     .app-header .brand{display:flex;align-items:center;gap:10px}
     .app-header .brand img{width:24px;height:24px;border-radius:6px}
@@ -26,16 +27,38 @@
     .btn.primary{background:#0b67ff;border-color:#0b67ff;color:#fff}
     main.wrap{padding:12px}
     @media (min-width:768px){ main.wrap{padding:20px} }
-    /* Drawer de filtros compacto */
+
+    /* ====== Drawer de filtros compacto ====== */
     #drawer{max-width:560px;margin:0 auto;position:fixed;left:0;right:0;bottom:0;transform:translateY(100%);transition:transform .25s ease;background:#fff;border-top-left-radius:16px;border-top-right-radius:16px;box-shadow:0 -10px 30px rgba(0,0,0,.15)}
     #drawer header{padding:14px 14px 0;font:700 14px system-ui;color:#123}
     #drawer .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
     #drawer select,#drawer input{height:36px;font-size:14px;padding:6px 10px;border:1px solid #d6e0ea;border-radius:10px}
     #drawer .f-actions{display:flex;gap:8px;justify-content:flex-end;padding:0 12px 12px}
-    /* Logo compacto dentro de la cabecera de tarjeta */
-    .weekHead .weekLogo{width:48px;height:48px;border-radius:10px;object-fit:contain}
-    /* Oculta cualquier banner heredado fuera del bloque */
-    .wrap > img:first-child{display:none !important; max-height:0 !important;}
+    .actions .btn{padding:6px 10px;font-size:12px}
+
+    /* ====== Cuadrantes ====== */
+    .weekCard{ margin:18px 0 26px; }
+    .weekHead{ display:flex; align-items:center; gap:12px; margin: 4px 0 10px; }
+    .weekHead .weekLogo{ width:48px; height:48px; object-fit:contain; border-radius:10px; }
+    .wrap > img:first-child{display:none !important; max-height:0 !important;} /* oculta banners antiguos */
+
+    /* Columnas homogéneas y nombres completos */
+    .grid.grid--fixed{ table-layout: fixed; width: 100%; }
+    .grid.grid--fixed th:first-child,
+    .grid.grid--fixed td:first-child{
+      width: 34% !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      font-weight: 600;
+    }
+    .grid.grid--fixed th:not(:first-child),
+    .grid.grid--fixed td:not(:first-child){
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
@@ -76,13 +99,13 @@
   </section>
 
   <!-- Datos -->
-  <script src="data.js?v=TS"></script>
-  <script src="data.ausencias.js?v=TS"></script>
+  <script src="data.js?v=20251108_1415"></script>
+  <script src="data.ausencias.js?v=20251108_1415"></script>
 
   <!-- Adaptador móvil -->
-  <script src="plantilla_mobile_adapter.js?v=TS"></script>
+  <script src="plantilla_mobile_adapter.js?v=20251108_1415"></script>
   <script>
-    // Bridges defensivos
+    /* Bridges defensivos */
     window.MobileTemplate = window.MobileTemplate || {};
     if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
       window.MobileTemplate.renderContent = window.renderContent;
@@ -92,14 +115,14 @@
     }
   </script>
 
-  <!-- Parches de texto (opcional) -->
-  <script src="mobile.patch.js?v=TS"></script>
+  <!-- Parches de texto (opcional; no toca HTML de celdas) -->
+  <script src="mobile.patch.js?v=20251108_1415"></script>
 
   <!-- App móvil -->
-  <script src="mobile.app.js?v=TS"></script>
+  <script src="mobile.app.js?v=20251108_1415"></script>
 
   <script>
-    // Registro SW (solo http/https)
+    /* Registro SW (solo http/https) */
     if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(()=>{});
     }

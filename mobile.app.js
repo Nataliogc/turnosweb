@@ -2,7 +2,6 @@
 (function(){
   'use strict';
 
-  const DAY = 86400000;
   const toISO = (d)=>{ const dt = d instanceof Date ? d : new Date(d);
     const z = new Date(dt.getTime()-dt.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
   const mondayOf = (any)=>{ const base = any ? new Date(any) : new Date();
@@ -64,13 +63,12 @@
     const openDrawer = ()=> drawer && (drawer.style.transform='translateY(0)', drawer.setAttribute('aria-hidden','false'));
     const closeDrawer = ()=> drawer && (drawer.style.transform='translateY(100%)', drawer.setAttribute('aria-hidden','true'));
 
-    const safeRender = ()=>{
-      const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;
-      if (!render){ setTimeout(safeRender, 60); return; }
+    const safeRender = ()=>{ const r=(window.MobileTemplate&&window.MobileTemplate.renderContent)||window.renderContent;
+      if (!r){ setTimeout(safeRender, 60); return; }
       renderWeek(monday, hotel);
     };
 
-    // Nav
+    // Navegación semanal
     const shift = (days)=>{ const d=new Date(monday); d.setDate(d.getDate()+days); monday = toISO(d); location.hash=monday; renderWeek(monday, hotel); };
     btnPrev  && btnPrev.addEventListener('click', ()=>shift(-7));
     btnNext  && btnNext.addEventListener('click', ()=>shift(+7));
@@ -88,10 +86,10 @@
       renderWeek(monday, hotel);
     });
 
-    // Hash navigation
+    // Responder a cambios de hash
     window.addEventListener('hashchange', ()=>{ monday = currentMondayFromHash(); renderWeek(monday, hotel); });
 
-    // Primer render (espera a que carguen scripts con file://)
+    // Primer render (espera a carga de scripts con file://)
     setTimeout(safeRender, 80);
   });
 })();

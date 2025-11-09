@@ -36,7 +36,6 @@
 
   // ===== Detección de turno base + flag C/T =====
   function parseUnit(val){
-    // val puede ser string u objeto
     let t = val;
     if (t && typeof t === "object") t = t.turno || t.texto || t.tipo || t.label || t.name || "";
     t = clean(String(t));
@@ -61,9 +60,7 @@
 
   // Fusión de varias piezas del mismo día
   function mergeUnits(units){
-    // units: array de {base, hasCT}
     if (!units || !units.length) return "";
-    // prioridad
     const order = ["Vacaciones","Descanso","Noche","Tarde","Mañana"];
     let pick = "";
     for (const p of order){
@@ -77,16 +74,12 @@
     return pick + (anyCT?" 🔄":"");
   }
 
-  // Convierte cualquier entrada a string normalizado
   function normalizeTurno(v){
-    if (Array.isArray(v)) {
-      const units = v.map(parseUnit);
-      return mergeUnits(units);
-    }
+    if (Array.isArray(v)) return mergeUnits(v.map(parseUnit));
     return mergeUnits([parseUnit(v)]);
   }
 
-  // ===== Filtrado y construcción por semana/hotel =====
+  // ===== Construcción por semana/hotel =====
   function rowsFor(FD, hotel, mondayISO){
     const wk = (FD.semanas||[]).filter(s =>
       s && clean(s.hotel)===clean(hotel) &&
@@ -95,8 +88,8 @@
     const rows = [];
     for (const s of wk) for (const r of (s.turnos||[])) {
       rows.push({
-        empleado: r.empleado||r.persona||r.nombre,
-        fecha: r.fecha,
+        empleado: r.empleado || r.persona || r.nombre || r.Empleado || r.Name || r.worker || "",
+        fecha: r.fecha || r.dia || r.date,
         turno: normalizeTurno(r.turno)
       });
     }
@@ -133,11 +126,11 @@
                  (/guadiana/i.test(hotel) ? 'img/guadiana.jpg' : '');
     const range = `${mondayISO} → ${addDays(mondayISO,6)}`;
 
-    // colgroup para columnas homogéneas
+    // colgroup homogéneo (34% + 7 columnas repartidas)
     const colgroup = `
       <colgroup>
-        <col span="1" style="width:20%">
-        <col span="7" style="width:80%">
+        <col style="width:34%">
+        ${Array.from({length:7}).map(()=>'<col style="width: calc(66%/7)"></col>').join('')}
       </colgroup>`;
 
     return `
