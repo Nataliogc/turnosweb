@@ -1,116 +1,211 @@
-/* mobile.app.js — Boot móvil con recarga anti-caché del data.js */
-(function(){
-  'use strict';
+(() => {
+  // Utilidades
+  const $ = (sel, ctx=document) => ctx.querySelector(sel);
+  const fmt = (d) => new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit', month:'short', year:'2-digit'});
 
-  const toISO = (d)=>{ const dt = d instanceof Date ? d : new Date(d);
-    const z = new Date(dt.getTime()-dt.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-  const mondayOf = (any)=>{ const base = any ? new Date(any) : new Date();
-    const wd=(base.getDay()+6)%7; const m=new Date(base); m.setDate(base.getDate()-wd); return toISO(m); };
+  // Estado
+  let DATA = null; // { schedule:[{hotel, semana_lunes, orden_empleados, turnos:[{empleado,fecha,turno, ...}]}] }
 
-  function currentMondayFromHash(){
-    const h = (location.hash||'').replace('#','').trim();
-    return /^\d{4}-\d{2}-\d{2}$/.test(h) ? h : mondayOf(new Date());
-  }
-
-  function populateFilters(hotelsAll, monday){
-    const sel = document.getElementById('f-hotel');
-    const inp = document.getElementById('f-week');
-    if (sel) {
-      sel.innerHTML = '<option value="*">— Todos —</option>' +
-        (hotelsAll||[]).map(h=>`<option value="${h.id}">${h.nombre||h.id}</option>`).join('');
-      if (!sel.value) sel.value='*';
+  // ==== Entrada de datos =====================================================
+  async function initData(){
+    // 1) Si existe window.FULL_DATA (data.js), úsalo.
+    if (window.FULL_DATA?.schedule?.length) {
+      DATA = window.FULL_DATA;
+      return;
     }
-    if (inp) inp.value = monday;
-  }
-
-  function ensureContainer(){
-    if(!document.getElementById('monthly-summary-container')){
-      const box=document.createElement('div'); box.id='monthly-summary-container';
-      (document.querySelector('main')||document.body).appendChild(box);
-    }
-  }
-
-  // ---- Carga del data.js con cache-busting ----
-  function reloadData(then){
-    try{
-      delete window.FULL_DATA;
-      // elimina scripts previos
-      [...document.querySelectorAll('script[data-live="data"]')].forEach(s=>s.remove());
-      const ts = Date.now();
-      const s1=document.createElement('script');
-      s1.src=`data.js?v=20251109_1708&t=${ts}`;
-      s1.async=false; s1.dataset.live='data';
-      const s2=document.createElement('script');
-      s2.src=`data.ausencias.js?v=20251109_1708&t=${ts}`;
-      s2.async=false; s2.dataset.live='data';
-      s2.onload=()=>{ then && then(); };
-      document.body.appendChild(s1);
-      document.body.appendChild(s2);
-    }catch(e){ console.warn('reloadData error', e); then && then(); }
-  }
-
-  function renderWeek(monISO, hotel, doReload){
-    const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;
-    const afterData = ()=>{
-      ensureContainer();
-      try{
-        const out = render(window.FULL_DATA, {hotel, dateFrom: monISO});
-        const FD = (window.buildFD?window.buildFD(): (window.buildModel?window.buildModel():{})) || {};
-        const monday = out && out.monday ? out.monday : monISO;
-        const hotelsAll = out && out.hotelsAll ? out.hotelsAll : (FD.hoteles||[]);
-        populateFilters(hotelsAll, monday);
-        document.dispatchEvent(new CustomEvent('mobile:rendered', {detail:{hotel, monday}}));
-      }catch(e){
-        console.error('[mobile] error al renderizar', e);
+    // 2) Intentar CSV (turnos.csv y ausencias.csv)
+    try {
+      const [turnosCsv, ausCsv] = await Promise.all([
+        fetch('turnos.csv').then(r => r.ok ? r.text() : ''),
+        fetch('ausencias.csv').then(r => r.ok ? r.text() : '')
+      ]);
+      if (turnosCsv.trim().length) {
+        DATA = csvToFullData(turnosCsv, ausCsv);
+        return;
       }
-    };
-    if (!render){ setTimeout(()=>renderWeek(monISO, hotel, doReload), 50); return; }
-    doReload ? reloadData(afterData) : afterData();
+    } catch(_) { /* sin datos */ }
+
+    // 3) Si todo falla, dejar un dataset vacío para que no rompa.
+    DATA = { schedule: [] };
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const btnPrev  = document.getElementById('btnPrev');
-    const btnNext  = document.getElementById('btnNext');
-    const btnToday = document.getElementById('btnToday');
-    const btnFilters = document.getElementById('btnFilters');
-    const btnReload = document.getElementById('btnReload');
-    const drawer   = document.getElementById('drawer');
-    const fCancel  = document.getElementById('f-cancel');
-    const fApply   = document.getElementById('f-apply');
-    const fHotel   = document.getElementById('f-hotel');
-    const fWeek    = document.getElementById('f-week');
+  // Parseador CSV simple (sin librerías)
+  function csvToRows(txt){
+    // Soporta comillas y separadores ; o ,
+    const sep = txt.includes(';') ? ';' : ',';
+    const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.trim().length);
+    const out = [];
+    for (const line of lines){
+      const row = [];
+      let cur='', inQ=false;
+      for (let i=0;i<line.length;i++){
+        const c = line[i];
+        if (c === '"'){ inQ = !inQ; continue; }
+        if (c === sep && !inQ){ row.push(cur.trim()); cur=''; continue; }
+        cur += c;
+      }
+      row.push(cur.trim());
+      out.push(row);
+    }
+    return out;
+  }
 
-    let monday = currentMondayFromHash();
-    let hotel  = '*'; // por defecto: ambos hoteles
-
-    const openDrawer = ()=> drawer && (drawer.style.transform='translateY(0)', drawer.setAttribute('aria-hidden','false'));
-    const closeDrawer = ()=> drawer && (drawer.style.transform='translateY(100%)', drawer.setAttribute('aria-hidden','true'));
-
-    const safeRender = (reload=false)=>{ const r=(window.MobileTemplate&&window.MobileTemplate.renderContent)||window.renderContent;
-      if (!r){ setTimeout(()=>safeRender(reload), 60); return; }
-      renderWeek(monday, hotel, reload);
+  // Convierte CSV a estructura FULL_DATA mínima
+  function csvToFullData(turnosCsv, ausCsv){
+    const rows = csvToRows(turnosCsv);
+    const hdr = rows.shift().map(h => h.toLowerCase());
+    // Campos esperados (flexible a acentos/variantes)
+    const ci = {
+      hotel: hdr.findIndex(h=>/hotel/.test(h)),
+      empleado: hdr.findIndex(h=>/emplead/.test(h)),
+      fecha: hdr.findIndex(h=>/fecha/.test(h)),
+      turno: hdr.findIndex(h=>/turno/.test(h))
     };
+    const map = new Map(); // key: hotel|lunesISO -> {hotel, semana_lunes, orden_empleados:Set, turnos:[]}
 
-    const shift = (days)=>{ const d=new Date(monday); d.setDate(d.getDate()+days); monday = toISO(d); location.hash=monday; renderWeek(monday, hotel, true); };
-    btnPrev  && btnPrev.addEventListener('click', ()=>shift(-7));
-    btnNext  && btnNext.addEventListener('click', ()=>shift(+7));
-    btnToday && btnToday.addEventListener('click', ()=>{ monday = mondayOf(new Date()); location.hash=monday; renderWeek(monday, hotel, true); });
+    for (const r of rows){
+      const hotel = r[ci.hotel] || 'Hotel';
+      const f = new Date(r[ci.fecha]);
+      if (isNaN(f)) continue;
+      // lunes de esa semana
+      const lunes = new Date(f);
+      const wd = (lunes.getDay()+6)%7; // 0 = lunes
+      lunes.setDate(lunes.getDate()-wd);
+      const lunesISO = lunes.toISOString().slice(0,10);
 
-    btnReload && btnReload.addEventListener('click', ()=> renderWeek(monday, hotel, true));
+      const k = hotel+'|'+lunesISO;
+      if (!map.has(k)) map.set(k, {hotel, semana_lunes: lunesISO, orden_empleados: new Set(), turnos: []});
+      const pack = map.get(k);
+      const empleado = r[ci.empleado] || '';
+      const turno = r[ci.turno] || '';
+      pack.orden_empleados.add(empleado);
+      pack.turnos.push({empleado, fecha: f.toISOString().slice(0,10), turno});
+    }
 
-    btnFilters && btnFilters.addEventListener('click', openDrawer);
-    fCancel && fCancel.addEventListener('click', closeDrawer);
-    fApply && fApply.addEventListener('click', ()=>{
-      hotel  = (fHotel && fHotel.value) || hotel;
-      const v = (fWeek && fWeek.value)||'';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) monday = v;
-      location.hash=monday;
-      closeDrawer();
-      renderWeek(monday, hotel, true);
+    const schedule = Array.from(map.values()).map(p=>({
+      hotel: p.hotel,
+      semana_lunes: p.semana_lunes,
+      orden_empleados: Array.from(p.orden_empleados),
+      turnos: p.turnos
+    }));
+    return { schedule };
+  }
+
+  // ==== Render ===============================================================
+  function render(){
+    const tabla = $('#tablaTurnos');
+    const semana = $('#semanaInput').value || defaultMonday();
+    const hotel = $('#hotelSelect').value || (DATA.schedule[0]?.hotel || 'Hotel');
+
+    const pack = DATA.schedule.find(s => s.hotel===hotel && s.semana_lunes===semana);
+    $('#hotelNombre').textContent = hotel;
+    $('#rangoFechas').textContent = rangoSemana(semana);
+
+    if (!pack){
+      tabla.innerHTML = `<div class="t-empty" style="padding:16px;color:#6b7280;">Sin datos para ${hotel} — ${fmt(semana)}</div>`;
+      return;
+    }
+
+    // Preparar días L→D
+    const dias = new Array(7).fill(0).map((_,i)=>{
+      const d = new Date(semana); d.setDate(d.getDate()+i);
+      return { iso: d.toISOString().slice(0,10), label: d.toLocaleDateString('es-ES',{weekday:'short'}), fecha: d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) };
     });
 
-    window.addEventListener('hashchange', ()=>{ monday = currentMondayFromHash(); renderWeek(monday, hotel, true); });
+    // Indexar turnos por empleado+fecha
+    const byEmpDate = new Map(); // "empleado|fecha" -> [turno, ...]
+    for (const t of pack.turnos){
+      const k = t.empleado+'|'+t.fecha;
+      if (!byEmpDate.has(k)) byEmpDate.set(k, []);
+      byEmpDate.get(k).push(t.turno);
+    }
 
-    setTimeout(()=>safeRender(true), 80); // primer render recargando datos
+    // Filtrar empleados sin turnos esa semana
+    const visibles = pack.orden_empleados.filter(emp => dias.some(d => byEmpDate.has(emp+'|'+d.iso)));
+
+    // Cabecera
+    let html = `<div class="t-head">`
+              + `<div class="cell"></div>`
+              + dias.map(d=>`<div class="cell"><div>${capitalize(d.label)}</div><div>${d.fecha}</div></div>`).join('')
+              + `</div>`;
+
+    // Filas
+    for (const emp of visibles){
+      html += `<div class="t-row">
+        <div class="cell name"><div class="emp">${emp}</div></div>
+        ${dias.map(d=>{
+          const turns = byEmpDate.get(emp+'|'+d.iso) || [];
+          return `<div class="cell"><div class="shifts">${turns.map(pillHTML).join('')}</div></div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    tabla.innerHTML = html;
+  }
+
+  function pillHTML(t){
+    const val = normalizaTurno(t);
+    const map = {
+      'mañana':  { cls:'pill--manana', txt:'Mañana', icon:'' },
+      'tarde':   { cls:'pill--tarde',  txt:'Tarde',  icon:'🛈' },
+      'noche':   { cls:'pill--noche',  txt:'Noche',  icon:'🌙' },
+      'descanso':{ cls:'pill--descanso', txt:'Descanso', icon:'' },
+      'vacaciones':{ cls:'pill--vacaciones', txt:'Vacaciones', icon:'🏖️' }
+    };
+    const m = map[val] || {cls:'', txt:t, icon:''};
+    return `<span class="pill ${m.cls}">${m.icon?`<span class="i">${m.icon}</span>`:''}<span>${m.txt}</span></span>`;
+  }
+
+  function normalizaTurno(s=''){
+    s = s.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim();
+    // admite variantes y emojis que estaban saliendo mal en CSV
+    if (/manana|m/i.test(s) && !/tarde|noche/.test(s)) return 'mañana';
+    if (/tarde|t/i.test(s) && !/manana|noche/.test(s)) return 'tarde';
+    if (/noche|n/i.test(s) && !/manana|tarde/.test(s)) return 'noche';
+    if (/descanso|libre|d/i.test(s)) return 'descanso';
+    if (/vacacion|vac/i.test(s)) return 'vacaciones';
+    return s;
+  }
+
+  function defaultMonday(){
+    // lunes de la semana actual
+    const d = new Date();
+    const wd = (d.getDay()+6)%7;
+    d.setDate(d.getDate()-wd);
+    return d.toISOString().slice(0,10);
+  }
+
+  function rangoSemana(lunesISO){
+    const d0 = new Date(lunesISO);
+    const d6 = new Date(lunesISO); d6.setDate(d6.getDate()+6);
+    const f0 = d0.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
+    const f6 = d6.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
+    return `${f0} → ${f6}`;
+  }
+
+  function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  // ==== UI ===================================================================
+  function populateHotelSelect(){
+    const sel = $('#hotelSelect');
+    const names = Array.from(new Set(DATA.schedule.map(s=>s.hotel)));
+    sel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
+  }
+
+  function syncSemana(){
+    const inp = $('#semanaInput');
+    if (!inp.value) inp.value = defaultMonday();
+  }
+
+  // ==== Start ================================================================
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    await initData();
+    populateHotelSelect();
+    syncSemana();
+    render();
+
+    $('#refrescarBtn').addEventListener('click', render);
+    $('#hotelSelect').addEventListener('change', render);
+    $('#semanaInput').addEventListener('change', render);
   });
 })();
