@@ -12,8 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <link rel="icon" href="img/turnos_icon.png" />
-  <link rel="stylesheet" href="styles.css?v=20251109_1605" />
-  <link rel="stylesheet" href="styles.mobile.css?v=20251109_1605" />
+  <link rel="stylesheet" href="styles.css?v=20251109_1708" />
+  <link rel="stylesheet" href="styles.mobile.css?v=20251109_1708" />
 
   <style>
     .app-header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;background:#0e1720;color:#f5f7fa;padding:10px 12px}
@@ -32,16 +32,16 @@
     #drawer select,#drawer input{height:36px;font-size:14px;padding:6px 10px;border:1px solid #d6e0ea;border-radius:10px}
     #drawer .f-actions{display:flex;gap:8px;justify-content:flex-end;padding:0 12px 12px}
 
-    .weekCard{ margin:18px 0 26px; }
-    .weekHead{ display:flex; align-items:center; gap:12px; margin: 4px 0 10px; }
-    .weekHead .weekLogo{ width:42px; height:42px; object-fit:contain; border-radius:10px; }
+    .weekCard{ margin:16px 0 24px; }
+    .weekHead{ display:flex; align-items:center; gap:10px; margin: 2px 0 8px; }
+    .weekHead .weekLogo{ width:40px; height:40px; object-fit:contain; border-radius:10px; }
     .wrap > img:first-child{display:none !important; max-height:0 !important;}
 
     .grid.grid--fixed{ table-layout: fixed; width: 100%; font-size:13px; }
-    .grid.grid--fixed th, .grid.grid--fixed td{ padding:8px 6px; }
+    .grid.grid--fixed th, .grid.grid--fixed td{ padding:8px 6px; vertical-align: middle; }
     .grid.grid--fixed th:first-child,
     .grid.grid--fixed td:first-child{
-      width: 36% !important;
+      width: 28% !important;     /* ← nombres más estrecho */
       white-space: normal !important;
       word-break: break-word !important;
       overflow: visible !important;
@@ -50,13 +50,14 @@
     }
     .grid.grid--fixed th:not(:first-child),
     .grid.grid--fixed td:not(:first-child){
-      white-space: normal; /* <- ahora envuelve en móvil */
+      white-space: normal;
       overflow: visible;
       text-overflow: clip;
     }
+    .grid .dhd{display:block;font:600 11px/1 system-ui;color:#51606e;margin-bottom:2px}
+    .grid .dft{display:block;font:600 12px/1.05 system-ui;color:#1d2732}
 
-    /* Píldoras compactas y con wrap */
-    .pill{display:inline-block;min-width:0;padding:6px 10px;border-radius:999px;font:600 13px/1.1 system-ui;text-align:center;box-shadow:0 1px 0 rgba(0,0,0,.04);white-space:normal}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;font:600 13px/1.1 system-ui;text-align:center;box-shadow:0 1px 0 rgba(0,0,0,.04);white-space:normal}
     .pill--mn{background:#eaf6ee;border:1px solid #bfe6c9;color:#0b6b2e;}
     .pill--ta{background:#fff5d9;border:1px solid #ffe9a8;color:#8a6a00;}
     .pill--no{background:#eef1f5;border:1px solid #d9dee5;color:#2b3645;}
@@ -64,7 +65,6 @@
     .pill--va{background:#e9fbfb;border:1px solid #c7f0f0;color:#0b6b6b;}
     .pill--empty{color:#99a3ad}
 
-    /* Aún más compacto en pantallas pequeñas */
     @media (max-width:420px){
       .grid.grid--fixed{ font-size:12px; }
       .grid.grid--fixed th, .grid.grid--fixed td{ padding:6px 4px; }
@@ -82,6 +82,7 @@
       <button id="btnPrev" class="btn">← Semana</button>
       <button id="btnToday" class="btn">Hoy</button>
       <button id="btnNext" class="btn">Semana →</button>
+      <button id="btnReload" class="btn">↻ Recargar</button>
       <button id="btnFilters" class="btn primary">Filtros</button>
     </div>
   </header>
@@ -90,6 +91,7 @@
     <div id="monthly-summary-container" role="region" aria-live="polite"></div>
   </main>
 
+  <!-- Drawer -->
   <section id="drawer" aria-hidden="true">
     <header>Filtros</header>
     <div class="f-grid">
@@ -108,24 +110,14 @@
     </div>
   </section>
 
-  <!-- Datos -->
-  <script src="data.js?v=20251109_1605"></script>
-  <script src="data.ausencias.js?v=20251109_1605"></script>
+  <!-- Datos iniciales (se pueden sobrescribir al recargar) -->
+  <script src="data.js?v=20251109_1708"></script>
+  <script src="data.ausencias.js?v=20251109_1708"></script>
 
-  <!-- Adaptador móvil -->
-  <script src="plantilla_mobile_adapter.js?v=20251109_1605"></script>
-  <script>
-    window.MobileTemplate = window.MobileTemplate || {};
-    if (!window.MobileTemplate.renderContent && typeof window.renderContent === 'function') {
-      window.MobileTemplate.renderContent = window.renderContent;
-    }
-    if (typeof window.buildFD === 'undefined' && typeof window.buildModel === 'function') {
-      window.buildFD = window.buildModel;
-    }
-  </script>
-
-  <script src="mobile.patch.js?v=20251109_1605"></script>
-  <script src="mobile.app.js?v=20251109_1605"></script>
+  <!-- Adaptador + App -->
+  <script src="plantilla_mobile_adapter.js?v=20251109_1708"></script>
+  <script src="mobile.patch.js?v=20251109_1708"></script>
+  <script src="mobile.app.js?v=20251109_1708"></script>
 
   <script>
     if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {

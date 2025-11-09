@@ -1,4 +1,4 @@
-/* mobile.app.js — Boot móvil (multi-hotel por defecto) */
+/* mobile.app.js — Boot móvil con recarga anti-caché del data.js */
 (function(){
   'use strict';
 
@@ -30,20 +30,42 @@
     }
   }
 
-  function renderWeek(monISO, hotel){
-    const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;
-    if(!render){ setTimeout(()=>renderWeek(monISO, hotel), 50); return; }
-    ensureContainer();
+  // ---- Carga del data.js con cache-busting ----
+  function reloadData(then){
     try{
-      const out = render(window.FULL_DATA, {hotel, dateFrom: monISO});
-      const FD = (window.buildFD?window.buildFD(): (window.buildModel?window.buildModel():{})) || {};
-      const monday = out && out.monday ? out.monday : monISO;
-      const hotelsAll = out && out.hotelsAll ? out.hotelsAll : (FD.hoteles||[]);
-      populateFilters(hotelsAll, monday);
-      document.dispatchEvent(new CustomEvent('mobile:rendered', {detail:{hotel, monday}}));
-    }catch(e){
-      console.error('[mobile] error al renderizar', e);
-    }
+      delete window.FULL_DATA;
+      // elimina scripts previos
+      [...document.querySelectorAll('script[data-live="data"]')].forEach(s=>s.remove());
+      const ts = Date.now();
+      const s1=document.createElement('script');
+      s1.src=`data.js?v=20251109_1708&t=${ts}`;
+      s1.async=false; s1.dataset.live='data';
+      const s2=document.createElement('script');
+      s2.src=`data.ausencias.js?v=20251109_1708&t=${ts}`;
+      s2.async=false; s2.dataset.live='data';
+      s2.onload=()=>{ then && then(); };
+      document.body.appendChild(s1);
+      document.body.appendChild(s2);
+    }catch(e){ console.warn('reloadData error', e); then && then(); }
+  }
+
+  function renderWeek(monISO, hotel, doReload){
+    const render = (window.MobileTemplate && window.MobileTemplate.renderContent) || window.renderContent;
+    const afterData = ()=>{
+      ensureContainer();
+      try{
+        const out = render(window.FULL_DATA, {hotel, dateFrom: monISO});
+        const FD = (window.buildFD?window.buildFD(): (window.buildModel?window.buildModel():{})) || {};
+        const monday = out && out.monday ? out.monday : monISO;
+        const hotelsAll = out && out.hotelsAll ? out.hotelsAll : (FD.hoteles||[]);
+        populateFilters(hotelsAll, monday);
+        document.dispatchEvent(new CustomEvent('mobile:rendered', {detail:{hotel, monday}}));
+      }catch(e){
+        console.error('[mobile] error al renderizar', e);
+      }
+    };
+    if (!render){ setTimeout(()=>renderWeek(monISO, hotel, doReload), 50); return; }
+    doReload ? reloadData(afterData) : afterData();
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
@@ -51,6 +73,7 @@
     const btnNext  = document.getElementById('btnNext');
     const btnToday = document.getElementById('btnToday');
     const btnFilters = document.getElementById('btnFilters');
+    const btnReload = document.getElementById('btnReload');
     const drawer   = document.getElementById('drawer');
     const fCancel  = document.getElementById('f-cancel');
     const fApply   = document.getElementById('f-apply');
@@ -63,18 +86,18 @@
     const openDrawer = ()=> drawer && (drawer.style.transform='translateY(0)', drawer.setAttribute('aria-hidden','false'));
     const closeDrawer = ()=> drawer && (drawer.style.transform='translateY(100%)', drawer.setAttribute('aria-hidden','true'));
 
-    const safeRender = ()=>{ const r=(window.MobileTemplate&&window.MobileTemplate.renderContent)||window.renderContent;
-      if (!r){ setTimeout(safeRender, 60); return; }
-      renderWeek(monday, hotel);
+    const safeRender = (reload=false)=>{ const r=(window.MobileTemplate&&window.MobileTemplate.renderContent)||window.renderContent;
+      if (!r){ setTimeout(()=>safeRender(reload), 60); return; }
+      renderWeek(monday, hotel, reload);
     };
 
-    // Navegación semanal
-    const shift = (days)=>{ const d=new Date(monday); d.setDate(d.getDate()+days); monday = toISO(d); location.hash=monday; renderWeek(monday, hotel); };
+    const shift = (days)=>{ const d=new Date(monday); d.setDate(d.getDate()+days); monday = toISO(d); location.hash=monday; renderWeek(monday, hotel, true); };
     btnPrev  && btnPrev.addEventListener('click', ()=>shift(-7));
     btnNext  && btnNext.addEventListener('click', ()=>shift(+7));
-    btnToday && btnToday.addEventListener('click', ()=>{ monday = mondayOf(new Date()); location.hash=monday; renderWeek(monday, hotel); });
+    btnToday && btnToday.addEventListener('click', ()=>{ monday = mondayOf(new Date()); location.hash=monday; renderWeek(monday, hotel, true); });
 
-    // Drawer
+    btnReload && btnReload.addEventListener('click', ()=> renderWeek(monday, hotel, true));
+
     btnFilters && btnFilters.addEventListener('click', openDrawer);
     fCancel && fCancel.addEventListener('click', closeDrawer);
     fApply && fApply.addEventListener('click', ()=>{
@@ -83,13 +106,11 @@
       if (/^\d{4}-\d{2}-\d{2}$/.test(v)) monday = v;
       location.hash=monday;
       closeDrawer();
-      renderWeek(monday, hotel);
+      renderWeek(monday, hotel, true);
     });
 
-    // Responder a cambios de hash
-    window.addEventListener('hashchange', ()=>{ monday = currentMondayFromHash(); renderWeek(monday, hotel); });
+    window.addEventListener('hashchange', ()=>{ monday = currentMondayFromHash(); renderWeek(monday, hotel, true); });
 
-    // Primer render (espera a carga de scripts con file://)
-    setTimeout(safeRender, 80);
+    setTimeout(()=>safeRender(true), 80); // primer render recargando datos
   });
 })();

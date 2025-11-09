@@ -1,4 +1,4 @@
-/* móvil: píldoras + C/T robusto + ocultar filas vacías + celdas legibles */
+/* móvil: visual mejorada + C/T robusto + ocultar filas vacías */
 (function () {
   "use strict";
 
@@ -29,6 +29,13 @@
     return FD;
   }
   window.buildFD = window.buildFD || buildModel;
+
+  // --- fechas UI ---
+  const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  const labelDate = iso=>{
+    const [y,m,d] = iso.split("-").map(n=>parseInt(n,10));
+    return `${String(d).padStart(2,"0")}/${MONTHS[m-1]}/${String(y).slice(-2)}`;
+  };
 
   // ---------- Turnos ----------
   function truthy(x){ return x===true || x===1 || x==="1" || /^si|sí|true|yes$/i.test(String(x||"")); }
@@ -65,11 +72,11 @@
   }
 
   function normalizeTurno(turno, flags){
-    // flags: {ct:bool}
-    const hasCTFlag = flags && truthy(flags.ct);
+    const hasCTFlag = flags && (flags.ct || flags.cambio || flags.cambio_turno || flags.cambioDeTurno || flags.CambioTurno);
+    const hasCTBool = truthy(hasCTFlag);
     const units = Array.isArray(turno)
-      ? turno.map(x=>parseUnit(x, hasCTFlag))
-      : [parseUnit(turno, hasCTFlag)];
+      ? turno.map(x=>parseUnit(x, hasCTBool))
+      : [parseUnit(turno, hasCTBool)];
     return mergeUnits(units);
   }
 
@@ -81,11 +88,14 @@
     );
     const rows = [];
     for (const s of wk) for (const r of (s.turnos||[])) {
-      const ctFlag = r.ct ?? r.cambio ?? r.cambio_turno ?? r.cambioDeTurno ?? r.CambioTurno ?? false;
+      const flags = {
+        ct: r.ct, cambio: r.cambio, cambio_turno: r.cambio_turno,
+        cambioDeTurno: r.cambioDeTurno, CambioTurno: r.CambioTurno
+      };
       rows.push({
         empleado: r.empleado || r.persona || r.nombre || r.Empleado || r.Name || r.worker || "",
         fecha: r.fecha || r.dia || r.date,
-        token: normalizeTurno(r.turno, {ct: ctFlag})
+        token: normalizeTurno(r.turno, flags)
       });
     }
     return rows;
@@ -124,9 +134,10 @@
     }
     for (const n of byEmp.keys()) { const k=clean(n); if(!seen.has(k)){ baseOrder.push(k); seen.add(k);} }
 
+    // Oculta empleados sin turno en toda la semana
     const order = baseOrder.filter(name=>{
       const reg = byEmp.get(name)||{};
-      return days.some(d => !!reg[d]); // sólo con algún turno real
+      return days.some(d => !!reg[d]);
     });
 
     const rowsHtml = order.map(name=>{
@@ -137,13 +148,22 @@
 
     const logo = /cumbria/i.test(hotel) ? 'img/cumbria.jpg' :
                  (/guadiana/i.test(hotel) ? 'img/guadiana.jpg' : '');
-    const range = `${mondayISO} → ${addDays(mondayISO,6)}`;
+    const range = `${labelDate(days[0])} → ${labelDate(days[6])}`;
 
     const colgroup = `
       <colgroup>
-        <col style="width:36%">
-        ${Array.from({length:7}).map(()=>'<col style="width: calc(64%/7)"></col>').join('')}
+        <col style="width:28%">
+        ${Array.from({length:7}).map(()=>'<col style="width: calc(72%/7)"></col>').join('')}
       </colgroup>`;
+
+    // cabecera: cada th con dos líneas controladas (día y fecha abreviada)
+    const head = `
+      <thead><tr>
+        <th>Empleado</th>
+        ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map((d,i)=>(
+          `<th><span class="dhd">${d}</span><span class="dft">${labelDate(days[i])}</span></th>`
+        )).join('')}
+      </tr></thead>`;
 
     return `
       <div class="weekCard">
@@ -153,16 +173,7 @@
         </div>
         <table class="grid grid--fixed">
           ${colgroup}
-          <thead><tr>
-            <th>Empleado</th>
-            <th>Lun<br>${days[0].split('-').reverse().join('/')}</th>
-            <th>Mar<br>${days[1].split('-').reverse().join('/')}</th>
-            <th>Mié<br>${days[2].split('-').reverse().join('/')}</th>
-            <th>Jue<br>${days[3].split('-').reverse().join('/')}</th>
-            <th>Vie<br>${days[4].split('-').reverse().join('/')}</th>
-            <th>Sáb<br>${days[5].split('-').reverse().join('/')}</th>
-            <th>Dom<br>${days[6].split('-').reverse().join('/')}</th>
-          </tr></thead>
+          ${head}
           <tbody>${rowsHtml.join('')||'<tr><td colspan="8" class="muted">No hay datos para esa semana.</td></tr>'}</tbody>
         </table>
       </div>`;
