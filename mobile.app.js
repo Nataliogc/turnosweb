@@ -1,4 +1,4 @@
-/* mobile.app.js — Boot móvil robusto (multi-hotel por defecto) */
+/* mobile.app.js — Boot móvil (multi-hotel por defecto) */
 (function(){
   'use strict';
 

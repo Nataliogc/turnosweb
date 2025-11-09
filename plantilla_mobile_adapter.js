@@ -1,8 +1,7 @@
-/* plantilla_mobile_adapter.js — móvil, multi-hotel + merge de turnos + C/T preservado */
+/* móvil: píldoras + C/T robusto + ocultar filas vacías + celdas legibles */
 (function () {
   "use strict";
 
-  // ===== Utilidades de fecha =====
   const DAY = 86400000;
   const toISO = (d)=>{ if(!d) return ""; if(typeof d==="string") return d.slice(0,10);
     const z=new Date(d.getTime()-d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10);};
@@ -11,18 +10,16 @@
   const mondayOf = (any)=>{ const d=typeof any==="string"?new Date(any):new Date(any);
     const wd=(d.getDay()+6)%7; return toISO(new Date(d.getFullYear(),d.getMonth(),d.getDate()-wd)); };
 
-  // ===== Normalización de texto =====
   const clean = s => String(s??"")
     .replace(/Ã¡/g,"á").replace(/Ã©/g,"é").replace(/Ã­/g,"í").replace(/Ã³/g,"ó").replace(/Ãº/g,"ú").replace(/Ã±/g,"ñ")
     .replace(/Ã/g,"Á").replace(/Ã‰/g,"É").replace(/Ã/g,"Í").replace(/Ã“/g,"Ó").replace(/Ãš/g,"Ú").replace(/Ã‘/g,"Ñ")
     .replace(/ðŸ”„/g,"🔄").replace(/ðŸ–ï¸/g,"🏖️").replace(/ï¸/g,"").trim();
 
-  // ===== Lectura de fuente =====
   function buildModel(){
     let FD = window.FULL_DATA || window.DATA || window.SCHEDULE || {};
     if (!Array.isArray(FD.semanas)) {
-      const cands=[FD.semanas, FD.schedule, FD.data, FD.rows].filter(Array.isArray);
-      if (cands.length) FD.semanas = cands[0];
+      const c=[FD.semanas, FD.schedule, FD.data, FD.rows].filter(Array.isArray);
+      if (c.length) FD.semanas = c[0];
     }
     if (!Array.isArray(FD.hoteles)) {
       const set=new Set();
@@ -31,55 +28,52 @@
     }
     return FD;
   }
-  // alias de compatibilidad
   window.buildFD = window.buildFD || buildModel;
 
-  // ===== Detección de turno base + flag C/T =====
-  function parseUnit(val){
+  // ---------- Turnos ----------
+  function truthy(x){ return x===true || x===1 || x==="1" || /^si|sí|true|yes$/i.test(String(x||"")); }
+
+  function parseUnit(val, hasCTFlag){
     let t = val;
     if (t && typeof t === "object") t = t.turno || t.texto || t.tipo || t.label || t.name || "";
     t = clean(String(t));
 
-    const hasCT = /\bC\/T\b|cambio\s*de\s*turno|↔|↔️|\u2194|\u21C4|🔄/i.test(t);
+    const hasCTText = /\bC\/T\b|cambio\s*de\s*turno|cambio\s*turno|CT\b|↔|↔️|\u2194|\u21C4|🔄/i.test(t);
+    const hasCT = !!(hasCTFlag || hasCTText);
+
     const isVac = /vacaciones/i.test(t);
     const isDesc= /descanso/i.test(t);
     const isNoc = /noche/i.test(t);
     const isTar = /tarde/i.test(t);
     const isMan = /mañana/i.test(t);
 
-    let base = "";
-    if (isVac) base = "Vacaciones";
-    else if (isDesc) base = "Descanso";
-    else if (isNoc) base = "Noche";
-    else if (isTar) base = "Tarde";
-    else if (isMan) base = "Mañana";
-    else base = t || "";
-
-    return {base, hasCT};
+    let type = "other", label = t;
+    if (isVac) {type="va"; label="Vacaciones";}
+    else if (isDesc){type="de"; label="Descanso";}
+    else if (isNoc){type="no"; label="Noche";}
+    else if (isTar){type="ta"; label="Tarde";}
+    else if (isMan){type="mn"; label="Mañana";}
+    return {type, hasCT, label};
   }
 
-  // Fusión de varias piezas del mismo día
-  function mergeUnits(units){
-    if (!units || !units.length) return "";
-    const order = ["Vacaciones","Descanso","Noche","Tarde","Mañana"];
-    let pick = "";
-    for (const p of order){
-      if (units.some(u=>u.base && u.base.toLowerCase().startsWith(p.toLowerCase()))) { pick = p; break; }
-    }
-    if (!pick) pick = units.find(u=>u.base)?.base || "";
-    const anyCT = units.some(u=>u.hasCT);
-    if (!pick) return "";
-    if (/Noche/i.test(pick)) return pick + " 🌙" + (anyCT?" 🔄":"");
-    if (/Vacaciones/i.test(pick)) return pick + " 🏖️";
-    return pick + (anyCT?" 🔄":"");
+  function mergeUnits(u){
+    if (!u || !u.length) return null;
+    const prio = ["va","de","no","ta","mn","other"];
+    u.sort((a,b)=>prio.indexOf(a.type)-prio.indexOf(b.type));
+    const pick = u[0];
+    return {type: pick.type, hasCT: u.some(x=>x.hasCT), label: pick.label};
   }
 
-  function normalizeTurno(v){
-    if (Array.isArray(v)) return mergeUnits(v.map(parseUnit));
-    return mergeUnits([parseUnit(v)]);
+  function normalizeTurno(turno, flags){
+    // flags: {ct:bool}
+    const hasCTFlag = flags && truthy(flags.ct);
+    const units = Array.isArray(turno)
+      ? turno.map(x=>parseUnit(x, hasCTFlag))
+      : [parseUnit(turno, hasCTFlag)];
+    return mergeUnits(units);
   }
 
-  // ===== Construcción por semana/hotel =====
+  // ---------- Datos por semana/hotel ----------
   function rowsFor(FD, hotel, mondayISO){
     const wk = (FD.semanas||[]).filter(s =>
       s && clean(s.hotel)===clean(hotel) &&
@@ -87,16 +81,30 @@
     );
     const rows = [];
     for (const s of wk) for (const r of (s.turnos||[])) {
+      const ctFlag = r.ct ?? r.cambio ?? r.cambio_turno ?? r.cambioDeTurno ?? r.CambioTurno ?? false;
       rows.push({
         empleado: r.empleado || r.persona || r.nombre || r.Empleado || r.Name || r.worker || "",
         fecha: r.fecha || r.dia || r.date,
-        turno: normalizeTurno(r.turno)
+        token: normalizeTurno(r.turno, {ct: ctFlag})
       });
     }
     return rows;
   }
 
-  // ===== Render de UNA tarjeta (hotel) =====
+  function pillHTML(tok){
+    if (!tok) return '<span class="pill pill--empty">—</span>';
+    const ct = tok.hasCT ? ' 🔄' : '';
+    switch (tok.type){
+      case "va": return `<span class="pill pill--va">Vacaciones 🏖️</span>`;
+      case "de": return `<span class="pill pill--de">Descanso</span>`;
+      case "no": return `<span class="pill pill--no">Noche 🌙${ct}</span>`;
+      case "ta": return `<span class="pill pill--ta">Tarde${ct}</span>`;
+      case "mn": return `<span class="pill pill--mn">Mañana${ct}</span>`;
+      default:   return `<span class="pill pill--empty">${clean(tok.label||"—")}</span>`;
+    }
+  }
+
+  // ---------- Render ----------
   function renderOne(FD, hotel, mondayISO){
     const days = Array.from({length:7},(_,i)=>addDays(mondayISO,i));
     const rows = rowsFor(FD, hotel, mondayISO);
@@ -105,20 +113,25 @@
     for(const r of rows){
       const emp=clean(r.empleado||""); if(!emp) continue;
       if(!byEmp.has(emp)) byEmp.set(emp,{});
-      byEmp.get(emp)[toISO(r.fecha)] = r.turno || "";
+      byEmp.get(emp)[toISO(r.fecha)] = r.token || null;
     }
 
-    // orden de empleados (sin duplicados)
-    const seen=new Set(), order=[];
+    const seen=new Set(), baseOrder=[];
     const wk=(FD.semanas||[]).find(s=> s && clean(s.hotel)===clean(hotel) &&
       toISO(s.semana_lunes||s.weekStart||s.lunes||s.mon)===mondayISO);
     if (wk && Array.isArray(wk.orden_empleados)) {
-      for (const n of wk.orden_empleados) { const k=clean(n); if(!seen.has(k)){ order.push(k); seen.add(k);} }
+      for (const n of wk.orden_empleados) { const k=clean(n); if(!seen.has(k)){ baseOrder.push(k); seen.add(k);} }
     }
-    for (const n of byEmp.keys()) { const k=clean(n); if(!seen.has(k)){ order.push(k); seen.add(k);} }
+    for (const n of byEmp.keys()) { const k=clean(n); if(!seen.has(k)){ baseOrder.push(k); seen.add(k);} }
+
+    const order = baseOrder.filter(name=>{
+      const reg = byEmp.get(name)||{};
+      return days.some(d => !!reg[d]); // sólo con algún turno real
+    });
 
     const rowsHtml = order.map(name=>{
-      const cells = days.map(d=>`<td>${byEmp.get(name)?.[d]||'—'}</td>`).join('');
+      const reg = byEmp.get(name)||{};
+      const cells = days.map(d=>`<td>${pillHTML(reg[d])}</td>`).join('');
       return `<tr><td>${name}</td>${cells}</tr>`;
     });
 
@@ -126,11 +139,10 @@
                  (/guadiana/i.test(hotel) ? 'img/guadiana.jpg' : '');
     const range = `${mondayISO} → ${addDays(mondayISO,6)}`;
 
-    // colgroup homogéneo (34% + 7 columnas repartidas)
     const colgroup = `
       <colgroup>
-        <col style="width:34%">
-        ${Array.from({length:7}).map(()=>'<col style="width: calc(66%/7)"></col>').join('')}
+        <col style="width:36%">
+        ${Array.from({length:7}).map(()=>'<col style="width: calc(64%/7)"></col>').join('')}
       </colgroup>`;
 
     return `
@@ -156,13 +168,11 @@
       </div>`;
   }
 
-  // ===== API principal (pinta todos si hotel="*" o vacío) =====
   window.renderContent=function(_FD, opts){
     const FD = buildModel();
     const hotels = FD.hoteles||[];
     const mondayISO = mondayOf((opts&&(opts.dateFrom||opts.from))||new Date());
     const sel = (opts&&(opts.hotel||opts.Hotel))||"*";
-
     const list = (!sel || sel==="*") ? hotels : hotels.filter(h=>clean(h.id)===clean(sel));
     const html = list.map(h=>renderOne(FD, h.id, mondayISO)).join("");
 
