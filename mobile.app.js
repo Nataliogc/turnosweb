@@ -28,6 +28,9 @@
   const weekPicker = $("#weekPicker");
   const hotelSelect = $("#hotelSelect");
   const refreshBtn = $("#refreshBtn");
+  const prevWeekBtn = $("#prevWeekBtn");
+  const todayBtn = $("#todayBtn");
+  const nextWeekBtn = $("#nextWeekBtn");
   const thead = $("#thead");
   const tbody = $("#tbody");
   const hotelTitle = $("#hotelTitle");
@@ -39,7 +42,7 @@
   hotelSelect.innerHTML = HOTELS.map(h => `<option value="${h}">${h}</option>`).join("");
 
   // Semana por defecto: si existe en el dataset, usa la primera; si no, el lunes de hoy.
-  let defaultWeek = DATA.length ? new Date(DATA[0].semana_lunes) : mondayOf(new Date());
+  let defaultWeek = mondayOf(new Date());
   const monday = mondayOf(new Date(defaultWeek));
   weekPicker.value = toISODateUTC(monday);
 
@@ -76,7 +79,7 @@
       row.className = "row";
       const name = document.createElement("div");
       name.className = "cell-name";
-      name.textContent = emp;
+      name.textContent = (window.MobilePatch? window.MobilePatch.normalize(emp) : emp);
       row.appendChild(name);
       for(let i=0;i<7;i++){
         const dkey = toISODateUTC(addDays(weekData.monday,i));
@@ -86,7 +89,7 @@
         if(item){
           const pill = document.createElement("span");
           pill.className = "pill";
-          let label = item.turno || "";
+          let label = (window.MobilePatch? window.MobilePatch.normalize(item.turno||"") : (item.turno||""));
           // Normalizaciones visuales
           if(/descanso/i.test(label)){ pill.classList.add("rest"); label = "Descanso"; }
           else if(/noche/i.test(label)){ pill.classList.add("night"); label = "🌙 Noche"; }
@@ -103,8 +106,9 @@
   function refresh(){
     const hotel = hotelSelect.value;
     const monday = new Date(weekPicker.value);
-    hotelTitle.textContent = hotel;
+    hotelTitle.textContent = (window.MobilePatch? window.MobilePatch.normalize(hotel):hotel);
     hotelLogo.src = logoFor(hotel);
+    hotelLogo.onerror = ()=>{ hotelLogo.src = 'img/logo.png'; };
     renderHeader(monday);
     const weekData = window.MobileAdapter.buildWeekData(window.FULL_DATA, hotel, monday);
     renderBody(weekData);
@@ -124,6 +128,19 @@
       allowInput: true
     });
   }
+
+  
+  // Navegación de semanas
+  function setWeekByOffset(offsetDays){
+    const d = new Date(weekPicker.value);
+    d.setUTCDate(d.getUTCDate()+offsetDays);
+    const monday = (function(x){ const dt=new Date(x); const day=(dt.getUTCDay()+6)%7; dt.setUTCDate(dt.getUTCDate()-day); return dt; })(d);
+    weekPicker.value = toISODateUTC(monday);
+    refresh();
+  }
+  prevWeekBtn && prevWeekBtn.addEventListener('click', ()=> setWeekByOffset(-7));
+  todayBtn && todayBtn.addEventListener('click', ()=> { weekPicker.value = toISODateUTC(mondayOf(new Date())); refresh(); });
+  nextWeekBtn && nextWeekBtn.addEventListener('click', ()=> setWeekByOffset(7));
 
   // Primera carga
   refresh();

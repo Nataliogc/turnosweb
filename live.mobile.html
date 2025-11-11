@@ -17,23 +17,26 @@
     header{position:sticky;top:0;background:linear-gradient(180deg,#ffffff 0,#fbfcff 100%);border-bottom:1px solid var(--border);z-index:10}
     .bar{max-width:1100px;margin:0 auto;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .brand{display:flex;gap:10px;align-items:center}
-    .brand img{height:26px}
+    .brand img{height:28px; width:auto; object-fit:contain}
     .title{font-weight:600}
     .controls{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
     .field{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:6px 10px}
     .field label{font-size:12px;color:var(--muted)}
     .field select,.field input{border:0;outline:0;background:transparent;font:inherit;color:var(--text)}
     .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 12px;font-weight:600}
+    .btn-primary{background:#1677ff;border-color:#1677ff;color:#fff}
+    .btn-group{display:flex;gap:10px}
     main{max-width:1100px;margin:12px auto;padding:0 14px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
     .thead,.row{display:grid;grid-template-columns:160px repeat(7,1fr)}
     @media (max-width:700px){.thead,.row{grid-template-columns:120px repeat(7,1fr)}}
     .thead{border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
     .th,.cell-name,.cell{padding:10px 12px;border-right:1px solid var(--border)}
+    .cell{display:flex;align-items:center;justify-content:center;overflow:hidden}
     .th:last-child,.cell:last-child{border-right:0}
     .cell-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff;position:sticky;left:0;border-right:1px solid var(--border);z-index:1}
     .row{border-top:1px solid var(--border);align-items:center}
-    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--pill);color:var(--pill-text);font-weight:600;white-space:nowrap}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--pill);color:var(--pill-text);font-weight:600;white-space:normal;word-break:break-word;text-align:center;max-width:95%;justify-content:center}
     .pill.rest{background:var(--rest);color:var(--rest-text)}
     .pill.night{background:var(--night);color:var(--night-text)}
     .weekday{display:flex;flex-direction:column;gap:2px}
@@ -60,6 +63,11 @@
         <div class="field">
           <label>Hotel:</label>
           <select id="hotelSelect"></select>
+        </div>
+        <div class="btn-group">
+          <button class="btn-primary btn" id="prevWeekBtn">← Semana</button>
+          <button class="btn-primary btn" id="todayBtn">Hoy</button>
+          <button class="btn-primary btn" id="nextWeekBtn">Semana →</button>
         </div>
         <button class="btn" id="refreshBtn">Actualizar</button>
       </div>
