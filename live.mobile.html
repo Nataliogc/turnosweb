@@ -13,7 +13,7 @@
       --rest:#fde2e4; --rest-text:#7f1d1d; --brand:#c9a227;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:100%;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-gutter:stable both-edges;-webkit-text-size-adjust:100%}
     header{position:sticky;top:0;background:linear-gradient(180deg,#ffffff 0,#fbfcff 100%);border-bottom:1px solid var(--border);z-index:10}
     .bar{max-width:1100px;margin:0 auto;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .brand{display:flex;gap:10px;align-items:center}
@@ -27,9 +27,9 @@
     .btn-primary{background:#1677ff;border-color:#1677ff;color:#fff}
     .btn-group{display:flex;gap:10px}
     main{max-width:1100px;margin:12px auto;padding:0 14px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow-x:auto;-webkit-overflow-scrolling:touch}
     .thead,.row{display:grid;grid-template-columns:160px repeat(7,1fr)}
-    @media (max-width:700px){.thead,.row{grid-template-columns:120px repeat(7,1fr)}}
+    @media (max-width:700px){.thead,.row{grid-template-columns:112px repeat(7,minmax(72px,1fr))}}
     .thead{border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
     .th,.cell-name,.cell{padding:10px 12px;border-right:1px solid var(--border)}
     .cell{display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -37,6 +37,25 @@
     .cell-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff;position:sticky;left:0;border-right:1px solid var(--border);z-index:1}
     .row{border-top:1px solid var(--border);align-items:center}
     .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--pill);color:var(--pill-text);font-weight:600;white-space:normal;word-break:break-word;text-align:center;max-width:95%;justify-content:center}
+
+    /* Paleta alineada con index */
+
+    /* Badge azul para sustituciones / cambios */
+    .pill .badge{
+      display:inline-flex;
+      align-items:center;justify-content:center;
+      width:18px;height:18px;border-radius:6px;
+      margin-left:6px;font-size:12px;line-height:1;
+      background:#2563eb;color:#fff;font-weight:700;
+      flex:0 0 auto;
+    }
+
+    .pill.manana{background:#d1fae5;color:#065f46}     /* verde suave */
+    .pill.tarde{background:#fef3c7;color:#92400e}      /* amarillo suave */
+    .pill.noche{background:#e5e7eb;color:#374151}      /* gris noche */
+    .pill.descanso{background:#fee2e2;color:#7f1d1d}   /* rojo descanso */
+    .pill.vac{background:#fff7db;color:#5b4300}        /* arena vacaciones */
+
     .pill.rest{background:var(--rest);color:var(--rest-text)}
     .pill.night{background:var(--night);color:var(--night-text)}
     .weekday{display:flex;flex-direction:column;gap:2px}

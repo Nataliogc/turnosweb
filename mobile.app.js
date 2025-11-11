@@ -12,6 +12,42 @@
   const pad = n => String(n).padStart(2,'0');
   const fmt = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${String(d.getFullYear()).slice(-2)}`;
   const weekdayShort = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  function getLabel(turno){
+    
+    if(turno == null) return "";
+    // Si ya es string, normaliza
+    if(typeof turno === "string"){
+      return (window.MobilePatch ? window.MobilePatch.normalize(turno) : turno);
+    }
+    // Si viene como objeto (p.ej., {texto:'Mañana', icon:'🔄'})
+    if(typeof turno === "object"){
+      const candidate = turno.texto || turno.label || turno.name || turno.turno || turno.t || "";
+      return (window.MobilePatch ? window.MobilePatch.normalize(String(candidate)) : String(candidate));
+    }
+    // Fallback genérico
+    return String(turno);
+  }
+
+  function getFlag(item){
+    // Devuelve {type:'swap'|'sub', symbol:'🔄'|'↔', title:string} o null
+    try{
+      const raw = item && item.turno;
+      const text = getLabel(raw).toLowerCase();
+      // Por texto
+      if(text.includes('sustit')) return {type:'sub', symbol:'↔', title:'Sustitución'};
+      if(text.includes('cambio') || text.includes('🔄')) return {type:'swap', symbol:'🔄', title:'Cambio de turno'};
+      // Por propiedades en objeto
+      if(raw && typeof raw==='object'){
+        const keys = Object.keys(raw).map(k=>k.toLowerCase());
+        if(keys.some(k=>k.includes('sustit'))) return {type:'sub', symbol:'↔', title:'Sustitución'};
+        if(keys.some(k=>k.includes('cambio')||k.includes('swap'))) return {type:'swap', symbol:'🔄', title:'Cambio de turno'};
+        if(raw.esSustituto || raw.sustituto) return {type:'sub', symbol:'↔', title:'Sustitución'};
+        if(raw.cambio===true) return {type:'swap', symbol:'🔄', title:'Cambio de turno'};
+      }
+    }catch(e){}
+    return null;
+  }
+
 
   function mondayOf(date){
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -23,6 +59,92 @@
     const x = new Date(d); x.setUTCDate(x.getUTCDate()+n); return x;
   }
   function toISODateUTC(d){ return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; }
+
+  // ==== Carga desde CSV (fallback si no hay FULL_DATA) ====
+  async function fetchText(url){
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error('No se pudo cargar '+url);
+    return await res.text();
+  }
+  function parseCSV(text){
+    // Parser sencillo compatible con comillas y separador coma/; detecta separador automáticamente.
+    const sep = (text.indexOf(';')>-1 && (text.split(';').length>text.split(',').length)) ? ';' : ',';
+    const rows = [];
+    let i=0, cur='', inQ=false;
+    const push = (arr, v)=>{ arr.push(v); };
+    const lineEnd = (out, row)=>{ if(row.length){ out.push(row); } };
+    let row=[];
+    while(i<text.length){
+      const ch = text[i];
+      if(ch === '"'){ if(inQ && text[i+1] === '"'){ cur+='"'; i++; } else { inQ=!inQ; } }
+      else if(ch === '\n' && !inQ){ push(row, cur); rows.push(row); row=[]; cur=''; }
+      else if(ch === '\r' && !inQ){ /* ignore */ }
+      else if(ch === sep && !inQ){ push(row, cur); cur=''; }
+      else { cur+=ch; }
+      i++;
+    }
+    if(cur.length || row.length){ push(row, cur); rows.push(row); }
+    const headers = rows.shift().map(h=>h.trim().toLowerCase());
+    return rows.map(r => {
+      const o={};
+      for(let j=0;j<headers.length;j++){
+        const key = headers[j];
+        o[key] = (window.MobilePatch ? MobilePatch.normalize(r[j]??'') : (r[j]??''));
+      }
+      return o;
+    });
+  }
+  function alias(o, keys){ for(const k of keys){ if(o[k]!=null && String(o[k]).trim()!=='') return o[k]; } return ''; }
+  function buildFullDataFromRows(rows){
+    // Esperados (con alias): hotel, semana_lunes, empleado, fecha, turno
+    const items = rows.map(r=>{
+      return {
+        hotel: alias(r, ['hotel','propiedad','establecimiento']),
+        semana_lunes: alias(r, ['semana_lunes','semana','lunes_semana','week_monday']),
+        empleado: alias(r, ['empleado','trabajador','persona','colaborador','nombre']),
+        fecha: alias(r, ['fecha','day','dia','día']),
+        turno: (function(){
+          const t = alias(r, ['turno','shift','tipo','concepto']);
+          return t || r.turno || '';
+        })()
+      };
+    }).filter(x=>x.hotel && x.semana_lunes && x.empleado && x.fecha);
+
+    const key = (h,w)=>`${h}||${w}`;
+    const buckets = new Map();
+    for(const it of items){
+      const k = key(it.hotel, it.semana_lunes);
+      if(!buckets.has(k)){
+        buckets.set(k, { hotel: it.hotel, semana_lunes: it.semana_lunes, orden_empleados: [], turnos: [] });
+      }
+      const b = buckets.get(k);
+      if(!b.orden_empleados.includes(it.empleado)) b.orden_empleados.push(it.empleado);
+      b.turnos.push({ empleado: it.empleado, fecha: it.fecha, turno: it.turno });
+    }
+    return { schedule: Array.from(buckets.values()) };
+  }
+  async function loadDataOrCSV(){
+    // 1) Si existe window.FULL_DATA usable, devolverlo
+    if(window.FULL_DATA && Array.isArray(window.FULL_DATA.schedule) && window.FULL_DATA.schedule.length){
+      return window.FULL_DATA;
+    }
+    // 2) Intentar cargar CSV en ./data/turnos.csv (y opcional ./data/turnos_*.csv)
+    try{
+      let txt = await fetchText('data/turnos.csv');
+      let rows = parseCSV(txt);
+      // Merge adicionales si existen
+      for(const extra of ['data/turnos_extra.csv','data/turnos2.csv']){
+        try{ const t2 = await fetchText(extra); rows = rows.concat(parseCSV(t2)); }catch(e){/* opcional */}
+      }
+      const full = buildFullDataFromRows(rows);
+      window.FULL_DATA = full; // para reutilizar
+      return full;
+    }catch(err){
+      console.warn('CSV no disponible:', err);
+      return {schedule: []};
+    }
+  }
+
 
   // DOM
   const weekPicker = $("#weekPicker");
@@ -37,14 +159,20 @@
   const hotelLogo = $("#hotelLogo");
 
   // Cargar lista de hoteles del FULL_DATA
-  const DATA = (window.FULL_DATA && window.FULL_DATA.schedule) ? window.FULL_DATA.schedule : [];
-  const HOTELS = [...new Set(DATA.map(s => s.hotel))];
-  hotelSelect.innerHTML = HOTELS.map(h => `<option value="${h}">${h}</option>`).join("");
 
-  // Semana por defecto: si existe en el dataset, usa la primera; si no, el lunes de hoy.
-  let defaultWeek = mondayOf(new Date());
-  const monday = mondayOf(new Date(defaultWeek));
-  weekPicker.value = toISODateUTC(monday);
+  let DATA = [];
+  (async ()=>{
+    const full = await loadDataOrCSV();
+    DATA = full.schedule || [];
+    const HOTELS = Array.from(new Set(DATA.map(s => s.hotel))).sort();
+    hotelSelect.innerHTML = HOTELS.map(h => `<option value="${h}">${h}</option>`).join("");
+    // Por defecto: lunes de hoy
+    const monday = mondayOf(new Date());
+    weekPicker.value = toISODateUTC(monday);
+    // Seleccionar primer hotel si no hay valor previo
+    if(HOTELS.length && !hotelSelect.value) hotelSelect.value = HOTELS[0];
+    refresh();
+  })();
 
   // Logo según hotel (rutas relativas dentro de img/)
   function logoFor(hotel){
@@ -89,12 +217,24 @@
         if(item){
           const pill = document.createElement("span");
           pill.className = "pill";
-          let label = (window.MobilePatch? window.MobilePatch.normalize(item.turno||"") : (item.turno||""));
-          // Normalizaciones visuales
-          if(/descanso/i.test(label)){ pill.classList.add("rest"); label = "Descanso"; }
-          else if(/noche/i.test(label)){ pill.classList.add("night"); label = "🌙 Noche"; }
-          else { pill.style.background="#fff7db"; pill.style.color="#5b4300"; } // Mañana/Tarde/otros
+          let label = getLabel(item.turno);
+          const low = label.toLowerCase();
+          // Clasificación por tipo para igualar colores del index
+          if(low.includes("descanso")){ pill.classList.add("descanso"); label = "Descanso"; }
+          else if(low.includes("noche")){ pill.classList.add("noche"); label = "🌙 Noche"; }
+          else if(low.includes("mañana")){ pill.classList.add("manana"); label = "Mañana"; }
+          else if(low.includes("tarde")){ pill.classList.add("tarde"); label = "Tarde"; }
+          else if(low.includes("vacaciones")){ pill.classList.add("vac"); label = "Vacaciones 🏖️"; }
+          else { pill.classList.add("vac"); } // por defecto, arena suave
           pill.textContent = label;
+          const flag = getFlag(item);
+          if(flag){
+            const b = document.createElement('span');
+            b.className = 'badge';
+            b.title = flag.title;
+            b.textContent = flag.symbol;
+            pill.appendChild(b);
+          }
           cell.appendChild(pill);
         }
         row.appendChild(cell);
@@ -104,17 +244,18 @@
   }
 
   function refresh(){
+    const prevScrollY = window.scrollY || document.documentElement.scrollTop || 0;
     const hotel = hotelSelect.value;
     const monday = new Date(weekPicker.value);
     hotelTitle.textContent = (window.MobilePatch? window.MobilePatch.normalize(hotel):hotel);
     hotelLogo.src = logoFor(hotel);
     hotelLogo.onerror = ()=>{ hotelLogo.src = 'img/logo.png'; };
-    renderHeader(monday);
-    const weekData = window.MobileAdapter.buildWeekData(window.FULL_DATA, hotel, monday);
-    renderBody(weekData);
+    window.requestAnimationFrame(()=>{ renderHeader(monday); const weekData = window.MobileAdapter.buildWeekData(window.FULL_DATA, hotel, monday); renderBody(weekData); });
+    // restaurar scroll
+    setTimeout(()=>window.scrollTo({top:prevScrollY,left:0,behavior:'instant'}),0);
   }
 
-  refreshBtn.addEventListener("click", refresh);
+  let refreshTimer; refreshBtn.addEventListener("click", ()=>{ clearTimeout(refreshTimer); refreshTimer=setTimeout(refresh, 50); });
   hotelSelect.addEventListener("change", refresh);
   weekPicker.addEventListener("change", refresh);
 
