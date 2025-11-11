@@ -1,286 +1,81 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Turnos · Móvil</title>
-<link rel="icon" href="img/cumbria.png">
-
-<style>
-/* ======== ESTILOS (embebidos) ======== */
-:root{
-  --bg:#f6f8fb; --card:#ffffff; --line:#e7ecf3; --text:#1f2937; --muted:#6b7280;
-  --col-nombre-min:88px; --col-nombre:26%;
-  --cell-pad:10px 12px; --pill-gap:8px; --pill-pad:6px 10px; --pill-radius:999px;
-  --fz-base:14px; --fz-small:12px;
-}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-  font:400 var(--fz-base)/1.35 system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial;}
-.app-header{position:sticky;top:0;background:linear-gradient(#fff,#fff0);padding:12px 12px 8px;border-bottom:1px solid var(--line);z-index:5}
-.hotel-box{display:flex;gap:12px;align-items:center}
-.hotel-logo{width:38px;height:38px;object-fit:contain;opacity:.9}
-.hotel-meta h1{font-size:20px;margin:0 0 2px}
-.date-range{font-size:var(--fz-small);color:var(--muted)}
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.filters label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
-.filters input[type="date"], .filters select{padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#fff}
-.filters button{padding:8px 12px;border:1px solid var(--line);background:#fff;border-radius:12px;cursor:pointer}
-
-.viewport{padding:12px}
-.tabla{border:1px solid var(--line);background:var(--card);border-radius:14px;overflow:auto}
-
-/* Cabecera y filas en grid */
-.t-head, .t-row{display:grid;grid-template-columns:minmax(var(--col-nombre-min),var(--col-nombre)) repeat(7, 1fr)}
-.t-head{position:sticky;top:78px;background:var(--card);z-index:4;border-bottom:1px solid var(--line)}
-.t-head .cell{padding:10px 8px;font-size:12px;color:var(--muted);text-align:center;white-space:nowrap}
-.t-row{border-bottom:1px solid var(--line)}
-.t-row .cell{padding:var(--cell-pad)}
-.t-row .cell.name{position:sticky;left:0;background:linear-gradient(90deg, #fff 60%, #fff8);border-right:1px solid var(--line);z-index:3}
-.name .emp{font-weight:600}
-
-/* Contenido de turnos */
-.shifts{display:flex;flex-wrap:wrap;gap:var(--pill-gap);align-items:flex-start;min-height:36px}
-
-/* Píldoras */
-.pill{display:inline-flex;align-items:center;gap:6px;padding:var(--pill-pad);border-radius:var(--pill-radius);border:1px solid transparent;line-height:1}
-.pill small{font-size:12px;color:#506070}
-.pill .i{opacity:.9}
-
-/* Colores de estado */
-.pill--manana{background:#e6f7ee;border-color:#c7eddc}
-.pill--tarde{background:#fff6db;border-color:#fdeab3}
-.pill--noche{background:#eef2f6;border-color:#d9e2ec}
-.pill--descanso{background:#ffe7ea;border-color:#ffccd3}
-.pill--vacaciones{background:#e6fbff;border-color:#c7f1ff}
-
-/* Varios */
-.t-empty{padding:16px;color:#6b7280}
-.doc-end-rule{height:10px;border:0;background:linear-gradient(90deg,#c6a44a,#e6d28f,#c6a44a);border-radius:10px;margin:22px 0 6px}
-.doc-end-space{height:28px}
-
-/* Responsive */
-@media (max-width:640px){
-  :root{ --col-nombre: 28%; --col-nombre-min:84px; --pill-gap:7px }
-  .hotel-meta h1{font-size:18px}
-  .t-head .cell{font-size:11px}
-}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Turnos · Versión Móvil</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#475569; --border:#e2e8f0;
+      --pill:#eef2ff; --pill-text:#334155; --night:#e2e8f0; --night-text:#334155;
+      --rest:#fde2e4; --rest-text:#7f1d1d; --brand:#c9a227;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    header{position:sticky;top:0;background:linear-gradient(180deg,#ffffff 0,#fbfcff 100%);border-bottom:1px solid var(--border);z-index:10}
+    .bar{max-width:1100px;margin:0 auto;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .brand{display:flex;gap:10px;align-items:center}
+    .brand img{height:26px}
+    .title{font-weight:600}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
+    .field{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:6px 10px}
+    .field label{font-size:12px;color:var(--muted)}
+    .field select,.field input{border:0;outline:0;background:transparent;font:inherit;color:var(--text)}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 12px;font-weight:600}
+    main{max-width:1100px;margin:12px auto;padding:0 14px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .thead,.row{display:grid;grid-template-columns:160px repeat(7,1fr)}
+    @media (max-width:700px){.thead,.row{grid-template-columns:120px repeat(7,1fr)}}
+    .thead{border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
+    .th,.cell-name,.cell{padding:10px 12px;border-right:1px solid var(--border)}
+    .th:last-child,.cell:last-child{border-right:0}
+    .cell-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff;position:sticky;left:0;border-right:1px solid var(--border);z-index:1}
+    .row{border-top:1px solid var(--border);align-items:center}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--pill);color:var(--pill-text);font-weight:600;white-space:nowrap}
+    .pill.rest{background:var(--rest);color:var(--rest-text)}
+    .pill.night{background:var(--night);color:var(--night-text)}
+    .weekday{display:flex;flex-direction:column;gap:2px}
+    .weekday .name{font-size:12px}
+    .weekday .date{font-size:11px;color:var(--muted)}
+    .footerbar{height:10px;border-radius:6px;background:linear-gradient(90deg,#b88a00,#e2c26e,#b88a00);margin:14px 0}
+  </style>
 </head>
 <body>
-  <header class="app-header">
-    <div class="hotel-box">
-      <img class="hotel-logo" src="img/cumbria.png" alt="Hotel" onerror="this.style.display='none'">
-      <div class="hotel-meta">
-        <h1 id="hotelNombre">Hotel</h1>
-        <div id="rangoFechas" class="date-range">—</div>
+  <!-- Datos: reutiliza el mismo FULL_DATA que index/live -->
+  <script src="data.js?v=TS"></script>
+  <script src="data.ausencias.js?v=TS"></script>
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <img id="hotelLogo" alt="Logo hotel" src="img/cumbria.png">
+        <div class="title" id="hotelTitle">Cumbria Spa&Hotel</div>
       </div>
-    </div>
-    <div class="filters">
-      <label>Semana (lunes): <input id="semanaInput" type="date"></label>
-      <label>Hotel: <select id="hotelSelect"></select></label>
-      <button id="refrescarBtn">Actualizar</button>
+      <div class="controls">
+        <div class="field">
+          <label>Semana (lunes):</label>
+          <input id="weekPicker" type="date" />
+        </div>
+        <div class="field">
+          <label>Hotel:</label>
+          <select id="hotelSelect"></select>
+        </div>
+        <button class="btn" id="refreshBtn">Actualizar</button>
+      </div>
     </div>
   </header>
 
-  <main class="viewport">
-    <div class="tabla" id="tablaTurnos" aria-live="polite"></div>
+  <main>
+    <section class="card">
+      <div class="thead" id="thead"></div>
+      <div id="tbody"></div>
+    </section>
+    <div class="footerbar"></div>
   </main>
 
-  <footer class="doc-foot">
-    <hr class="doc-end-rule"><div class="doc-end-space"></div>
-  </footer>
-
-  <!-- Si existe, se usará FULL_DATA; si no, se tirará del CSV -->
-  <script src="data.js?v=TS" defer></script>
-  <script src="data.ausencias.js?v=TS" defer></script>
-
-<script>
-/* ======== APP (embebida) ======== */
-(() => {
-  const $ = (sel, ctx=document) => ctx.querySelector(sel);
-  const capitalize = (s) => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
-  const fmt = (d) => new Date(d).toLocaleDateString('es-ES',{weekday:'short', day:'2-digit', month:'short', year:'2-digit'});
-
-  let DATA = null;
-
-  // --- Entrada de datos
-  async function initData(){
-    // 1) FULL_DATA de data.js
-    if (window.FULL_DATA?.schedule?.length) { DATA = window.FULL_DATA; return; }
-
-    // 2) CSV
-    try {
-      const [turnosCsv, ausCsv] = await Promise.all([
-        fetchSafe('turnos.csv'),
-        fetchSafe('ausencias.csv')
-      ]);
-      if (turnosCsv.trim().length){ DATA = csvToFullData(turnosCsv, ausCsv); return; }
-    } catch(_) {}
-
-    DATA = { schedule: [] };
-  }
-
-  async function fetchSafe(url){
-    try{
-      const r = await fetch(url);
-      if (!r.ok) return '';
-      return await r.text();
-    }catch(_){ return ''; } // file:// u otros bloqueos
-  }
-
-  function csvToRows(txt){
-    const sep = txt.includes(';') ? ';' : ',';
-    const lines = txt.replace(/\r/g,'').split('\n').filter(l=>l.trim().length);
-    const out = [];
-    for (const line of lines){
-      const row = [];
-      let cur='', inQ=false;
-      for (let i=0;i<line.length;i++){
-        const c = line[i];
-        if (c === '"'){ inQ = !inQ; continue; }
-        if (c === sep && !inQ){ row.push(cur); cur=''; continue; }
-        cur += c;
-      }
-      row.push(cur);
-      out.push(row.map(v=>v.trim()));
-    }
-    return out;
-  }
-
-  function csvToFullData(turnosCsv, ausCsv){
-    const rows = csvToRows(turnosCsv);
-    const hdr = rows.shift().map(h=>h.toLowerCase());
-    const ci = {
-      hotel: hdr.findIndex(h=>/hotel/.test(h)),
-      empleado: hdr.findIndex(h=>/emplead/.test(h)),
-      fecha: hdr.findIndex(h=>/fecha/.test(h)),
-      turno: hdr.findIndex(h=>/turno/.test(h))
-    };
-    const map = new Map();
-    for (const r of rows){
-      if (!r.length) continue;
-      const hotel = (r[ci.hotel]||'Hotel').trim();
-      const f = new Date(r[ci.fecha]);
-      if (isNaN(f)) continue;
-      const lunes = new Date(f); const wd = (lunes.getDay()+6)%7; lunes.setDate(lunes.getDate()-wd);
-      const lunesISO = lunes.toISOString().slice(0,10);
-      const k = hotel+'|'+lunesISO;
-      if (!map.has(k)) map.set(k,{hotel, semana_lunes:lunesISO, orden_empleados:new Set(), turnos:[]});
-      const pack = map.get(k);
-      const empleado = (r[ci.empleado]||'').trim();
-      const turno = (r[ci.turno]||'').trim();
-      pack.orden_empleados.add(empleado);
-      pack.turnos.push({empleado, fecha:f.toISOString().slice(0,10), turno});
-    }
-    const schedule = Array.from(map.values()).map(p=>({
-      hotel:p.hotel, semana_lunes:p.semana_lunes,
-      orden_empleados:Array.from(p.orden_empleados),
-      turnos:p.turnos
-    }));
-    return { schedule };
-  }
-
-  // --- Render
-  function defaultMonday(){
-    const d = new Date(); const wd = (d.getDay()+6)%7; d.setDate(d.getDate()-wd);
-    return d.toISOString().slice(0,10);
-  }
-  function rangoSemana(lunesISO){
-    const d0 = new Date(lunesISO); const d6 = new Date(lunesISO); d6.setDate(d6.getDate()+6);
-    const f0 = d0.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
-    const f6 = d6.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'});
-    return `${f0} → ${f6}`;
-  }
-
-  function normalizaTurno(s=''){
-    s = s.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim();
-    if (/vacacion|vac/i.test(s)) return 'vacaciones';
-    if (/descanso|libre|d\b/.test(s)) return 'descanso';
-    if (/noche|^n\b/.test(s)) return 'noche';
-    if (/tarde|^t\b/.test(s)) return 'tarde';
-    if (/manana|^m\b/.test(s)) return 'mañana';
-    return s;
-  }
-  function pillHTML(t){
-    const val = normalizaTurno(t);
-    const map = {
-      'mañana':  { cls:'pill--manana', txt:'Mañana', icon:'' },
-      'tarde':   { cls:'pill--tarde',  txt:'Tarde',  icon:'🛈' },
-      'noche':   { cls:'pill--noche',  txt:'Noche',  icon:'🌙' },
-      'descanso':{ cls:'pill--descanso', txt:'Descanso', icon:'' },
-      'vacaciones':{ cls:'pill--vacaciones', txt:'Vacaciones', icon:'🏖️' }
-    };
-    const m = map[val] || {cls:'', txt:t, icon:''};
-    return `<span class="pill ${m.cls}">${m.icon?`<span class="i">${m.icon}</span>`:''}<span>${m.txt}</span></span>`;
-  }
-
-  function populateHotelSelect(){
-    const sel = $('#hotelSelect');
-    const names = Array.from(new Set(DATA.schedule.map(s=>s.hotel)));
-    sel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
-  }
-  function syncSemana(){
-    const inp = $('#semanaInput');
-    if (!inp.value) inp.value = defaultMonday();
-  }
-
-  function render(){
-    const tabla = $('#tablaTurnos');
-    const semana = $('#semanaInput').value || defaultMonday();
-    const hotel = $('#hotelSelect').value || (DATA.schedule[0]?.hotel || 'Hotel');
-
-    const pack = DATA.schedule.find(s => s.hotel===hotel && s.semana_lunes===semana);
-    $('#hotelNombre').textContent = hotel;
-    $('#rangoFechas').textContent = rangoSemana(semana);
-
-    if (!pack){
-      tabla.innerHTML = `<div class="t-empty">Sin datos para ${hotel} — ${fmt(semana)}</div>`;
-      return;
-    }
-    const dias = new Array(7).fill(0).map((_,i)=>{
-      const d = new Date(semana); d.setDate(d.getDate()+i);
-      return { iso: d.toISOString().slice(0,10),
-               label: d.toLocaleDateString('es-ES',{weekday:'short'}),
-               fecha: d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'}) };
-    });
-    const byEmpDate = new Map();
-    for (const t of pack.turnos){
-      const k = t.empleado+'|'+t.fecha;
-      if (!byEmpDate.has(k)) byEmpDate.set(k, []);
-      byEmpDate.get(k).push(t.turno);
-    }
-    const visibles = pack.orden_empleados.filter(emp => dias.some(d => byEmpDate.has(emp+'|'+d.iso)));
-
-    let html = `<div class="t-head"><div class="cell"></div>${
-      dias.map(d=>`<div class="cell"><div>${capitalize(d.label)}</div><div>${d.fecha}</div></div>`).join('')
-    }</div>`;
-
-    for (const emp of visibles){
-      html += `<div class="t-row">
-        <div class="cell name"><div class="emp">${emp}</div></div>
-        ${
-          dias.map(d=>{
-            const turns = byEmpDate.get(emp+'|'+d.iso) || [];
-            return `<div class="cell"><div class="shifts">${turns.map(pillHTML).join('')}</div></div>`;
-          }).join('')
-        }
-      </div>`;
-    }
-    tabla.innerHTML = html;
-  }
-
-  window.addEventListener('load', async ()=>{
-    await initData();
-    populateHotelSelect();
-    syncSemana();
-    render();
-
-    $('#refrescarBtn').addEventListener('click', render);
-    $('#hotelSelect').addEventListener('change', render);
-    $('#semanaInput').addEventListener('change', render);
-  });
-})();
-</script>
+  <script src="plantilla_mobile_adapter.js?v=TS"></script>
+  <script src="mobile.patch.js?v=TS"></script>
+  <script src="mobile.app.js?v=TS"></script>
 </body>
 </html>
