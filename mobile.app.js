@@ -155,6 +155,8 @@
   const nextWeekBtn = $("#nextWeekBtn");
   const thead = $("#thead");
   const tbody = $("#tbody");
+  const singleCard = $("#singleCard");
+  const multi = $("#multi");
   const hotelTitle = $("#hotelTitle");
   const hotelLogo = $("#hotelLogo");
 
@@ -165,12 +167,12 @@
     const full = await loadDataOrCSV();
     DATA = full.schedule || [];
     const HOTELS = Array.from(new Set(DATA.map(s => s.hotel))).sort();
-    hotelSelect.innerHTML = HOTELS.map(h => `<option value="${h}">${h}</option>`).join("");
+    hotelSelect.innerHTML = [`<option value="__ALL__">Todos</option>`, ...HOTELS.map(h => `<option value="${h}">${h}</option>`)].join("");
     // Por defecto: lunes de hoy
     const monday = mondayOf(new Date());
     weekPicker.value = toISODateUTC(monday);
     // Seleccionar primer hotel si no hay valor previo
-    if(HOTELS.length && !hotelSelect.value) hotelSelect.value = HOTELS[0];
+    if(!hotelSelect.value) hotelSelect.value = "__ALL__";
     refresh();
   })();
 
@@ -199,6 +201,85 @@
   }
 
   // Render filas
+  
+  function renderHotelSection(hotel, monday){
+    const sec = document.createElement('section');
+    sec.className = 'hotel-section';
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'hotel-hdr';
+    const img = document.createElement('img');
+    img.src = logoFor(hotel); img.alt = 'Logo '+hotel; img.onerror = ()=>{ img.src = 'img/logo.png'; };
+    const nm = document.createElement('div');
+    nm.className = 'hotel-name';
+    nm.textContent = hotel;
+    hdr.appendChild(img); hdr.appendChild(nm);
+    // Table
+    const card = document.createElement('section');
+    card.className = 'card';
+    const th = document.createElement('div'); th.className = 'thead';
+    const tb = document.createElement('div'); tb.id = ''; // not needed
+    tb.className = '';
+    card.appendChild(th); card.appendChild(tb);
+    sec.appendChild(hdr); sec.appendChild(card);
+    // Build header and body
+    th.innerHTML = [
+      `<div class="th"></div>`,
+      ...[0,1,2,3,4,5,6].map(i=>{
+        const d = addDays(monday,i);
+        return `<div class="th"><div class="weekday"><span class="name">${weekdayShort[i]}</span><span class="date">${d.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'2-digit'})}</span></div></div>`;
+      })
+    ].join("");
+    const weekData = window.MobileAdapter.buildWeekData(window.FULL_DATA || {schedule: DATA}, hotel, monday);
+    // Build body rows (reuse render logic)
+    const frag = document.createDocumentFragment();
+    weekData.empleados.forEach(emp => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const name = document.createElement("div");
+      name.className = "cell-name";
+      name.textContent = (window.MobilePatch? window.MobilePatch.normalize(emp) : emp);
+      row.appendChild(name);
+      for(let i=0;i<7;i++){
+        const dkey = toISODateUTC(addDays(weekData.monday,i));
+        const item = (weekData.turnosByEmpleado[emp] && weekData.turnosByEmpleado[emp][dkey]) || null;
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        if(item){
+          const pill = document.createElement("span");
+          pill.className = "pill";
+          let label = getLabel(item.turno);
+          const low = label.toLowerCase();
+          if(low.includes("descanso")){ pill.classList.add("descanso"); label = "Descanso"; }
+          else if(low.includes("noche")){ pill.classList.add("noche"); label = "🌙 Noche"; }
+          else if(low.includes("mañana")){ pill.classList.add("manana"); label = "Mañana"; }
+          else if(low.includes("tarde")){ pill.classList.add("tarde"); label = "Tarde"; }
+          else if(low.includes("vacaciones")){ pill.classList.add("vac"); label = "Vacaciones 🏖️"; }
+          else { pill.classList.add("vac"); }
+          pill.textContent = label;
+          const flag = getFlag(item);
+          if(flag){
+            const b = document.createElement('span');
+            b.className = 'badge';
+            b.title = flag.title;
+            b.textContent = flag.symbol;
+            pill.appendChild(b);
+          }
+          cell.appendChild(pill);
+        }
+        row.appendChild(cell);
+      }
+      frag.appendChild(row);
+    });
+    // Attach frag to a tbody-like container
+    const tbodyLike = document.createElement('div');
+    tbodyLike.id = '';
+    card.appendChild(tbodyLike);
+    card.replaceChild(tbodyLike, card.lastChild);
+    tbodyLike.appendChild(frag);
+    return sec;
+  }
+
   function renderBody(weekData){
     tbody.innerHTML = "";
     const empleados = weekData.empleados;
