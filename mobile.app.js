@@ -147,18 +147,40 @@
 
 
   // DOM
+  function renderHotelBlock(hotel, monday){
+    const section = document.createElement('section');
+    section.className = 'card hotel-block';
+    // head
+    const head = document.createElement('div');
+    head.className = 'hotel-head';
+    const img = document.createElement('img');
+    img.src = logoFor(hotel); img.onerror = ()=>{ img.src='img/logo.png'; };
+    const title = document.createElement('div');
+    title.className = 'hname';
+    title.textContent = (window.MobilePatch? window.MobilePatch.normalize(hotel):hotel);
+    head.appendChild(img); head.appendChild(title);
+    section.appendChild(head);
+    // table
+    const thead = document.createElement('div'); thead.className='thead';
+    const tbody = document.createElement('div'); tbody.id='tb_'+Math.random().toString(36).slice(2); // unique
+    section.appendChild(thead); section.appendChild(tbody);
+    hotelsContainer.appendChild(section);
+    renderHeader(thead, monday);
+    const weekData = window.MobileAdapter.buildWeekData(window.FULL_DATA || {schedule: DATA}, hotel, monday);
+    renderBody(tbody, weekData);
+  }
+
   const weekPicker = $("#weekPicker");
   const hotelSelect = $("#hotelSelect");
   const refreshBtn = $("#refreshBtn");
   const prevWeekBtn = $("#prevWeekBtn");
   const todayBtn = $("#todayBtn");
   const nextWeekBtn = $("#nextWeekBtn");
-  const thead = $("#thead");
-  const tbody = $("#tbody");
-  const singleCard = $("#singleCard");
+      const singleCard = $("#singleCard");
   const multi = $("#multi");
   const hotelTitle = $("#hotelTitle");
   const hotelLogo = $("#hotelLogo");
+  const hotelsContainer = $("#hotelsContainer");
 
   // Cargar lista de hoteles del FULL_DATA
 
@@ -185,8 +207,8 @@
   }
 
   // Render cabecera días
-  function renderHeader(monday){
-    thead.innerHTML = [
+  function renderHeader(theadEl, monday){
+    theadEl.innerHTML = [
       `<div class="th"></div>`,
       ...[0,1,2,3,4,5,6].map(i=>{
         const d = addDays(monday,i);
@@ -280,8 +302,8 @@
     return sec;
   }
 
-  function renderBody(weekData){
-    tbody.innerHTML = "";
+  function renderBody(tbodyEl, weekData){
+    tbodyEl.innerHTML = "";
     const empleados = weekData.empleados;
     empleados.forEach(emp => {
       const row = document.createElement("div");
@@ -320,7 +342,7 @@
         }
         row.appendChild(cell);
       }
-      tbody.appendChild(row);
+      tbodyEl.appendChild(row);
     });
   }
 
@@ -363,6 +385,10 @@
   prevWeekBtn && prevWeekBtn.addEventListener('click', ()=> setWeekByOffset(-7));
   todayBtn && todayBtn.addEventListener('click', ()=> { weekPicker.value = toISODateUTC(mondayOf(new Date())); refresh(); });
   nextWeekBtn && nextWeekBtn.addEventListener('click', ()=> setWeekByOffset(7));
+
+  // Corrige la altura de viewport en móviles para evitar saltos por UI del navegador
+  function setVH(){ const vh = window.innerHeight * 0.01; document.documentElement.style.setProperty('--vh', `${vh}px`); }
+  window.addEventListener('resize', setVH, {passive:true}); setVH();
 
   // Primera carga
   refresh();
