@@ -4,91 +4,254 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Turnos · Versión Móvil</title>
+
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Estilos base móviles -->
+  <link rel="stylesheet" href="styles.mobile.css">
+
   <style>
     :root{
       --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#475569; --border:#e2e8f0;
-      --pill:#eef2ff; --pill-text:#334155; --night:#e2e8f0; --night-text:#334155;
-      --rest:#fde2e4; --rest-text:#7f1d1d; --brand:#c9a227;
+      --pill:#eef2ff; --pill-text:#334155; --night:#e5e7eb; --night-text:#374151;
+      --rest:#fee2e2; --rest-text:#7f1d1d; --brand:#c9a227;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:100%;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable both-edges;-webkit-text-size-adjust:100%}
-    header{position:sticky;top:0;background:linear-gradient(180deg,#ffffff 0,#fbfcff 100%);border-bottom:1px solid var(--border);z-index:10}
-    .bar{max-width:1100px;margin:0 auto;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .brand{display:flex;gap:10px;align-items:center}
-    .brand img{height:28px; width:auto; object-fit:contain}
-    .title{font-weight:600}
-    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
-    .field{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:6px 10px}
-    .field label{font-size:12px;color:var(--muted)}
-    .field select,.field input{border:0;outline:0;background:transparent;font:inherit;color:var(--text)}
-    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 12px;font-weight:600}
-    .btn-primary{background:#1677ff;border-color:#1677ff;color:#fff}
-    .btn-group{display:flex;gap:10px}
-    main{max-width:1100px;margin:12px auto;padding:0 14px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable both-edges;contain:layout paint}
-    .thead,.row{display:grid;grid-template-columns:160px repeat(7,1fr)}
-    @media (max-width:700px){.thead,.row{grid-template-columns:106px repeat(7,minmax(68px,1fr))}}
-    .thead{border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
-    .th,.cell-name,.cell{padding:10px 12px;border-right:1px solid var(--border)}
-    .cell{display:flex;align-items:center;justify-content:center;overflow:hidden}
-    .th:last-child,.cell:last-child{border-right:0}
-    .cell-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#fff;position:sticky;left:0;border-right:1px solid var(--border);z-index:1}
-    .row{border-top:1px solid var(--border);align-items:center}
-    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:var(--pill);color:var(--pill-text);font-weight:600;font-size:12px;white-space:normal;word-break:break-word;text-align:center;max-width:95%;justify-content:center}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font:13px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      max-width:100%;
+      overflow-x:hidden;
+      overscroll-behavior:contain;
+      scrollbar-gutter:stable both-edges;
+      -webkit-text-size-adjust:100%;
+    }
 
-    /* Paleta alineada con index */
+    header{
+      position:sticky;
+      top:0;
+      background:linear-gradient(180deg,#ffffff 0,#fbfcff 100%);
+      border-bottom:1px solid var(--border);
+      z-index:10;
+    }
+    .bar{
+      max-width:1100px;
+      margin:0 auto;
+      padding:12px 14px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .brand img{
+      height:28px;
+      width:auto;
+      object-fit:contain;
+    }
+    .title{font-weight:600}
+
+    .controls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-left:auto;
+    }
+    .field{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:6px 10px;
+    }
+    .field label{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .field select,
+    .field input{
+      border:0;
+      outline:0;
+      background:transparent;
+      font:inherit;
+      color:var(--text);
+    }
+
+    .btn{
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:12px;
+      padding:8px 12px;
+      font-weight:600;
+      cursor:pointer;
+    }
+    .btn-primary{
+      background:#1677ff;
+      border-color:#1677ff;
+      color:#fff;
+    }
+    .btn-group{display:flex;gap:10px}
+
+    main{
+      max-width:1100px;
+      margin:12px auto;
+      padding:0 14px;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:0 1px 2px rgba(0,0,0,.04);
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-gutter:stable both-edges;
+      contain:layout paint;
+    }
+
+    .thead,.row{
+      display:grid;
+      grid-template-columns:160px repeat(7,1fr);
+    }
+    @media (max-width:700px){
+      .thead,.row{
+        grid-template-columns:106px repeat(7,minmax(68px,1fr));
+      }
+    }
+
+    .thead{
+      border-bottom:1px solid var(--border);
+      color:var(--muted);
+      font-size:12px;
+    }
+    .th,.cell-name,.cell{
+      padding:10px 12px;
+      border-right:1px solid var(--border);
+    }
+    .cell{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .th:last-child,
+    .cell:last-child{
+      border-right:0;
+    }
+
+    .cell-name{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      background:#fff;
+      position:sticky;
+      left:0;
+      border-right:1px solid var(--border);
+      z-index:1;
+    }
+
+    .row{
+      border-top:1px solid var(--border);
+      align-items:center;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:var(--pill);
+      color:var(--pill-text);
+      font-weight:600;
+      font-size:12px;
+      white-space:normal;
+      word-break:break-word;
+      text-align:center;
+      max-width:95%;
+      justify-content:center;
+    }
 
     /* Badge azul para sustituciones / cambios */
     .pill .badge{
       display:inline-flex;
-      align-items:center;justify-content:center;
-      width:16px;height:16px;border-radius:6px;
-      margin-left:6px;font-size:12px;line-height:1;
-      background:#2563eb;color:#fff;font-weight:700;
+      align-items:center;
+      justify-content:center;
+      width:16px;
+      height:16px;
+      border-radius:6px;
+      margin-left:6px;
+      font-size:12px;
+      line-height:1;
+      background:#2563eb;
+      color:#fff;
+      font-weight:700;
       flex:0 0 auto;
     }
 
-    .pill.manana{background:#d1fae5;color:#065f46}     /* verde suave */
-    .pill.tarde{background:#fef3c7;color:#92400e}      /* amarillo suave */
-    .pill.noche{background:#e5e7eb;color:#374151}      /* gris noche */
-    .pill.descanso{background:#fee2e2;color:#7f1d1d}   /* rojo descanso */
-    .pill.vac{background:#fff7db;color:#5b4300}        /* arena vacaciones */
+    .pill.manana{background:#d1fae5;color:#065f46}
+    .pill.tarde{background:#fef3c7;color:#92400e}
+    .pill.noche{background:#e5e7eb;color:#374151}
+    .pill.descanso{background:#fee2e2;color:#7f1d1d}
+    .pill.vac{background:#fff7db;color:#5b4300}
 
-    .pill.rest{background:var(--rest);color:var(--rest-text)}
-    .pill.night{background:var(--night);color:var(--night-text)}
-    .weekday{display:flex;flex-direction:column;gap:2px}
+    .weekday{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
     .weekday .name{font-size:12px}
     .weekday .date{font-size:11px;color:var(--muted)}
-    .footerbar{height:10px;border-radius:6px;background:linear-gradient(90deg,#b88a00,#e2c26e,#b88a00);margin:14px 0}
-  
-    .hotel-block{margin-bottom:16px}
-    .hotel-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:#fff;border-top-left-radius:16px;border-top-right-radius:16px}
-    .hotel-head img{height:22px;width:auto}
-    .hotel-head .hname{font-weight:600}
 
+    .footerbar{
+      height:10px;
+      border-radius:6px;
+      background:linear-gradient(90deg,#b88a00,#e2c26e,#b88a00);
+      margin:14px 0;
+    }
+
+    /* Bloques multi-hotel */
     .hotel-section{margin:14px 0}
-    .hotel-hdr{display:flex;align-items:center;gap:10px;margin:6px 4px 10px;color:#0f172a}
-    .hotel-hdr img{height:22px;width:auto}
+    .hotel-hdr{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin:0 0 10px;
+      color:#0f172a;
+    }
+    .hotel-hdr img{
+      height:22px;
+      width:auto;
+    }
     .hotel-name{font-weight:700}
-
   </style>
 </head>
 <body>
-  <!-- Datos: reutiliza el mismo FULL_DATA que index/live -->
+  <!-- Datos: mismo FULL_DATA que index/live, o CSV como fallback -->
   <script src="data.js?v=TS"></script>
   <script src="data.ausencias.js?v=TS"></script>
+
   <header>
     <div class="bar">
       <div class="brand">
-        <img id="hotelLogo" alt="Logo hotel" src="img/cumbria.png">
-        <div class="title" id="hotelTitle">Cumbria Spa&Hotel</div>
+        <!-- Icono general de la app -->
+        <img id="hotelLogo" alt="Turnos Recepción" src="img/turnos_icon.png">
+        <div class="title" id="hotelTitle">Todos los hoteles</div>
       </div>
+
       <div class="controls">
         <div class="field">
           <label>Semana (lunes):</label>
-          <input id="weekPicker" type="date" />
+          <input id="weekPicker" type="date">
         </div>
         <div class="field">
           <label>Hotel:</label>
@@ -105,14 +268,19 @@
   </header>
 
   <main>
+    <!-- Modo 1: un solo hotel -->
     <section class="card" id="singleCard">
       <div class="thead" id="thead"></div>
       <div id="tbody"></div>
     </section>
-    <section id="multi"></section>
+
+    <!-- Modo 2: Todos los hoteles (uno debajo de otro) -->
+    <section id="multi" style="display:none;"></section>
+
     <div class="footerbar"></div>
   </main>
 
+  <!-- Adaptador de semana, normalizador y lógica móvil -->
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
