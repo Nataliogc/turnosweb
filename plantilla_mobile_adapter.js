@@ -1,31 +1,25 @@
 /* plantilla_mobile_adapter.js
-   Adaptador para versión móvil:
+   Adaptador para versión móvil (robusto):
    - Usa window.FULL_DATA (mismo formato que index/live)
-   - Selecciona semana por lunes y hotel
-   - Soporta formatos de fecha flexibles en semana_lunes
-   - Si no hay datos para esa semana/hotel → tabla vacía
+   - Filtra por HOTEL y por FECHA real de cada turno
+   - NO depende de s.semana_lunes (que a veces viene en otro formato)
+   - Si en esa semana no hay turnos para ese hotel → tabla vacía
 */
 window.MobileAdapter = (function () {
   const pad = n => String(n).padStart(2, "0");
 
-  function toISOFromDate(d) {
-    const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    return `${x.getUTCFullYear()}-${pad(x.getUTCMonth() + 1)}-${pad(x.getUTCDate())}`;
-  }
-
-  // Admite '2025-11-10', '2025-11-10T00:00:00Z', '10/11/25', etc.
-  function normalizeWeekMonday(value) {
+  // Normaliza cualquier cosa a clave "YYYY-MM-DD" o null
+  function normalizeDateKey(value) {
     if (!value) return null;
 
-    // 1) Si ya parece ISO (YYYY-MM-DD)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return value;
-    }
+    // 1) Ya en formato ISO simple
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
 
-    // 2) Intentar parseo directo con Date
+    // 2) Intentar parseo directo
     let d = new Date(value);
     if (!isNaN(d.getTime())) {
-      return toISOFromDate(new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())));
+      const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      return `${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}`;
     }
 
     // 3) Formato dd/mm/aa o dd/mm/aaaa
@@ -37,7 +31,10 @@ window.MobileAdapter = (function () {
       let year = parseInt(yy, 10);
       if (year < 100) year += 2000;
       d = new Date(Date.UTC(year, mm, dd));
-      if (!isNaN(d.getTime())) return toISOFromDate(d);
+      if (!isNaN(d.getTime())) {
+        const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+        return `${x.getUTCFullYear()}-${pad(x.getUTCMonth()+1)}-${pad(x.getUTCDate())}`;
+      }
     }
 
     return null;
@@ -47,6 +44,7 @@ window.MobileAdapter = (function () {
     if (name == null) return "";
     const raw = String(name);
     const s = window.MobilePatch ? window.MobilePatch.normalize(raw) : raw;
+    // quitamos espacios sobrantes y pasamos a minúsculas
     return s.toLowerCase().trim();
   }
 
@@ -59,75 +57,60 @@ window.MobileAdapter = (function () {
   function buildWeekData(FULL_DATA, hotel, monday) {
     const schedule = (FULL_DATA && FULL_DATA.schedule) ? FULL_DATA.schedule : [];
 
-    const isoTarget = toISOFromDate(
-      new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate()))
-    );
+    // Lunes de la semana (clave base)
+    const mondayUTC = new Date(Date.UTC(
+      monday.getFullYear(),
+      monday.getMonth(),
+      monday.getDate()
+    ));
+
+    // Claves de fecha de la semana seleccionada
+    const weekDates = [];
+    const weekDateSet = new Set();
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(mondayUTC, i);
+      const key = normalizeDateKey(d.toISOString().slice(0, 10)); // YYYY-MM-DD
+      weekDates.push(key);
+      weekDateSet.add(key);
+    }
 
     const hotelNormTarget = normalizeHotelName(hotel);
 
-    // Buscar bucket por hotel + lunes (tolerante a formatos)
-    let bucket = null;
-    for (const s of schedule) {
-      const hNorm = normalizeHotelName(s.hotel);
+    const turnosByEmpleado = {};
+    const ordenSet = new Set();
+
+    // Recorremos TODOS los buckets del hotel y nos quedamos solo con los turnos
+    // cuyas fechas caen en esa semana
+    for (const bucket of schedule) {
+      const hNorm = normalizeHotelName(bucket.hotel);
       if (!hNorm || hNorm !== hotelNormTarget) continue;
 
-      const isoBucket = normalizeWeekMonday(s.semana_lunes);
-      if (!isoBucket) continue;
+      // Orden de empleados: unimos todos los órdenes de este hotel
+      (bucket.orden_empleados || []).forEach(e => ordenSet.add(e));
 
-      if (isoBucket === isoTarget) {
-        bucket = s;
-        break;
-      }
+      (bucket.turnos || []).forEach(t => {
+        const emp = t.empleado;
+        const fechaKey = normalizeDateKey(t.fecha);
+        if (!emp || !fechaKey) return;
+        if (!weekDateSet.has(fechaKey)) return; // turno fuera de la semana visible
+
+        if (!turnosByEmpleado[emp]) turnosByEmpleado[emp] = {};
+        turnosByEmpleado[emp][fechaKey] = { turno: t.turno };
+      });
     }
 
-    const result = {
-      monday,
-      empleados: [],
-      turnosByEmpleado: {}
-    };
-
-    if (!bucket) {
-      // No hay datos para esa semana/hotel → tabla vacía
-      return result;
-    }
-
-    const orden = (bucket.orden_empleados || []).slice();
-    const turnos = bucket.turnos || [];
-
-    // Indexar turnos
-    const map = {};
-    turnos.forEach(t => {
-      const emp = t.empleado;
-      const fecha = normalizeWeekMonday(t.fecha) || t.fecha;
-      if (!emp || !fecha) return;
-      if (!map[emp]) map[emp] = {};
-      map[emp][fecha] = { turno: t.turno };
-    });
-
-    // Fechas reales de esa semana según bucket.semana_lunes
-    const baseMondayISO = normalizeWeekMonday(bucket.semana_lunes) || isoTarget;
-    const baseMondayDate = new Date(baseMondayISO + "T00:00:00Z");
-
-    result.monday = baseMondayDate;
-
-    const weekDates = Array.from(
-      { length: 7 },
-      (_, i) => {
-        const d = addDays(baseMondayDate, i);
-        return toISOFromDate(d);
-      }
-    );
-
-    // Empleados con al menos un turno en la semana
+    const orden = Array.from(ordenSet);
+    // Empleados que realmente tienen algún turno en la semana
     const empleados = orden.filter(emp => {
-      const m = map[emp] || {};
+      const m = turnosByEmpleado[emp] || {};
       return weekDates.some(d => m[d]);
     });
 
-    result.empleados = empleados.length ? empleados : orden;
-    result.turnosByEmpleado = map;
-
-    return result;
+    return {
+      monday: mondayUTC,
+      empleados: empleados.length ? empleados : orden,
+      turnosByEmpleado
+    };
   }
 
   return { buildWeekData };
