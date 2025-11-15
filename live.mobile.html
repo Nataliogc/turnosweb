@@ -167,18 +167,19 @@
     .pill{
       display:inline-flex;
       align-items:center;
+      justify-content:center;
       gap:6px;
-      padding:4px 8px;
+      padding:4px 10px;
+      min-width:88px;           /* todas con ancho mínimo igual */
       border-radius:999px;
       background:var(--pill);
       color:var(--pill-text);
       font-weight:600;
-      font-size:12px;
-      white-space:normal;
-      word-break:break-word;
-      text-align:center;
+      font-size:13px;
+      line-height:1.1;
+      white-space:nowrap;
+      word-break:keep-all;
       max-width:95%;
-      justify-content:center;
     }
 
     /* Badge azul para sustituciones / cambios */
@@ -221,36 +222,36 @@
 
     /* Bloques multi-hotel */
     .hotel-section{margin:14px 0}
-    .hotel-hdr{
+
+    .th-hotel{
+      padding:10px 12px;
+    }
+    .hotel-cell{
       display:flex;
       align-items:center;
-      gap:10px;
-      margin:0 0 10px;
-      color:#0f172a;
+      gap:8px;
     }
-    .hotel-hdr img{
-      height:22px;
+    .hotel-cell-logo{
+      height:20px;
       width:auto;
+      object-fit:contain;
     }
-    .hotel-name{font-weight:700}
+    .hotel-cell-name{
+      font-weight:600;
+    }
   </style>
 </head>
 <body>
   <!-- Datos: mismo FULL_DATA que index/live, o CSV como fallback -->
   <script src="data.js?v=TS"></script>
-<script src="data.ausencias.js?v=TS"></script>
-
-<script src="plantilla_mobile_adapter.js?v=TS"></script>
-<script src="mobile.patch.js?v=TS"></script>
-<script src="mobile.app.js?v=TS"></script>
-
+  <script src="data.ausencias.js?v=TS"></script>
 
   <header>
     <div class="bar">
       <div class="brand">
         <!-- Icono general de la app -->
         <img id="hotelLogo" alt="Turnos Recepción" src="img/turnos_icon.png">
-        <div class="title" id="hotelTitle">Turnos App</div>
+        <div class="title" id="hotelTitle">Todos los hoteles</div>
       </div>
 
       <div class="controls">
@@ -279,7 +280,7 @@
       <div id="tbody"></div>
     </section>
 
-    <!-- Modo 2: Tohoteles (uno debajo de otro) -->
+    <!-- Modo 2: Todos los hoteles (uno debajo de otro) -->
     <section id="multi" style="display:none;"></section>
 
     <div class="footerbar"></div>

@@ -2,7 +2,7 @@
    Adaptador para versión móvil (robusto):
    - Usa window.FULL_DATA (mismo formato que index/live)
    - Filtra por HOTEL y por FECHA real de cada turno
-   - NO depende de s.semana_lunes (que a veces viene en otro formato)
+   - No depende de s.semana_lunes
    - Si en esa semana no hay turnos para ese hotel → tabla vacía
 */
 window.MobileAdapter = (function () {
@@ -44,7 +44,6 @@ window.MobileAdapter = (function () {
     if (name == null) return "";
     const raw = String(name);
     const s = window.MobilePatch ? window.MobilePatch.normalize(raw) : raw;
-    // quitamos espacios sobrantes y pasamos a minúsculas
     return s.toLowerCase().trim();
   }
 
@@ -57,7 +56,7 @@ window.MobileAdapter = (function () {
   function buildWeekData(FULL_DATA, hotel, monday) {
     const schedule = (FULL_DATA && FULL_DATA.schedule) ? FULL_DATA.schedule : [];
 
-    // Lunes de la semana (clave base)
+    // Lunes de la semana (clave base, en UTC)
     const mondayUTC = new Date(Date.UTC(
       monday.getFullYear(),
       monday.getMonth(),
@@ -79,20 +78,18 @@ window.MobileAdapter = (function () {
     const turnosByEmpleado = {};
     const ordenSet = new Set();
 
-    // Recorremos TODOS los buckets del hotel y nos quedamos solo con los turnos
-    // cuyas fechas caen en esa semana
+    // Recorremos todos los bloques de ese hotel
     for (const bucket of schedule) {
       const hNorm = normalizeHotelName(bucket.hotel);
       if (!hNorm || hNorm !== hotelNormTarget) continue;
 
-      // Orden de empleados: unimos todos los órdenes de este hotel
       (bucket.orden_empleados || []).forEach(e => ordenSet.add(e));
 
       (bucket.turnos || []).forEach(t => {
         const emp = t.empleado;
         const fechaKey = normalizeDateKey(t.fecha);
         if (!emp || !fechaKey) return;
-        if (!weekDateSet.has(fechaKey)) return; // turno fuera de la semana visible
+        if (!weekDateSet.has(fechaKey)) return; // fuera de la semana
 
         if (!turnosByEmpleado[emp]) turnosByEmpleado[emp] = {};
         turnosByEmpleado[emp][fechaKey] = { turno: t.turno };
@@ -100,7 +97,6 @@ window.MobileAdapter = (function () {
     }
 
     const orden = Array.from(ordenSet);
-    // Empleados que realmente tienen algún turno en la semana
     const empleados = orden.filter(emp => {
       const m = turnosByEmpleado[emp] || {};
       return weekDates.some(d => m[d]);

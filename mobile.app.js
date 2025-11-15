@@ -3,7 +3,6 @@
    - Usa window.FULL_DATA generado por data.js (igual que index)
    - Hotel: Todos → muestra un bloque por hotel, uno debajo de otro
    - Hotel concreto → una sola tabla
-   - Sin fetch de CSV ni llamadas en bucle
 */
 
 (function () {
@@ -30,17 +29,48 @@
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
   }
 
-  function getLabel(turno) {
+  // ---- Interpretación de turnos (respeta TipoInterpretado como index) ----
+  function getLabel(turno){
     if (turno == null) return "";
+
+    // 1) Caso objeto (FULL_DATA avanzado)
+    if (typeof turno === "object") {
+      // Formato de index: { TurnoOriginal, Sustituto, TipoInterpretado, ... }
+      if (turno.TipoInterpretado) {
+        const txt = String(turno.TipoInterpretado);
+        return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
+      }
+
+      // Otros formatos posibles ({texto,label,turno,t,...})
+      const candidate =
+        turno.texto ||
+        turno.label ||
+        turno.name ||
+        turno.turno ||
+        turno.t ||
+        turno.TurnoOriginal ||
+        "";
+
+      if (candidate) {
+        const txt = String(candidate);
+        return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
+      }
+
+      // Como último recurso: primer valor string que haya dentro del objeto
+      const firstStr = Object.values(turno).find(v => typeof v === "string");
+      if (firstStr) {
+        const txt = String(firstStr);
+        return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
+      }
+      return "";
+    }
+
+    // 2) Caso string normal
     if (typeof turno === "string") {
       return window.MobilePatch ? window.MobilePatch.normalize(turno) : turno;
     }
-    if (typeof turno === "object") {
-      const candidate =
-        turno.texto || turno.label || turno.name || turno.turno || turno.t || "";
-      const s = String(candidate);
-      return window.MobilePatch ? window.MobilePatch.normalize(s) : s;
-    }
+
+    // 3) Fallback genérico
     return String(turno);
   }
 
@@ -99,7 +129,7 @@
     new Set((FULL_DATA.schedule || []).map(s => s.hotel))
   ).filter(Boolean).sort();
 
-  // ---- Render ----
+  // ---- Render cabecera días ----
   function renderHeader(thead, monday) {
     thead.innerHTML = [
       `<div class="th"></div>`,
@@ -119,6 +149,7 @@
     ].join("");
   }
 
+  // ---- Render filas ----
   function renderBody(tbody, weekData) {
     tbody.innerHTML = "";
     const monday    = weekData.monday;
@@ -192,6 +223,7 @@
     });
   }
 
+  // ---- Vista 1 hotel ----
   function renderSingleHotel(hotel, monday) {
     const weekData   = window.MobileAdapter.buildWeekData(FULL_DATA, hotel, monday);
     const baseMonday = weekData.monday || monday;
@@ -199,6 +231,7 @@
     renderBody(tbodyEl, weekData);
   }
 
+  // ---- Vista todos los hoteles ----
   function renderAllHotels(monday) {
     multi.innerHTML = "";
 
@@ -209,35 +242,47 @@
       const section = document.createElement("section");
       section.className = "hotel-section";
 
-      const hdr = document.createElement("div");
-      hdr.className = "hotel-hdr";
-      const img = document.createElement("img");
-      img.src = logoFor(hotel);
-      img.alt = "Logo " + hotel;
-      img.onerror = () => { img.src = "img/turnos_icon.png"; };
-      const nm = document.createElement("div");
-      nm.className = "hotel-name";
-      nm.textContent = window.MobilePatch
-        ? window.MobilePatch.normalize(hotel)
-        : hotel;
-      hdr.appendChild(img);
-      hdr.appendChild(nm);
-
       const card = document.createElement("section");
       card.className = "card";
-      const th = document.createElement("div");
-      th.className = "thead";
-      const tb = document.createElement("div");
 
-      card.appendChild(th);
-      card.appendChild(tb);
+      const thead = document.createElement("div");
+      thead.className = "thead";
 
-      section.appendChild(hdr);
+      const tbody = document.createElement("div");
+
+      card.appendChild(thead);
+      card.appendChild(tbody);
       section.appendChild(card);
       multi.appendChild(section);
 
-      renderHeader(th, baseMonday);
-      renderBody(tb, weekData);
+      const logoSrc = logoFor(hotel);
+      const hotelLabel = window.MobilePatch
+        ? window.MobilePatch.normalize(hotel)
+        : hotel;
+
+      thead.innerHTML = [
+        `<div class="th th-hotel">
+          <div class="hotel-cell">
+            <img class="hotel-cell-logo" src="${logoSrc}" alt="Logo ${hotelLabel}">
+            <span class="hotel-cell-name">${hotelLabel}</span>
+          </div>
+        </div>`,
+        ...[0, 1, 2, 3, 4, 5, 6].map(i => {
+          const d = addDays(baseMonday, i);
+          return `<div class="th">
+            <div class="weekday">
+              <span class="name">${weekdayShort[i]}</span>
+              <span class="date">${d.toLocaleDateString("es-ES", {
+                day: "2-digit",
+                month: "short",
+                year: "2-digit"
+              })}</span>
+            </div>
+          </div>`;
+        })
+      ].join("");
+
+      renderBody(tbody, weekData);
     });
   }
 
@@ -252,7 +297,7 @@
     const monday   = new Date(weekPicker.value + "T00:00:00");
 
     if (hotelVal === "__ALL__") {
-      hotelTitle.textContent = "Turnos App";
+      hotelTitle.textContent = "Todos los hoteles";
       hotelLogo.src          = "img/turnos_icon.png";
     } else {
       hotelTitle.textContent = window.MobilePatch
@@ -299,7 +344,7 @@
   });
   nextWeekBtn && nextWeekBtn.addEventListener("click", () => setWeekByOffset(7));
 
-  // Altura viewport móvil (una sola vez + en resize)
+  // Altura viewport móvil
   function setVH() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty("--vh", `${vh}px`);
