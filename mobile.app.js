@@ -29,50 +29,48 @@
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
   }
 
-  // ---- Interpretación de turnos (respeta TipoInterpretado como index) ----
-  function getLabel(turno){
+    // ---- Interpretación de turnos (alineada con index) ----
+  function getLabel(turno) {
     if (turno == null) return "";
 
-    // 1) Caso objeto (FULL_DATA avanzado)
+    let txt = "";
+
     if (typeof turno === "object") {
-      // Formato de index: { TurnoOriginal, Sustituto, TipoInterpretado, ... }
+      // 1) Ausencias claras (Vacaciones, Baja, Descanso...)
       if (turno.TipoInterpretado) {
-        const txt = String(turno.TipoInterpretado);
-        return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
+        const t = String(turno.TipoInterpretado);
+        // Si la "interpretación" es una formación pero existe TurnoOriginal (Noche, Mañana...)
+        // damos prioridad al turno real como hace la vista index.
+        if (/formaci[oó]n/i.test(t) && turno.TurnoOriginal) {
+          txt = String(turno.TurnoOriginal);
+        } else {
+          txt = t;
+        }
+      } else if (turno["Tipo Ausencia"]) {
+        txt = String(turno["Tipo Ausencia"]);
+      } else if (turno.TipoAusencia) {
+        txt = String(turno.TipoAusencia);
       }
-
-      // Otros formatos posibles ({texto,label,turno,t,...})
-      const candidate =
-        turno.texto ||
-        turno.label ||
-        turno.name ||
-        turno.turno ||
-        turno.t ||
-        turno.TurnoOriginal ||
-        "";
-
-      if (candidate) {
-        const txt = String(candidate);
-        return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
+      // 2) Sustituciones / turnos originales
+      if (!txt && turno.TurnoOriginal) {
+        txt = String(turno.TurnoOriginal);
       }
-
-      // Como último recurso: primer valor string que haya dentro del objeto
-      const firstStr = Object.values(turno).find(v => typeof v === "string");
-      if (firstStr) {
-        const txt = String(firstStr);
-        return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
+      // 3) Otros formatos posibles
+      if (!txt && turno.turno) txt = String(turno.turno);
+      if (!txt && turno.t)     txt = String(turno.t);
+      if (!txt) {
+        const firstStr = Object.values(turno).find(v => typeof v === "string");
+        if (firstStr) txt = String(firstStr);
       }
-      return "";
+    } else {
+      // Caso string directo ("Mañana", "Tarde", "Noche", etc.)
+      txt = String(turno);
     }
 
-    // 2) Caso string normal
-    if (typeof turno === "string") {
-      return window.MobilePatch ? window.MobilePatch.normalize(turno) : turno;
-    }
-
-    // 3) Fallback genérico
-    return String(turno);
+    if (!txt) return "";
+    return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
   }
+
 
     function getFlag(item) {
     try {
