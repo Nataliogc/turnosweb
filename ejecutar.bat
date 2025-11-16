@@ -47,8 +47,8 @@ if errorlevel 1 (
   goto END_FAIL
 )
 
-rem 2) Generar index.html (+ live.html)
-echo [2/5] Generando HTML...
+rem 2) Generar index.html (+ data.js) y copiar a live.html
+echo [2/5] Generando HTML (index + data.js)...
 call :RUN_PY "2_GenerarCuadranteHTML.py"
 if not exist "index.html" (
   >>"%LOG%" echo [ERROR] No se genero index.html
@@ -56,25 +56,20 @@ if not exist "index.html" (
   goto END_FAIL
 )
 copy /Y "index.html" "live.html" >nul
-rem 2b) Actualizar data.js para la versión móvil
-echo [2b/5] Exportando FULL_DATA a data.js...
-call :RUN_PY "3_ExportFullDataToJS.py"
-if errorlevel 1 (
-  >>"%LOG%" echo [ERROR] Fallo al generar data.js desde index.html
-  echo [ERROR] Fallo al generar data.js.
-  goto END_FAIL
-)
-
 
 rem 3) Logos para la web
 echo [3/5] Sincronizando logos (img/)...
 if not exist "img" mkdir "img" >nul
 if exist "guadiana logo.jpg" copy /Y "guadiana logo.jpg" "img\guadiana.jpg" >nul
 if exist "cumbria logo.jpg"  copy /Y "cumbria logo.jpg"  "img\cumbria.jpg"  >nul
+
 rem 3b) Ajustar live.mobile.html (scripts y cache-busting)
 echo [3b/5] Actualizando live.mobile.html...
-call "fix_mobile_html.bat"
-
+if exist "fix_mobile_html.bat" (
+  call "fix_mobile_html.bat"
+) else (
+  echo [info] No se encontro fix_mobile_html.bat, se omite este paso.>>"%LOG%"
+)
 
 rem 4) Commit + rebase + push
 echo [4/5] Subiendo cambios...
@@ -115,7 +110,9 @@ echo Revisa el log: %LOG%
 if exist "%LOG%" start notepad "%LOG%"
 pause
 exit /b 1
+
 REM ====== DEPLOY A GITHUB PAGES (sube ./turnosweb) ======
+REM (bloque opcional antiguo; normalmente no se ejecuta porque arriba hacemos 'goto :eof')
 REM Requisitos: tener git en PATH y el repo ya clonado (con remote 'origin').
 
 REM 1) Asegurar archivo .nojekyll (evita problemas con rutas /assets)
@@ -168,4 +165,3 @@ echo   https://TU_USUARIO.github.io/turnosweb/live.mobile.html?v=%TS%
 
 :deploy_end
 REM ====== FIN DEPLOY ======
-
