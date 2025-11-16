@@ -337,12 +337,27 @@
     </div>
   </div>
 
-  </main>
+  <  </main>
 
-    <!-- Datos generados: mismo FULL_DATA que index/live -->
+  <!-- Barra para invitar a instalar la app -->
+  <div id="installBar" class="install-bar" style="display:none;">
+    <div class="install-text">
+      📲 Instala <strong>Turnos App</strong> en tu móvil para acceder más rápido.
+    </div>
+    <div class="install-actions">
+      <button class="btn-primary btn" type="button" onclick="window.handleInstallClick()">
+        Instalar
+      </button>
+      <button class="btn-ghost btn" type="button" onclick="window.dismissInstallBar()">
+        ✕
+      </button>
+    </div>
+  </div>
+
+  <!-- Datos generados: mismo FULL_DATA que index/live -->
   <script src="data.js?v=TS"></script>
 
-   <!-- Lógica de instalación PWA (con fallback) -->
+  <!-- Lógica de instalación PWA (con fallback) -->
   <script>
     let deferredInstallPrompt = null;
 
@@ -350,7 +365,6 @@
       const bar = document.getElementById("installBar");
       if (!bar) return;
 
-      // Si ya está instalada o el usuario la cerró, no molestamos más
       if (localStorage.getItem("turnos_installed") === "1" ||
           localStorage.getItem("turnos_install_dismissed") === "1") {
         return;
@@ -360,7 +374,7 @@
     }
 
     window.handleInstallClick = async function () {
-      const isIos   = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isIos    = /iphone|ipad|ipod/i.test(navigator.userAgent);
       const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
       const standalone = window.matchMedia('(display-mode: standalone)').matches ||
                          window.navigator.standalone;
@@ -392,9 +406,9 @@
       if (isIos) {
         alert("Para instalar la app en iPhone:\n\n1) Abre esta página en Safari.\n2) Pulsa el icono Compartir.\n3) Elige 'Añadir a pantalla de inicio'.");
       } else if (isMobile) {
-        alert("Si no aparece el botón de instalar:\n\nAbre el menú del navegador (⋮ o ☰) y busca 'Instalar aplicación' o 'Añadir a pantalla principal'.");
+        alert("Si no aparece la ventana de instalación:\n\nAbre el menú del navegador (⋮ o ☰) y busca 'Instalar aplicación' o 'Añadir a pantalla principal'.");
       } else {
-        alert("En ordenador puedes instalar la app desde el icono de 'Instalar aplicación' de la barra de direcciones del navegador.");
+        alert("En ordenador puedes instalar la app desde el icono de 'Instalar aplicación' en la barra de direcciones del navegador.");
       }
     };
 
@@ -404,22 +418,21 @@
       localStorage.setItem("turnos_install_dismissed", "1");
     };
 
-    // Android / Chrome: evento nativo de instalación disponible
+    // Android / Chrome: evento nativo cuando la PWA es instalable
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
       showInstallBar();
     });
 
-    // iOS y otros navegadores que NO disparan beforeinstallprompt:
-    // mostramos la barra una vez con instrucciones
+    // iOS y navegadores sin beforeinstallprompt
     window.addEventListener("load", () => {
       const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
       const standalone = window.matchMedia('(display-mode: standalone)').matches ||
                          window.navigator.standalone;
 
       if (!isIos && !deferredInstallPrompt) {
-        // En Android viejo / navegadores raros, mostramos barra igualmente
+        // Android viejo / otros navegadores: mostrar barra igualmente
         showInstallBar();
         return;
       }
@@ -439,15 +452,10 @@
     });
   </script>
 
-  <!-- Datos generados: mismo FULL_DATA que index/live -->
-  <script src="data.js?v=TS"></script>
-
-  <!-- Lógica de instalación PWA (nuevo bloque) -->
-  ... (el script de arriba) ...
-
   <!-- Adaptador de semana, normalizador y lógica móvil -->
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
 </body>
 </html>
+
