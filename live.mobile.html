@@ -13,6 +13,41 @@
   <link rel="stylesheet" href="styles.mobile.css">
 
   <style>
+.install-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.install-text {
+  flex: 1;
+}
+
+.install-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.install-bar .btn-primary.btn {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.install-bar .btn-ghost.btn {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+
     :root{
       --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#475569; --border:#e2e8f0;
       --pill:#eef2ff; --pill-text:#334155; --night:#e5e7eb; --night-text:#374151;
@@ -287,19 +322,93 @@
     <section id="multi" style="display:none;"></section>
 
     <div class="footerbar"></div>
+  <!-- Barra para invitar a instalar la app -->
+  <div id="installBar" class="install-bar" style="display:none;">
+    <div class="install-text">
+      📲 Instala <strong>Turnos App</strong> en tu móvil para acceder más rápido.
+    </div>
+    <div class="install-actions">
+      <button class="btn-primary btn" type="button" onclick="window.handleInstallClick()">
+        Instalar
+      </button>
+      <button class="btn-ghost btn" type="button" onclick="window.dismissInstallBar()">
+        ✕
+      </button>
+    </div>
+  </div>
+
   </main>
 
-   <!-- Datos generados: mismo FULL_DATA que index/live -->
-<script src="data.js?v=TS"></script>
+    <!-- Datos generados: mismo FULL_DATA que index/live -->
+  <script src="data.js?v=TS"></script>
 
-<!-- Adaptador de semana, normalizador y lógica móvil -->
-<script src="plantilla_mobile_adapter.js?v=TS"></script>
-<script src="mobile.patch.js?v=TS"></script>
-<script src="mobile.app.js?v=TS"></script>
+  <!-- Lógica de instalación PWA -->
+  <script>
+    let deferredInstallPrompt = null;
+
+    window.handleInstallClick = async function () {
+      const bar = document.getElementById("installBar");
+      if (bar) bar.style.display = "none";
+
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      try {
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          localStorage.setItem("turnos_installed", "1");
+        }
+      } catch (e) {}
+      deferredInstallPrompt = null;
+    };
+
+    window.dismissInstallBar = function () {
+      const bar = document.getElementById("installBar");
+      if (bar) bar.style.display = "none";
+      localStorage.setItem("turnos_install_dismissed", "1");
+    };
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      // Android / Chrome lanza este evento cuando la PWA es instalable
+      e.preventDefault();
+      deferredInstallPrompt = e;
+
+      if (localStorage.getItem("turnos_installed") === "1" ||
+          localStorage.getItem("turnos_install_dismissed") === "1") {
+        return;
+      }
+
+      const bar = document.getElementById("installBar");
+      if (bar) {
+        bar.style.display = "flex";
+      }
+    });
+
+    // Pequeña ayuda para iPhone (no tiene beforeinstallprompt)
+    window.addEventListener("load", () => {
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+      if (isIos && !standalone &&
+          !localStorage.getItem("turnos_ios_hint") &&
+          !localStorage.getItem("turnos_installed")) {
+
+        const bar = document.getElementById("installBar");
+        if (bar) {
+          bar.querySelector(".install-text").innerHTML =
+            "📲 En iPhone: abre en <strong>Safari</strong>, toca <strong>Compartir</strong> y luego <strong>“Añadir a pantalla de inicio”</strong>.";
+          bar.style.display = "flex";
+        }
+        localStorage.setItem("turnos_ios_hint", "1");
+      }
+    });
+  </script>
+
+  <!-- Adaptador de semana, normalizador y lógica móvil -->
+  <script src="plantilla_mobile_adapter.js?v=TS"></script>
+  <script src="mobile.patch.js?v=TS"></script>
+  <script src="mobile.app.js?v=TS"></script>
 </body>
 </html>
 
-</body>
-</html>
 
 
