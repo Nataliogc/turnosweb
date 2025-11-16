@@ -103,12 +103,12 @@
   }
 
   // ---- DOM ----
-  const weekPicker  = $("#weekPicker");
-  const hotelSelect = $("#hotelSelect");
-  const refreshBtn  = $("#refreshBtn");
-  const prevWeekBtn = $("#prevWeekBtn");
-  const todayBtn    = $("#todayBtn");
-  const nextWeekBtn = $("#nextWeekBtn");
+const weekPicker  = $("#weekPicker");
+const hotelSelect = $("#hotelSelect");
+const prevWeekBtn = $("#prevWeekBtn");
+const todayBtn    = $("#todayBtn");
+const nextWeekBtn = $("#nextWeekBtn");
+
 
   const singleCard  = $("#singleCard");
   const multi       = $("#multi");
@@ -315,14 +315,10 @@
     }
   }
 
-  // ---- Eventos ----
-  let refreshTimer;
-  refreshBtn.addEventListener("click", () => {
-    clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(refresh, 50);
-  });
-  hotelSelect.addEventListener("change", refresh);
-  weekPicker.addEventListener("change", refresh);
+ // ---- Eventos ----
+hotelSelect.addEventListener("change", refresh);
+weekPicker.addEventListener("change", refresh);
+
 
   function setWeekByOffset(offsetDays) {
     const d = weekPicker.value
