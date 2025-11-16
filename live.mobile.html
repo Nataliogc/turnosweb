@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Turnos · Versión Móvil</title>
 
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#005078">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -18,40 +14,38 @@
   <style>
     :root{
       --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#475569; --border:#e2e8f0;
-      --primary:#2563eb; --primary-soft:#dbeafe; --pill-bg:#e5e7eb;
-      --pill-manana:#bbf7d0; --pill-tarde:#fef3c7; --pill-noche:#e5e7eb;
-      --pill-descanso:#fecaca; --pill-vac:#fef9c3;
-      --shadow:0 10px 30px rgba(15,23,42,.12);
-      --radius:18px;
+      --pill:#eef2ff; --pill-text:#334155; --night:#e5e7eb; --night-text:#374151;
+      --rest:#fee2e2; --rest-text:#7f1d1d; --brand:#c9a227;
     }
-    *{box-sizing:border-box;}
+    *{box-sizing:border-box}
     body{
       margin:0;
       background:var(--bg);
+      color:var(--text);
+      font:13px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      max-width:100%;
+      overflow-x:hidden;
+      overscroll-behavior:contain;
+      scrollbar-gutter:stable both-edges;
+      -webkit-text-size-adjust:100%;
     }
-    .app-root{
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-    }
-    header.app-header{
+
+    header{
       position:sticky;
       top:0;
+      background:linear-gradient(180deg,#ffffff 0,#fbfcff 100%);
+      border-bottom:1px solid var(--border);
       z-index:20;
-      backdrop-filter:blur(12px);
-      -webkit-backdrop-filter:blur(12px);
-      background:linear-gradient(to bottom, rgba(15,23,42,.85), rgba(15,23,42,.92));
-      color:#e5e7eb;
-      box-shadow:0 1px 0 rgba(15,23,42,.45);
     }
-    .header-inner{
-      max-width:960px;
+
+    .bar{
+      max-width:1100px;
       margin:0 auto;
-      padding:10px 14px 12px;
+      padding:12px 14px;
       display:flex;
-      justify-content:space-between;
+      gap:10px;
       align-items:center;
-      gap:12px;
+      flex-wrap:wrap;
     }
     .brand{
       display:flex;
@@ -63,319 +57,263 @@
       width:auto;
       object-fit:contain;
     }
-    .title-block{
-      display:flex;
-      flex-direction:column;
-    }
-    .title-block h1{
-      font-size:16px;
-      font-weight:600;
-      margin:0;
-      letter-spacing:.02em;
-    }
-    .title-block span{
-      font-size:11px;
-      opacity:.8;
-    }
-    .week-label{
-      font-size:11px;
-      opacity:.9;
-      display:flex;
-      flex-direction:column;
-      align-items:flex-end;
-      gap:2px;
-    }
-    .week-label strong{
-      font-size:13px;
-    }
-
-    main.app-main{
-      flex:1;
-      max-width:960px;
-      margin:0 auto;
-      padding:10px 10px 16px;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;
-      color:var(--text);
-    }
+    .title{font-weight:600}
 
     .controls{
       display:flex;
-      flex-wrap:wrap;
       gap:10px;
-      align-items:flex-end;
-      margin-bottom:12px;
-      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-left:auto;
     }
     .field{
       display:flex;
-      flex-direction:column;
-      gap:4px;
-      min-width:140px;
-      flex:1;
+      align-items:center;
+      gap:6px;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:6px 10px;
     }
     .field label{
-      font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:.08em;
+      font-size:12px;
       color:var(--muted);
     }
-    .field input,
-    .field select{
-      height:34px;
-      border-radius:999px;
-      border:1px solid #cbd5f5;
-      padding:0 11px;
-      font-size:13px;
+    .field select,
+    .field input{
+      border:0;
+      outline:0;
+      background:transparent;
+      font:inherit;
       color:var(--text);
-      background:#fff;
-      box-shadow:0 1px 1px rgba(15,23,42,.08);
     }
 
-    .btn-group{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
     .btn{
-      border-radius:999px;
-      border:1px solid rgba(148,163,184,.55);
+      border:1px solid var(--border);
       background:#fff;
-      padding:7px 13px;
-      font-size:13px;
+      border-radius:12px;
+      padding:8px 12px;
+      font-weight:600;
+      cursor:pointer;
       display:inline-flex;
       align-items:center;
       justify-content:center;
       gap:6px;
-      cursor:pointer;
-      color:#0f172a;
-      box-shadow:0 1px 2px rgba(15,23,42,.08);
+      font-size:13px;
     }
     .btn-primary{
-      border-color:transparent;
-      background:linear-gradient(135deg,#2563eb,#1d4ed8);
+      background:#2563eb;
+      border-color:#1d4ed8;
       color:#fff;
-      box-shadow:0 8px 18px rgba(37,99,235,.35);
+      box-shadow:0 4px 8px rgba(37,99,235,.35);
     }
-    .btn:active{
-      transform:translateY(1px);
-      box-shadow:0 4px 10px rgba(15,23,42,.16);
+
+    main{
+      max-width:1100px;
+      margin:8px auto 18px;
+      padding:0 8px 8px;
     }
 
     .card{
       background:var(--card);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-      margin-bottom:16px;
-      border:1px solid rgba(148,163,184,.28);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:0 1px 2px rgba(0,0,0,.04);
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-gutter:stable both-edges;
+      contain:layout paint;
     }
-    .card-header{
-      padding:10px 14px 8px;
-      border-bottom:1px solid rgba(226,232,240,.9);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      background:linear-gradient(to right,#f8fafc,#eff6ff);
-    }
-    .hotel-switcher{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .hotel-switcher .logo{
-      height:32px;
-      width:auto;
-      object-fit:contain;
-    }
-    .hotel-switcher .title{
-      display:flex;
-      flex-direction:column;
-    }
-    .hotel-switcher .title span:first-child{
-      font-size:13px;
-      font-weight:600;
-    }
-    .hotel-switcher .title span:last-child{
-      font-size:11px;
-      color:var(--muted);
+
+    .thead,.row{
+      display:grid;
+      grid-template-columns:120px repeat(7,minmax(70px,1fr));
+      min-width:100%;
     }
 
     .thead{
-      display:grid;
-      grid-template-columns:120px repeat(7,1fr);
-      align-items:stretch;
       background:#f8fafc;
-      border-bottom:1px solid rgba(226,232,240,.9);
+      border-bottom:1px solid var(--border);
+      position:sticky;
+      top:0;
+      z-index:5;
     }
+
     .th{
-      padding:8px 8px;
+      padding:8px 6px;
+      border-right:1px solid var(--border);
       font-size:11px;
       text-transform:uppercase;
-      letter-spacing:.07em;
+      letter-spacing:.08em;
       color:#64748b;
-      border-right:1px solid rgba(226,232,240,.9);
+      text-align:center;
       display:flex;
       align-items:center;
       justify-content:center;
+      gap:4px;
     }
-    .th:last-child{
-      border-right:none;
-    }
-    .th-hotel{
-      justify-content:flex-start;
-      padding-left:12px;
-    }
+    .th:last-child{border-right:0}
+
     .weekday{
       display:flex;
       flex-direction:column;
-      align-items:center;
       gap:2px;
+      align-items:center;
     }
-    .weekday .name{
-      font-weight:600;
-    }
-    .weekday .date{
-      font-size:11px;
-      text-transform:none;
+    .weekday .name{font-weight:600}
+    .weekday .date{text-transform:none}
+
+    .row{
+      border-top:1px solid var(--border);
+      align-items:center;
     }
 
-    .body{
-      display:flex;
-      flex-direction:column;
-    }
-    .row{
-      display:grid;
-      grid-template-columns:120px repeat(7,1fr);
-      min-height:40px;
-      border-bottom:1px solid rgba(226,232,240,.6);
-    }
-    .row:last-child{
-      border-bottom:none;
-    }
     .cell-name{
-      display:flex;
-      align-items:center;
-      padding:6px 10px;
+      padding:6px 8px;
+      font-weight:600;
       font-size:13px;
-      font-weight:500;
-      color:#0f172a;
+      border-right:1px solid var(--border);
       background:linear-gradient(to right,#f9fafb,#f3f4f6);
-      border-right:1px solid rgba(226,232,240,.9);
       position:sticky;
       left:0;
-      z-index:1;
+      z-index:4;
+      white-space:nowrap;
     }
     .cell{
+      padding:4px 4px;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:4px 4px;
-    }
-    .pill{
-      min-width:74px;
-      max-width:110px;
-      text-align:center;
-      border-radius:999px;
-      padding:5px 8px;
-      font-size:12px;
-      font-weight:500;
-      background:var(--pill-bg);
-      color:#111827;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      box-shadow:0 1px 2px rgba(148,163,184,.4);
-    }
-    .pill.manana{background:var(--pill-manana);}
-    .pill.tarde{background:var(--pill-tarde);}
-    .pill.noche{background:var(--pill-noche);}
-    .pill.descanso{background:var(--pill-descanso);}
-    .pill.vac{background:var(--pill-vac);}
-    .badge{
-      margin-left:4px;
-      font-size:11px;
-      vertical-align:middle;
+      min-height:32px;
     }
 
-    .hotel-section{
-      margin-bottom:16px;
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:4px 10px;
+      min-width:88px;           /* todas con ancho mínimo igual */
+      border-radius:999px;
+      background:var(--pill);
+      color:var(--pill-text);
+      font-weight:600;
+      font-size:13px;
+      line-height:1.1;
+      white-space:nowrap;
+      word-break:keep-all;
+      max-width:95%;
+    }
+
+    /* Badge azul para sustituciones / cambios */
+    .pill .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:16px;
+      height:16px;
+      border-radius:999px;
+      background:#2563eb;
+      color:#fff;
+      font-size:11px;
+      flex-shrink:0;
+    }
+
+    /* Variantes por tipo de turno (igual que index) */
+    .pill.descanso{
+      background:var(--rest);
+      color:var(--rest-text);
+    }
+    .pill.noche{
+      background:var(--night);
+      color:var(--night-text);
+    }
+    .pill.manana{
+      background:#bbf7d0;
+      color:#166534;
+    }
+    .pill.tarde{
+      background:#fef3c7;
+      color:#92400e;
+    }
+    .pill.vac{
+      background:#fef9c3;
+      color:#854d0e;
+    }
+
+    .hotel-section{margin:14px 0}
+    .hotel-section .card{margin-bottom:6px}
+
+    .hotel-cell{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .hotel-cell-logo{
+      height:20px;
+      width:auto;
+      object-fit:contain;
+    }
+    .hotel-cell-name{
+      font-weight:600;
     }
 
     .footerbar{
       height:12px;
     }
 
-    .install-bar {
-      position: sticky;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 50;
-      background: #ffffff;
-      border-top: 1px solid #e2e8f0;
-      padding: 8px 12px;
-      display: none;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
+    /* Ajustes móviles: cabecera más compacta y logos pequeños */
+    header{
+      background:linear-gradient(to right,#0f172a,#111827);
+      color:#e5e7eb;
+      box-shadow:0 1px 0 rgba(15,23,42,.45);
     }
-    .install-text {
-      flex: 1;
+    .bar{
+      max-width:1100px;
+      margin:0 auto;
     }
-    .install-actions {
-      display: flex;
-      gap: 6px;
-    }
-    .install-bar .btn-primary.btn,
-    .install-bar .btn-ghost.btn {
-      padding: 4px 10px;
-      font-size: 13px;
-    }
-    .install-bar .btn-ghost.btn {
-      padding: 4px 8px;
+    @media (max-width:720px){
+      header{ position:static; }
+
+      .bar{
+        padding:6px 8px;
+        gap:6px;
+      }
+      .brand{
+        display:none;
+      }
+      .controls{
+        width:100%;
+        justify-content:space-between;
+        margin-left:0;
+      }
+      .controls .field{
+        flex:1 1 48%;
+      }
+      .controls .btn-group{
+        flex:1 1 100%;
+        justify-content:space-between;
+      }
     }
 
-    @media (max-width:720px){
-      main.app-main{
-        padding:8px 6px 14px;
-      }
-      .thead,
-      .row{
-        grid-template-columns:104px repeat(7,1fr);
-      }
-      .cell-name{
-        font-size:12px;
-        padding-left:8px;
-      }
-      .pill{
-        min-width:64px;
-        max-width:92px;
-        font-size:11px;
-      }
+    /* Logos hotel en cabeceras: tamaño controlado */
+    #hotelLogo,
+    .hotel-cell-logo{
+      max-height:40px;
+      width:auto;
+      object-fit:contain;
     }
   </style>
 
 </head>
 <body>
-  <div class="app-root">
-    <header class="app-header">
-      <div class="header-inner">
-        <div class="brand">
-          <img src="img/turnos_icon.png" alt="Turnos Recepción App" loading="lazy">
-          <div class="title-block">
-            <h1>Turnos App</h1>
-            <span>Sercotel Guadiana / Cumbria Spa&Hotel</span>
-          </div>
-        </div>
-        <div class="week-label">
-          <span>Semana (lunes):</span>
-          <strong><span id="weekLabelText">—</span></strong>
-        </div>
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <!-- Icono general de la app -->
+        <img id="hotelLogo" alt="Turnos Recepción" src="img/turnos_icon.png">
+        <div class="title" id="hotelTitle">Todos los hoteles</div>
       </div>
-    </header>
 
-    <main class="app-main">
       <div class="controls">
         <div class="field">
           <label>Semana (lunes):</label>
@@ -391,152 +329,25 @@
           <button class="btn-primary btn" id="nextWeekBtn">Semana →</button>
         </div>
       </div>
-
-      <!-- Modo 1: Un solo hotel -->
-      <section id="singleCard" class="card">
-        <div class="card-header">
-          <div class="hotel-switcher">
-            <img id="hotelLogo" class="logo" src="img/turnos_icon.png" alt="Logo hotel">
-            <div class="title">
-              <span id="hotelTitle">Turnos App</span>
-              <span>Vista semanal</span>
-            </div>
-          </div>
-        </div>
-        <div class="thead" id="thead"></div>
-        <div class="body" id="tbody"></div>
-      </section>
-
-      <!-- Modo 2: Todos los hoteles (uno debajo de otro) -->
-      <section id="multi" style="display:none;"></section>
-
-      <div class="footerbar"></div>
-    </main>
-  </div>
-
-  <!-- Barra para invitar a instalar la app -->
-  <div id="installBar" class="install-bar" style="display:none;">
-    <div class="install-text">
-      📲 Instala <strong>Turnos App</strong> en tu móvil para acceder más rápido.
     </div>
-    <div class="install-actions">
-      <button class="btn-primary btn" type="button" onclick="window.handleInstallClick()">
-        Instalar
-      </button>
-      <button class="btn-ghost btn" type="button" onclick="window.dismissInstallBar()">
-        ✕
-      </button>
-    </div>
-  </div>
+  </header>
 
-  <!-- Datos generados: mismo FULL_DATA que index/live -->
-  <script src="data.js?v=TS"></script>
+  <main>
+    <!-- Modo 1: un solo hotel -->
+    <section class="card" id="singleCard">
+      <div class="thead" id="thead"></div>
+      <div id="tbody"></div>
+    </section>
 
-  <!-- Lógica de instalación PWA (con fallback) -->
-  <script>
-    let deferredInstallPrompt = null;
+    <!-- Modo 2: Todos los hoteles (uno debajo de otro) -->
+    <section id="multi" style="display:none;"></section>
 
-    function showInstallBar() {
-      const bar = document.getElementById("installBar");
-      if (!bar) return;
-
-      if (localStorage.getItem("turnos_installed") === "1" ||
-          localStorage.getItem("turnos_install_dismissed") === "1") {
-        return;
-      }
-
-      bar.style.display = "flex";
-    }
-
-    window.handleInstallClick = async function () {
-      const isIos    = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone;
-
-      if (standalone) {
-        localStorage.setItem("turnos_installed", "1");
-        const bar = document.getElementById("installBar");
-        if (bar) bar.style.display = "none";
-        return;
-      }
-
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        try {
-          const choice = await deferredInstallPrompt.userChoice;
-          if (choice.outcome === "accepted") {
-            localStorage.setItem("turnos_installed", "1");
-          }
-        } catch (e) {}
-        deferredInstallPrompt = null;
-        const bar = document.getElementById("installBar");
-        if (bar) bar.style.display = "none";
-        return;
-      }
-
-      if (isIos) {
-        alert("Para instalar la app en iPhone:\n\n1) Abre esta página en Safari.\n2) Pulsa el icono Compartir.\n3) Elige 'Añadir a pantalla de inicio'.");
-      } else if (isMobile) {
-        alert("Si no aparece la ventana de instalación:\n\nAbre el menú del navegador (⋮ o ☰) y busca 'Instalar aplicación' o 'Añadir a pantalla principal'.");
-      } else {
-        alert("En ordenador puedes instalar la app desde el icono de 'Instalar aplicación' en la barra de direcciones del navegador.");
-      }
-    };
-
-    window.dismissInstallBar = function () {
-      const bar = document.getElementById("installBar");
-      if (bar) bar.style.display = "none";
-      localStorage.setItem("turnos_install_dismissed", "1");
-    };
-
-    window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      showInstallBar();
-    });
-
-    window.addEventListener("load", () => {
-      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone;
-
-      if (!isIos && !deferredInstallPrompt) {
-        showInstallBar();
-        return;
-      }
-
-      if (isIos && !standalone &&
-          !localStorage.getItem("turnos_ios_hint") &&
-          !localStorage.getItem("turnos_installed")) {
-
-        const bar = document.getElementById("installBar");
-        if (bar) {
-          bar.querySelector(".install-text").innerHTML =
-            "📲 En iPhone: abre en <strong>Safari</strong>, toca <strong>Compartir</strong> y luego <strong>“Añadir a pantalla de inicio”</strong>.";
-          bar.style.display = "flex";
-        }
-        localStorage.setItem("turnos_ios_hint", "1");
-      }
-    });
-  </script>
+    <div class="footerbar"></div>
+  </main>
 
   <!-- Adaptador de semana, normalizador y lógica móvil -->
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
-
-  <!-- Registro del service worker para PWA -->
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker
-          .register("./service-worker.js")
-          .catch(function (err) {
-            console.log("Service worker registration failed:", err);
-          });
-      });
-    }
-  </script>
 </body>
 </html>
