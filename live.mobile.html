@@ -342,23 +342,60 @@
     <!-- Datos generados: mismo FULL_DATA que index/live -->
   <script src="data.js?v=TS"></script>
 
-  <!-- Lógica de instalación PWA -->
+   <!-- Lógica de instalación PWA (con fallback) -->
   <script>
     let deferredInstallPrompt = null;
 
-    window.handleInstallClick = async function () {
+    function showInstallBar() {
       const bar = document.getElementById("installBar");
-      if (bar) bar.style.display = "none";
+      if (!bar) return;
 
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      try {
-        const choice = await deferredInstallPrompt.userChoice;
-        if (choice.outcome === "accepted") {
-          localStorage.setItem("turnos_installed", "1");
-        }
-      } catch (e) {}
-      deferredInstallPrompt = null;
+      // Si ya está instalada o el usuario la cerró, no molestamos más
+      if (localStorage.getItem("turnos_installed") === "1" ||
+          localStorage.getItem("turnos_install_dismissed") === "1") {
+        return;
+      }
+
+      bar.style.display = "flex";
+    }
+
+    window.handleInstallClick = async function () {
+      const isIos   = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone;
+
+      // Si ya está instalada, ocultamos barra
+      if (standalone) {
+        localStorage.setItem("turnos_installed", "1");
+        const bar = document.getElementById("installBar");
+        if (bar) bar.style.display = "none";
+        return;
+      }
+
+      // Caso 1: navegador soporta beforeinstallprompt (Android, Chrome, Edge)
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        try {
+          const choice = await deferredInstallPrompt.userChoice;
+          if (choice.outcome === "accepted") {
+            localStorage.setItem("turnos_installed", "1");
+          }
+        } catch (e) {}
+        deferredInstallPrompt = null;
+        const bar = document.getElementById("installBar");
+        if (bar) bar.style.display = "none";
+        return;
+      }
+
+      // Caso 2: fallback con instrucciones
+      if (isIos) {
+        alert("Para instalar la app en iPhone:\n\n1) Abre esta página en Safari.\n2) Pulsa el icono Compartir.\n3) Elige 'Añadir a pantalla de inicio'.");
+      } else if (isMobile) {
+        alert("Si no aparece el botón de instalar:\n\nAbre el menú del navegador (⋮ o ☰) y busca 'Instalar aplicación' o 'Añadir a pantalla principal'.");
+      } else {
+        alert("En ordenador puedes instalar la app desde el icono de 'Instalar aplicación' de la barra de direcciones del navegador.");
+      }
     };
 
     window.dismissInstallBar = function () {
@@ -367,26 +404,25 @@
       localStorage.setItem("turnos_install_dismissed", "1");
     };
 
+    // Android / Chrome: evento nativo de instalación disponible
     window.addEventListener("beforeinstallprompt", (e) => {
-      // Android / Chrome lanza este evento cuando la PWA es instalable
       e.preventDefault();
       deferredInstallPrompt = e;
-
-      if (localStorage.getItem("turnos_installed") === "1" ||
-          localStorage.getItem("turnos_install_dismissed") === "1") {
-        return;
-      }
-
-      const bar = document.getElementById("installBar");
-      if (bar) {
-        bar.style.display = "flex";
-      }
+      showInstallBar();
     });
 
-    // Pequeña ayuda para iPhone (no tiene beforeinstallprompt)
+    // iOS y otros navegadores que NO disparan beforeinstallprompt:
+    // mostramos la barra una vez con instrucciones
     window.addEventListener("load", () => {
       const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone;
+
+      if (!isIos && !deferredInstallPrompt) {
+        // En Android viejo / navegadores raros, mostramos barra igualmente
+        showInstallBar();
+        return;
+      }
 
       if (isIos && !standalone &&
           !localStorage.getItem("turnos_ios_hint") &&
@@ -403,12 +439,15 @@
     });
   </script>
 
+  <!-- Datos generados: mismo FULL_DATA que index/live -->
+  <script src="data.js?v=TS"></script>
+
+  <!-- Lógica de instalación PWA (nuevo bloque) -->
+  ... (el script de arriba) ...
+
   <!-- Adaptador de semana, normalizador y lógica móvil -->
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
 </body>
 </html>
-
-
-
