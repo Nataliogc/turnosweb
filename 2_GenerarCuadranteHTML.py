@@ -211,12 +211,21 @@ def main():
         "generated_at": datetime.now().isoformat(timespec="seconds"),
     }
 
+    # JS con todos los datos
     js = "window.FULL_DATA = " + json.dumps(payload, ensure_ascii=False) + ";"
+
+    # 1) index.html (como hasta ahora)
     html = TEMPLATE_PATH.read_text(encoding="utf-8")
     if PLACEHOLDER not in html:
         raise SystemExit("No se encontró __DATA_PLACEHOLDER__ en turnos_final.html")
     OUTPUT_PATH.write_text(html.replace(PLACEHOLDER, js), encoding="utf-8")
     print(f"[OK] {OUTPUT_PATH.name} generado con éxito.")
+
+    # 2) data.js para la versión móvil (mismo FULL_DATA)
+    data_js_path = HERE / "data.js"
+    data_js_path.write_text(js, encoding="utf-8")
+    print(f"[OK] {data_js_path.name} generado con éxito.")
+
 
 if __name__ == "__main__":
     main()

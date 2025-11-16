@@ -56,12 +56,25 @@ if not exist "index.html" (
   goto END_FAIL
 )
 copy /Y "index.html" "live.html" >nul
+rem 2b) Actualizar data.js para la versión móvil
+echo [2b/5] Exportando FULL_DATA a data.js...
+call :RUN_PY "3_ExportFullDataToJS.py"
+if errorlevel 1 (
+  >>"%LOG%" echo [ERROR] Fallo al generar data.js desde index.html
+  echo [ERROR] Fallo al generar data.js.
+  goto END_FAIL
+)
+
 
 rem 3) Logos para la web
 echo [3/5] Sincronizando logos (img/)...
 if not exist "img" mkdir "img" >nul
 if exist "guadiana logo.jpg" copy /Y "guadiana logo.jpg" "img\guadiana.jpg" >nul
 if exist "cumbria logo.jpg"  copy /Y "cumbria logo.jpg"  "img\cumbria.jpg"  >nul
+rem 3b) Ajustar live.mobile.html (scripts y cache-busting)
+echo [3b/5] Actualizando live.mobile.html...
+call "fix_mobile_html.bat"
+
 
 rem 4) Commit + rebase + push
 echo [4/5] Subiendo cambios...

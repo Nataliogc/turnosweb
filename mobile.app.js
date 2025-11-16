@@ -74,29 +74,26 @@
     return String(turno);
   }
 
-  function getFlag(item) {
+    function getFlag(item) {
     try {
       const raw = item && item.turno;
       const text = getLabel(raw).toLowerCase();
 
-      if (text.includes("sustit")) return { type: "sub", symbol: "↔", title: "Sustitución" };
+      // Solo marcamos cambios de turno, NO las sustituciones
       if (text.includes("cambio") || text.includes("🔄"))
         return { type: "swap", symbol: "🔄", title: "Cambio de turno" };
 
       if (raw && typeof raw === "object") {
         const keys = Object.keys(raw).map(k => k.toLowerCase());
-        if (keys.some(k => k.includes("sustit")))
-          return { type: "sub", symbol: "↔", title: "Sustitución" };
         if (keys.some(k => k.includes("cambio") || k.includes("swap")))
           return { type: "swap", symbol: "🔄", title: "Cambio de turno" };
-        if (raw.esSustituto || raw.sustituto)
-          return { type: "sub", symbol: "↔", title: "Sustitución" };
         if (raw.cambio === true)
           return { type: "swap", symbol: "🔄", title: "Cambio de turno" };
       }
     } catch (e) {}
     return null;
   }
+
 
   function logoFor(hotel) {
     const h = (hotel || "").toLowerCase();
