@@ -294,7 +294,7 @@ const nextWeekBtn = $("#nextWeekBtn");
     const monday   = new Date(weekPicker.value + "T00:00:00");
 
     if (hotelVal === "__ALL__") {
-      hotelTitle.textContent = "Todos los hoteles";
+      hotelTitle.textContent = "Turnos App";
       hotelLogo.src          = "img/turnos_icon.png";
     } else {
       hotelTitle.textContent = window.MobilePatch
