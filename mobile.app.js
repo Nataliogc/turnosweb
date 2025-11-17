@@ -1,8 +1,8 @@
 /* mobile.app.js
-   Versión móvil (modo C):
+   Versión móvil:
    - Usa window.FULL_DATA generado por data.js (igual que index)
-   - Hotel: Todos → muestra un bloque por hotel, uno debajo de otro
-   - Hotel concreto → una sola tabla
+   - Si Hotel = "Todos" → muestra un bloque por hotel, uno debajo de otro
+   - Si Hotel = Cumbria / Guadiana → una sola tabla
 */
 
 (function () {
@@ -29,19 +29,24 @@
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
   }
 
-  // ---- Interpretación de turnos (respeta TipoInterpretado como index) ----
-  function getLabel(turno){
+  // Normalizar nombre de hotel igual que en index
+  function normalizeHotelName(name) {
+    const s = (name || "").toString().toLowerCase().trim();
+    if (!s) return "";
+    if (s.includes("cumbria"))  return "cumbria";
+    if (s.includes("guadiana")) return "guadiana";
+    return s;
+  }
+
+  // Interpretación de texto de turno (respeta TipoInterpretado si viene)
+  function getLabel(turno) {
     if (turno == null) return "";
 
-    // 1) Caso objeto (FULL_DATA avanzado)
     if (typeof turno === "object") {
-      // Formato de index: { TurnoOriginal, Sustituto, TipoInterpretado, ... }
       if (turno.TipoInterpretado) {
         const txt = String(turno.TipoInterpretado);
         return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
       }
-
-      // Otros formatos posibles ({texto,label,turno,t,...})
       const candidate =
         turno.texto ||
         turno.label ||
@@ -50,13 +55,10 @@
         turno.t ||
         turno.TurnoOriginal ||
         "";
-
       if (candidate) {
         const txt = String(candidate);
         return window.MobilePatch ? window.MobilePatch.normalize(txt) : txt;
       }
-
-      // Como último recurso: primer valor string que haya dentro del objeto
       const firstStr = Object.values(turno).find(v => typeof v === "string");
       if (firstStr) {
         const txt = String(firstStr);
@@ -65,34 +67,40 @@
       return "";
     }
 
-    // 2) Caso string normal
     if (typeof turno === "string") {
       return window.MobilePatch ? window.MobilePatch.normalize(turno) : turno;
     }
 
-    // 3) Fallback genérico
     return String(turno);
   }
 
+  // Marca cambios / sustituciones
   function getFlag(item) {
     try {
-      const raw = item && item.turno;
+      const raw  = item && item.turno;
       const text = getLabel(raw).toLowerCase();
 
-      if (text.includes("sustit")) return { type: "sub", symbol: "↔", title: "Sustitución" };
-      if (text.includes("cambio") || text.includes("🔄"))
+      if (text.includes("sustit")) {
+        return { type: "sub",  symbol: "↔", title: "Sustitución" };
+      }
+      if (text.includes("cambio") || text.includes("🔄")) {
         return { type: "swap", symbol: "🔄", title: "Cambio de turno" };
+      }
 
       if (raw && typeof raw === "object") {
         const keys = Object.keys(raw).map(k => k.toLowerCase());
-        if (keys.some(k => k.includes("sustit")))
-          return { type: "sub", symbol: "↔", title: "Sustitución" };
-        if (keys.some(k => k.includes("cambio") || k.includes("swap")))
+        if (keys.some(k => k.includes("sustit"))) {
+          return { type: "sub",  symbol: "↔", title: "Sustitución" };
+        }
+        if (keys.some(k => k.includes("cambio") || k.includes("swap"))) {
           return { type: "swap", symbol: "🔄", title: "Cambio de turno" };
-        if (raw.esSustituto || raw.sustituto)
-          return { type: "sub", symbol: "↔", title: "Sustitución" };
-        if (raw.cambio === true)
+        }
+        if (raw.esSustituto || raw.sustituto) {
+          return { type: "sub",  symbol: "↔", title: "Sustitución" };
+        }
+        if (raw.cambio === true) {
           return { type: "swap", symbol: "🔄", title: "Cambio de turno" };
+        }
       }
     } catch (e) {}
     return null;
@@ -105,7 +113,7 @@
     return "img/turnos_icon.png";
   }
 
-  // ---- DOM ----
+  // === DOM ===
   const weekPicker  = $("#weekPicker");
   const hotelSelect = $("#hotelSelect");
   const prevWeekBtn = $("#prevWeekBtn");
@@ -119,7 +127,7 @@
   const hotelTitle  = $("#hotelTitle");
   const hotelLogo   = $("#hotelLogo");
 
-  // ---- Datos desde FULL_DATA
+  // === Datos ===
   const FULL_DATA = (window.FULL_DATA && Array.isArray(window.FULL_DATA.schedule))
     ? window.FULL_DATA
     : { schedule: [] };
@@ -128,7 +136,65 @@
     new Set((FULL_DATA.schedule || []).map(s => s.hotel))
   ).filter(Boolean).sort();
 
-  // ---- Render cabecera días ----
+  // Construye los datos de una semana para un hotel concreto
+  function buildWeekDataFromFullData(fullData, hotel, monday) {
+    const schedule = (fullData && Array.isArray(fullData.schedule))
+      ? fullData.schedule
+      : [];
+
+    const mondayUTC = new Date(Date.UTC(
+      monday.getFullYear(),
+      monday.getMonth(),
+      monday.getDate()
+    ));
+
+    const weekDates = [];
+    const weekDateSet = new Set();
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(mondayUTC, i);
+      const key = toISODateUTC(d);   // YYYY-MM-DD
+      weekDates.push(key);
+      weekDateSet.add(key);
+    }
+
+    const hotelNormTarget = normalizeHotelName(hotel);
+
+    const turnosByEmpleado = {};
+    const ordenSet = new Set();
+
+    schedule.forEach(bucket => {
+      if (!bucket || !bucket.hotel) return;
+
+      const hNorm = normalizeHotelName(bucket.hotel);
+      if (!hNorm || hNorm !== hotelNormTarget) return;
+
+      (bucket.orden_empleados || []).forEach(e => ordenSet.add(e));
+
+      (bucket.turnos || []).forEach(t => {
+        const emp = t.empleado;
+        const fechaKey = t.fecha;
+        if (!emp || !fechaKey) return;
+        if (!weekDateSet.has(fechaKey)) return;
+
+        if (!turnosByEmpleado[emp]) turnosByEmpleado[emp] = {};
+        turnosByEmpleado[emp][fechaKey] = { turno: t.turno };
+      });
+    });
+
+    const orden = Array.from(ordenSet);
+    const empleados = orden.filter(emp => {
+      const m = turnosByEmpleado[emp] || {};
+      return weekDates.some(d => m[d]);
+    });
+
+    return {
+      monday: mondayUTC,
+      empleados: empleados.length ? empleados : orden,
+      turnosByEmpleado
+    };
+  }
+
+  // === Render cabecera días ===
   function renderHeader(thead, monday) {
     thead.innerHTML = [
       `<div class="th"></div>`,
@@ -148,7 +214,7 @@
     ].join("");
   }
 
-  // ---- Render filas ----
+  // === Render filas ===
   function renderBody(tbody, weekData) {
     tbody.innerHTML = "";
     const monday    = weekData.monday;
@@ -169,7 +235,7 @@
         const dkey = toISODateUTC(addDays(monday, i));
         const item =
           (weekData.turnosByEmpleado[emp] &&
-            weekData.turnosByEmpleado[emp][dkey]) ||
+           weekData.turnosByEmpleado[emp][dkey]) ||
           null;
 
         const cell = document.createElement("div");
@@ -222,20 +288,20 @@
     });
   }
 
-  // ---- Vista 1 hotel ----
+  // === Vista 1 hotel ===
   function renderSingleHotel(hotel, monday) {
-    const weekData   = window.MobileAdapter.buildWeekData(FULL_DATA, hotel, monday);
+    const weekData   = buildWeekDataFromFullData(FULL_DATA, hotel, monday);
     const baseMonday = weekData.monday || monday;
     renderHeader(theadEl, baseMonday);
     renderBody(tbodyEl, weekData);
   }
 
-  // ---- Vista todos los hoteles ----
+  // === Vista todos los hoteles ===
   function renderAllHotels(monday) {
     multi.innerHTML = "";
 
     HOTELS.forEach(hotel => {
-      const weekData   = window.MobileAdapter.buildWeekData(FULL_DATA, hotel, monday);
+      const weekData   = buildWeekDataFromFullData(FULL_DATA, hotel, monday);
       const baseMonday = weekData.monday || monday;
 
       const section = document.createElement("section");
@@ -285,7 +351,7 @@
     });
   }
 
-  // ---- Refresh global ----
+  // === Refresh global ===
   function refresh() {
     if (!weekPicker.value) {
       const mondayToday = mondayOf(new Date());
@@ -317,7 +383,7 @@
     }
   }
 
-  // ---- Eventos ----
+  // === Eventos ===
   hotelSelect.addEventListener("change", refresh);
   weekPicker.addEventListener("change", refresh);
 
@@ -338,7 +404,7 @@
   });
   nextWeekBtn && nextWeekBtn.addEventListener("click", () => setWeekByOffset(7));
 
-  // Altura viewport móvil
+  // Ajuste altura viewport móvil (para 100vh en móviles)
   function setVH() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty("--vh", `${vh}px`);
@@ -346,7 +412,7 @@
   window.addEventListener("resize", setVH, { passive: true });
   setVH();
 
-  // ---- Inicialización ----
+  // === Inicialización ===
   (function init() {
     // Rellenar selector hoteles
     hotelSelect.innerHTML = [
