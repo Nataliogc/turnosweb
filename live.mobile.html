@@ -4,13 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Turnos · Versión Móvil</title>
-
-  <!-- PWA -->
-  <meta name="theme-color" content="#0b1120">
-  <link rel="manifest" href="manifest.webmanifest">
-  <!-- Icono base (usa tu carpeta /icons) -->
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121417">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -21,43 +16,18 @@
   <link rel="stylesheet" href="styles.mobile.css">
 
   <style>
-    /* Barra de instalación app */
-    .install-bar {
-      position: sticky;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 50;
-      background: #ffffff;
-      border-top: 1px solid #e2e8f0;
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-    }
-    .install-text { flex: 1; }
-    .install-actions {
-      display: flex;
-      gap: 6px;
-    }
-    .install-bar .btn-primary.btn {
-      padding: 4px 10px;
-      font-size: 13px;
-    }
-    .install-bar .btn-ghost.btn {
-      padding: 4px 8px;
-      font-size: 13px;
-    }
-
     :root{
       --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#475569; --border:#e2e8f0;
-      --pill:#eef2ff; --pill-text:#334155; --night:#e5e7eb; --night-text:#374151;
-      --rest:#fee2e2; --rest-text:#7f1d1d; --brand:#c9a227;
+      --pill-bg:#eff4ff; --pill-border:#c7d2fe;
+      --pill-descanso:#fee2e2; --pill-descanso-border:#fecaca;
+      --pill-noche:#e5e7eb; --pill-noche-border:#d1d5db;
+      --pill-manana:#dcfce7; --pill-manana-border:#bbf7d0;
+      --pill-tarde:#e0f2fe; --pill-tarde-border:#bae6fd;
+      --pill-vac:#fef3c7; --pill-vac-border:#fde68a;
     }
-    *{box-sizing:border-box}
+
+    *{box-sizing:border-box;margin:0;padding:0}
     body{
-      margin:0;
       background:var(--bg);
       color:var(--text);
       font:13px/1.45 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
@@ -88,49 +58,88 @@
       display:flex;
       gap:10px;
       align-items:center;
+      min-width:0;
+      flex:1 1 140px;
     }
-    .brand img{
-      height:28px;
-      width:auto;
-      object-fit:contain;
+    .brand-logo{
+      height:32px;
+      width:32px;
+      border-radius:9px;
+      object-fit:cover;
+      box-shadow:0 0 0 1px rgba(15,23,42,.06),0 4px 10px rgba(15,23,42,.12);
+      background:#fff;
     }
-    .title{font-weight:600}
+    .brand-text{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .brand-title{
+      font-size:14px;
+      font-weight:600;
+      color:#0f172a;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      overflow:hidden;
+    }
+    .brand-sub{
+      font-size:11px;
+      color:var(--muted);
+    }
 
     .controls{
       display:flex;
-      gap:10px;
       flex-wrap:wrap;
-      margin-left:auto;
+      gap:8px;
+      justify-content:flex-end;
+      flex:2 1 220px;
     }
+
     .field{
       display:flex;
-      align-items:center;
-      gap:6px;
-      background:#fff;
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:6px 10px;
+      flex-direction:column;
+      gap:3px;
+      min-width:0;
+      flex:1 1 120px;
     }
     .field label{
-      font-size:12px;
+      font-size:11px;
       color:var(--muted);
     }
     .field select,
-    .field input{
-      border:0;
-      outline:0;
-      background:transparent;
-      font:inherit;
+    .field input[type="date"]{
+      width:100%;
+      border-radius:999px;
+      border:1px solid var(--border);
+      padding:6px 10px;
+      font-size:12px;
+      background:#fff;
       color:var(--text);
+      outline:none;
+    }
+    .field select:focus,
+    .field input[type="date"]:focus{
+      border-color:#3b82f6;
+      box-shadow:0 0 0 1px rgba(59,130,246,.25);
     }
 
     .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      border-radius:999px;
       border:1px solid var(--border);
+      padding:6px 12px;
+      font-size:12px;
       background:#fff;
-      border-radius:12px;
-      padding:8px 12px;
-      font-weight:600;
+      color:var(--muted);
       cursor:pointer;
+      white-space:nowrap;
+    }
+    .btn span.icon{
+      font-size:13px;
     }
     .btn-primary{
       background:#1677ff;
@@ -149,133 +158,187 @@
       background:var(--card);
       border:1px solid var(--border);
       border-radius:16px;
-      box-shadow:0 1px 2px rgba(0,0,0,.04);
-      overflow-x:auto;
-      -webkit-overflow-scrolling:touch;
-      scrollbar-gutter:stable both-edges;
-      contain:layout paint;
+      box-shadow:0 1px 2px rgba(15,23,42,.08);
+      margin-bottom:12px;
+      overflow:hidden;
     }
-
-    .thead,.row{
-      display:grid;
-      grid-template-columns:160px repeat(7,1fr);
+    .card-header{
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
     }
-    @media (max-width:700px){
-      .thead,.row{
-        grid-template-columns:106px repeat(7,minmax(68px,1fr));
-      }
+    .card-header-left{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      min-width:0;
+    }
+    .card-logo{
+      height:22px;
+      width:22px;
+      border-radius:999px;
+      object-fit:cover;
+      background:#fff;
+      box-shadow:0 0 0 1px rgba(15,23,42,.05);
+    }
+    .card-title{
+      font-size:13px;
+      font-weight:600;
+      color:#0f172a;
+    }
+    .card-sub{
+      font-size:11px;
+      color:var(--muted);
     }
 
     .thead{
+      display:grid;
+      grid-template-columns:minmax(110px,1.2fr) repeat(7,minmax(34px,1fr));
       border-bottom:1px solid var(--border);
+      background:linear-gradient(90deg,#f9fafb,#f3f4f6);
+      position:sticky;
+      top:72px;
+      z-index:5;
+    }
+    .th{
+      padding:8px 6px;
+      font-size:11px;
+      font-weight:500;
       color:var(--muted);
-      font-size:12px;
+      text-align:center;
+      border-left:1px solid rgba(148,163,184,.35);
     }
-    .th,.cell-name,.cell{
-      padding:10px 12px;
-      border-right:1px solid var(--border);
-    }
-    .cell{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
-    .th:last-child,
-    .cell:last-child{
-      border-right:0;
-    }
-
-    .cell-name{
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      background:#fff;
+    .th:first-child{
+      text-align:left;
       position:sticky;
       left:0;
-      border-right:1px solid var(--border);
-      z-index:1;
+      z-index:6;
+      background:linear-gradient(90deg,#f9fafb,#f3f4f6);
+    }
+    .th-day-main{font-size:12px;color:#0f172a}
+    .th-day-sub{font-size:10px;color:var(--muted);display:block;margin-top:1px}
+
+    .body{
+      max-height:calc(100vh - 170px);
+      overflow:auto;
     }
 
     .row{
-      border-top:1px solid var(--border);
+      display:grid;
+      grid-template-columns:minmax(110px,1.2fr) repeat(7,minmax(34px,1fr));
+      border-bottom:1px solid rgba(226,232,240,.9);
+      background:#fff;
+    }
+    .row:nth-child(2n){
+      background:#f9fafb;
+    }
+
+    .cell-name{
+      padding:9px 8px;
+      font-size:12px;
+      font-weight:500;
+      position:sticky;
+      left:0;
+      background:inherit;
+      z-index:4;
+      border-right:1px solid var(--border);
+      color:#0f172a;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      overflow:hidden;
+    }
+    .cell{
+      padding:7px 3px;
+      min-height:28px;
+      display:flex;
       align-items:center;
+      justify-content:center;
     }
 
     .pill{
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      gap:6px;
-      padding:4px 10px;
-      min-width:88px;
+      padding:3px 8px;
       border-radius:999px;
-      background:var(--pill);
-      color:var(--pill-text);
-      font-weight:600;
-      font-size:13px;
-      line-height:1.1;
+      border:1px solid var(--pill-border);
+      background:var(--pill-bg);
+      font-size:11px;
       white-space:nowrap;
-      word-break:keep-all;
-      max-width:95%;
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      gap:4px;
     }
-
-    /* Badge azul para cambios / sustituciones */
-    .pill .badge{
+    .pill.descanso{
+      background:var(--pill-descanso);
+      border-color:var(--pill-descanso-border);
+      color:#b91c1c;
+    }
+    .pill.noche{
+      background:var(--pill-noche);
+      border-color:var(--pill-noche-border);
+      color:#111827;
+    }
+    .pill.manana{
+      background:var(--pill-manana);
+      border-color:var(--pill-manana-border);
+      color:#166534;
+    }
+    .pill.tarde{
+      background:var(--pill-tarde);
+      border-color:var(--pill-tarde-border);
+      color:#075985;
+    }
+    .pill.vac{
+      background:var(--pill-vac);
+      border-color:var(--pill-vac-border);
+      color:#92400e;
+    }
+    .badge{
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      width:16px;
-      height:16px;
-      border-radius:6px;
-      margin-left:6px;
-      font-size:12px;
-      line-height:1;
-      background:#2563eb;
-      color:#fff;
-      font-weight:700;
-      flex:0 0 auto;
+      font-size:11px;
+      padding:0 4px;
+      border-radius:999px;
+      background:rgba(15,23,42,.06);
     }
 
-    .pill.manana{background:#d1fae5;color:#065f46}
-    .pill.tarde{background:#fef3c7;color:#92400e}
-    .pill.noche{background:#e5e7eb;color:#374151}
-    .pill.descanso{background:#fee2e2;color:#7f1d1d}
-    .pill.vac{background:#fff7db;color:#5b4300}
-
-    .weekday{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
-    .weekday .name{font-size:12px}
-    .weekday .date{font-size:11px;color:var(--muted)}
-
-    .footerbar{
-      height:10px;
-      border-radius:6px;
-      background:linear-gradient(90deg,#b88a00,#e2c26e,#b88a00);
-      margin:14px 0;
-    }
+    .footerbar{height:18px}
 
     /* Bloques multi-hotel */
     .hotel-section{margin:14px 0}
-
-    .th-hotel{
-      padding:10px 12px;
-    }
-    .hotel-cell{
+    .hotel-title{
+      font-size:13px;
+      font-weight:600;
+      color:#0f172a;
+      margin-bottom:6px;
       display:flex;
       align-items:center;
-      gap:8px;
+      gap:6px;
     }
-    .hotel-cell-logo{
-      height:20px;
-      width:auto;
-      object-fit:contain;
+    .hotel-title img{
+      height:18px;
+      width:18px;
+      border-radius:999px;
+      object-fit:cover;
+      box-shadow:0 0 0 1px rgba(15,23,42,.08);
     }
-    .hotel-cell-name{
-      font-weight:600;
+    .hotel-sub{
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+
+    @media (max-width:640px){
+      .thead{top:96px}
+      .bar{flex-direction:column;align-items:stretch}
+      .brand{width:100%}
+      .controls{width:100%;justify-content:flex-start}
     }
   </style>
 </head>
@@ -283,167 +346,69 @@
   <header>
     <div class="bar">
       <div class="brand">
-        <img id="hotelLogo" alt="Turnos Recepción" src="img/turnos_icon.png">
-        <div class="title" id="hotelTitle">Turnos App</div>
+        <img src="img/turnos_icon.png" alt="Turnos" class="brand-logo" id="appLogo">
+        <div class="brand-text">
+          <div class="brand-title">Turnos de Recepción</div>
+          <div class="brand-sub" id="brandSub">Semana actual · Todos los hoteles</div>
+        </div>
       </div>
 
       <div class="controls">
         <div class="field">
-          <label>Semana (lunes):</label>
-          <input id="weekPicker" type="date">
+          <label for="hotelSelect">Hotel</label>
+          <select id="hotelSelect">
+            <option value="__ALL__">Todos</option>
+          </select>
         </div>
         <div class="field">
-          <label>Hotel:</label>
-          <select id="hotelSelect"></select>
+          <label for="weekPicker">Semana (lunes)</label>
+          <input type="date" id="weekPicker">
         </div>
         <div class="btn-group">
-          <button class="btn-primary btn" id="prevWeekBtn">← Semana</button>
-          <button class="btn-primary btn" id="todayBtn">Hoy</button>
-          <button class="btn-primary btn" id="nextWeekBtn">Semana →</button>
+          <button type="button" class="btn" id="btnToday"><span class="icon">📅</span>Hoy</button>
         </div>
       </div>
     </div>
   </header>
 
   <main>
-    <!-- Modo 1: un solo hotel -->
-    <section class="card" id="singleCard">
+    <!-- Vista principal: un hotel -->
+    <section id="single" class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <img src="img/turnos_icon.png" alt="Hotel" class="card-logo" id="hotelLogo">
+          <div>
+            <div class="card-title" id="hotelTitle">Todos los hoteles</div>
+            <div class="card-sub" id="hotelSubtitle">Semana actual</div>
+          </div>
+        </div>
+      </div>
       <div class="thead" id="thead"></div>
-      <div id="tbody"></div>
+      <div class="body" id="tbodyContainer">
+        <div class="body-inner" id="tbody"></div>
+      </div>
     </section>
 
-    <!-- Modo 2: Turnos App (uno debajo de otro) -->
+    <!-- Modo 2: Todos los hoteles (uno debajo de otro) -->
     <section id="multi" style="display:none;"></section>
 
     <div class="footerbar"></div>
-
-    <!-- Barra para invitar a instalar la app -->
-    <div id="installBar" class="install-bar" style="display:none;">
-      <div class="install-text">
-        📲 Instala <strong>Turnos App</strong> en tu móvil para acceder más rápido.
-      </div>
-      <div class="install-actions">
-        <button class="btn-primary btn" type="button" onclick="window.handleInstallClick()">
-          Instalar
-        </button>
-        <button class="btn-ghost btn" type="button" onclick="window.dismissInstallBar()">
-          ✕
-        </button>
-      </div>
-    </div>
   </main>
-
-  <!-- Datos generados: mismo FULL_DATA que index/live (lo crea 2_GenerarCuadranteHTML.py) -->
-  <script src="data.js?v=TS"></script>
-
-  <!-- Lógica instalación PWA -->
-  <script>
-    // Registrar service worker (si existe sw.js)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      });
-    }
-
-    let deferredInstallPrompt = null;
-
-    function showInstallBar() {
-      const bar = document.getElementById("installBar");
-      if (!bar) return;
-
-      if (localStorage.getItem("turnos_installed") === "1" ||
-          localStorage.getItem("turnos_install_dismissed") === "1") {
-        return;
-      }
-
-      bar.style.display = "flex";
-    }
-
-    window.handleInstallClick = async function () {
-      const isIos    = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone;
-
-      if (standalone) {
-        localStorage.setItem("turnos_installed", "1");
-        const bar = document.getElementById("installBar");
-        if (bar) bar.style.display = "none";
-        return;
-      }
-
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        try {
-          const choice = await deferredInstallPrompt.userChoice;
-          if (choice.outcome === "accepted") {
-            localStorage.setItem("turnos_installed", "1");
-          }
-        } catch (e) {}
-        deferredInstallPrompt = null;
-        const bar = document.getElementById("installBar");
-        if (bar) bar.style.display = "none";
-        return;
-      }
-
-      // Fallback con instrucciones
-      if (isIos) {
-        alert("Para instalar la app en iPhone:\n\n1) Abre esta página en Safari.\n2) Pulsa el icono Compartir.\n3) Elige 'Añadir a pantalla de inicio'.");
-      } else if (isMobile) {
-        alert("Si no aparece el botón de instalar:\n\nAbre el menú del navegador (⋮ o ☰) y busca 'Instalar aplicación' o 'Añadir a pantalla principal'.");
-      } else {
-        alert("En ordenador puedes instalar la app desde el icono de 'Instalar aplicación' de la barra de direcciones del navegador.");
-      }
-    };
-
-    window.dismissInstallBar = function () {
-      const bar = document.getElementById("installBar");
-      if (bar) bar.style.display = "none";
-      localStorage.setItem("turnos_install_dismissed", "1");
-    };
-
-    window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredInstallPrompt = e;
-      showInstallBar();
-    });
-
-    window.addEventListener("load", () => {
-      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone;
-
-      if (standalone) {
-        localStorage.setItem("turnos_installed", "1");
-        const bar = document.getElementById("installBar");
-        if (bar) bar.style.display = "none";
-        return;
-      }
-
-      if (!isIos && !deferredInstallPrompt) {
-        // Android viejo / navegadores sin beforeinstallprompt: mostramos barra una vez
-        showInstallBar();
-        return;
-      }
-
-      if (isIos && !standalone &&
-          !localStorage.getItem("turnos_ios_hint") &&
-          !localStorage.getItem("turnos_installed")) {
-
-        const bar = document.getElementById("installBar");
-        if (bar) {
-          bar.querySelector(".install-text").innerHTML =
-            "📲 En iPhone: abre en <strong>Safari</strong>, toca <strong>Compartir</strong> y luego <strong>“Añadir a pantalla de inicio”</strong>.";
-          bar.style.display = "flex";
-        }
-        localStorage.setItem("turnos_ios_hint", "1");
-      }
-    });
-  </script>
 
   <!-- Adaptador de semana, normalizador y lógica móvil -->
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
+
+  <script>
+    // Registro del Service Worker para activar la PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .catch(err => console.error('SW error', err));
+      });
+    }
+  </script>
+
 </body>
 </html>
