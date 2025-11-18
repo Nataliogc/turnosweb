@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Turnos · Versión Móvil</title>
 
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1677ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -370,5 +377,16 @@
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
+
+  <!-- Registro del Service Worker para que se pueda instalar como App -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(() => console.log('Service Worker registrado'))
+          .catch(err => console.error('Error al registrar SW', err));
+      });
+    }
+  </script>
 </body>
 </html>
