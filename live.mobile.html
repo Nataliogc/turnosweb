@@ -244,6 +244,20 @@
     .hotel-cell-name{
       font-weight:600;
     }
+/* Campo semana: solo icono/selector de fecha para ahorrar espacio */
+.field-week label{
+  display:none;              /* quita el texto "Semana (lunes)" */
+}
+
+.field-week{
+  padding:4px 6px;           /* un poco más compacto */
+}
+
+.field-week input[type="date"]{
+  min-width:0;
+  padding-inline:4px;        /* reduce relleno lateral */
+}
+
   </style>
 </head>
 <body>
@@ -260,10 +274,10 @@
       </div>
 
       <div class="controls">
-        <div class="field">
-          <label>Semana (lunes):</label>
-          <input id="weekPicker" type="date">
-        </div>
+        <div class="field field-week">
+  <label>Semana (lunes):</label>
+  <input id="weekPicker" type="date">
+</div>
         <div class="field">
           <label>Hotel:</label>
           <select id="hotelSelect"></select>
