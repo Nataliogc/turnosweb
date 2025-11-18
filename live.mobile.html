@@ -5,12 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Turnos · Versión Móvil</title>
 
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1677ff">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -21,7 +15,7 @@
     :root{
       --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#475569; --border:#e2e8f0;
       --pill:#eef2ff; --pill-text:#334155; --night:#e5e7eb; --night-text:#374151;
-      --rest:#fee2e2; --rest-text:#7f1d1d; --brand:#c9a227;
+      --rest:#fee2e2; --rest-text:#7f1d1d;
     }
     *{box-sizing:border-box}
     body{
@@ -253,7 +247,7 @@
   </style>
 </head>
 <body>
-  <!-- Datos: mismo FULL_DATA que index/live, o CSV como fallback -->
+  <!-- Datos: mismo FULL_DATA que index/live -->
   <script src="data.js?v=TS"></script>
   <script src="data.ausencias.js?v=TS"></script>
 
@@ -279,7 +273,6 @@
           <button class="btn-primary btn" id="todayBtn">Hoy</button>
           <button class="btn-primary btn" id="nextWeekBtn">Semana →</button>
         </div>
-        <button class="btn" id="refreshBtn">Actualizar</button>
       </div>
     </div>
   </header>
@@ -301,16 +294,5 @@
   <script src="plantilla_mobile_adapter.js?v=TS"></script>
   <script src="mobile.patch.js?v=TS"></script>
   <script src="mobile.app.js?v=TS"></script>
-
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('service-worker.js').catch(function (err) {
-          console.log('Service worker registration failed:', err);
-        });
-      });
-    }
-  </script>
-
 </body>
 </html>
